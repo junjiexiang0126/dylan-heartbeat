@@ -314,7 +314,7 @@ function isSystemRule(msg) {
 // ========================
 // 构建 Timeline
 // ========================
-function buildTimeline(kelivoMessages, tsDB) {
+function buildTimeline(kelivoMessages, tsDB, receivedAt = new Date()) {
   const oldTimeline = loadTimeline();
   const newSystemMessages = kelivoMessages
     .filter(msg => msg.role === "system")
@@ -325,6 +325,20 @@ function buildTimeline(kelivoMessages, tsDB) {
   const newRealMessages = kelivoMessages
     .filter(isRealMessageForTimeline)
     .map(normalizeMessageForTimeline);
+
+  // Kelivo 的真实用户消息可能没有时间前缀。只在持久化 timeline 的副本中给
+  // 最新一条 user 消息补 Gateway 接收时间；原始 kelivoMessages 保持不变并照常转发上游。
+  const latestUserIndex = newRealMessages.findLastIndex(msg => msg.role === "user");
+  if (latestUserIndex >= 0) {
+    const latestUser = newRealMessages[latestUserIndex];
+    if (!extractTimestamp(latestUser.content)) {
+      const receivedLabel = formatDateTimeInTimeZone(receivedAt, TIME_ZONE);
+      newRealMessages[latestUserIndex] = {
+        ...latestUser,
+        content: `（${receivedLabel}）${latestUser.content}`
+      };
+    }
+  }
 
   const oldSpecialEvents = oldTimeline.filter(isSpecialEvent).sort((a, b) => {
     const timeA = extractTimestampWithMemory(a, tsDB);
@@ -557,6 +571,7 @@ app.get("/v1/models", async (req, reply) => {
 // ========================
 app.post("/v1/chat/completions", async (req, reply) => {
   try {
+    const receivedAt = new Date();
     const body = req.body;
     // 批注 2026-07-15：公开部署时日志不能默认写入完整上下文；
     // 这里只保留请求摘要，避免 system prompt、记忆和聊天正文进入 pm2 日志。
@@ -584,7 +599,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
     }
     if (tsDBDirty) saveTimestampDB(tsDB);
 
-    const finalTimeline = buildTimeline(kelivoMessages, tsDB);
+    const finalTimeline = buildTimeline(kelivoMessages, tsDB, receivedAt);
     saveTimeline(finalTimeline);
 
     // Kelivo 发图时 content 常是数组。默认原样透传给视觉模型；
