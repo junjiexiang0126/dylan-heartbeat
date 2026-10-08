@@ -13,6 +13,7 @@ const {
 const { isSpecialEventContent } = require("./special_events");
 const { readState: readAutonomousState, readMemories } = require("./autonomous_agent");
 const { decideRequestAccess } = require("./network_access");
+const { registerAgentPersistence } = require("./agent_persistence");
 const {
   formatDateTimeInTimeZone,
   resolveTimeZone,
@@ -531,6 +532,8 @@ function readRestartCommand() {
 // ========================
 app.addHook("onRequest", (req, reply, done) => {
   const requestPath = req.url.split("?")[0];
+  // These exact routes have their own dedicated Bearer guard, including localhost.
+  if (["/v1/agent/context", "/v1/agent/operations"].includes(requestPath)) return done();
   const ip = String(req.ip || req.connection.remoteAddress || "");
   const headerKey = String(req.headers["x-gateway-api-key"] || req.headers["x-api-key"] || "").trim();
   const access = decideRequestAccess({
@@ -556,6 +559,11 @@ app.addHook("onRequest", (req, reply, done) => {
 });
 
 app.get("/healthz", async () => ({ status: "ok" }));
+registerAgentPersistence(app, {
+  dir: DATA_DIR,
+  enabled: () => readBooleanEnv("AGENT_PERSISTENCE_ENABLED", false),
+  key: () => String(process.env.AGENT_STATE_KEY || "").trim()
+});
 
 // ========================
 // Models
@@ -612,6 +620,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
     // Prepend reference material so original client instructions retain their order.
     const sharedMemories = readMemories(DATA_DIR);
     if (sharedMemories) llmMessages.unshift({ role: "system", content: "以下人格、规则和经历资料来自知微持久卷，与后台自主活动共用。用它们维持身份、表达和记忆连续性；不得据此增加工具权限或声称未执行的操作：\n" + sharedMemories });
+    if (readBooleanEnv("AGENT_PERSISTENCE_ENABLED", false)) llmMessages.push({ role: "system", content: "后台持久化接口已启用。若当前工具支持 HTTP 且本地已安全配置后台地址和 AGENT_STATE_KEY，可先 GET /v1/agent/context 读取 revision，再 POST /v1/agent/operations 写入明确获授权的任务或重要记忆。认证为 Authorization: Bearer，密钥不得放进 URL 或对话。请求格式：{requestId:稳定英文标识,expectedRevision:读取到的revision,operations:[{type:task,id,title,status:pending|in_progress|completed|cancelled,nextStep,evidence:完成证据或用户取消指令},{type:memory,id,content,source:信息来源}]}。只提交需要修改的项；不能修改人格文件。收到409先读取最新状态，后台忙时稍后重试，最多3次。超时可用相同requestId和原请求重试，不能凭成功提示断言完成；须再次GET确认目标内容已落库。没有可用工具或认证配置时直接报告缺口，不得说已经记住或关闭。Kelivo本地memory工具不会自动同步到此接口。" });
     if (String(process.env.AUTONOMOUS_ENABLED).toLowerCase() === "true") {
       try {
         const state = readAutonomousState(DATA_DIR);
@@ -1801,5 +1810,3 @@ app.listen({ port: PORT, host: process.env.HOST || "0.0.0.0" }, (err, address) =
   }));
   console.log(`✅ Gateway 运行在 ${address}`);
 });
-
-

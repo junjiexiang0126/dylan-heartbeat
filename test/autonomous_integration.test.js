@@ -31,7 +31,7 @@ test('real gateway and worker wake without Kelivo, persist and inject activity i
   const port = reservation.address().port;
   await new Promise(resolve => reservation.close(resolve));
   const base = `http://127.0.0.1:${port}`;
-  const env = { ...process.env, DATA_DIR: dir, PORT: String(port), GATEWAY_BASE_URL: base, TARGET_API_URL: `http://127.0.0.1:${upstream.address().port}/chat`, TARGET_API_KEY: 'test-only', MODEL_NAME: 'mock', ADMIN_USER: 'test', ADMIN_PASSWORD: 'test-only', AUTONOMOUS_ENABLED: 'true', AUTONOMOUS_PUSH_ENABLED: 'false', TIME_ZONE: 'Asia/Bangkok' };
+  const env = { ...process.env, DATA_DIR: dir, PORT: String(port), GATEWAY_BASE_URL: base, TARGET_API_URL: `http://127.0.0.1:${upstream.address().port}/chat`, TARGET_API_KEY: 'test-only', MODEL_NAME: 'mock', ADMIN_USER: 'test', ADMIN_PASSWORD: 'test-only', AUTONOMOUS_ENABLED: 'true', AUTONOMOUS_PUSH_ENABLED: 'false', TIME_ZONE: 'Asia/Bangkok', AGENT_PERSISTENCE_ENABLED: 'true', AGENT_STATE_KEY: 'state-test-only' };
   let logs = '';
   env.HOST = '127.0.0.1';
   const children = ['server.js', 'wake_up.js'].map(file => {
@@ -84,5 +84,18 @@ test('real gateway and worker wake without Kelivo, persist and inject activity i
   assert.ok(chatRequest.messages.some(m => m.tool_calls?.[0]?.id === 'prior-call'));
   assert.ok(chatRequest.messages.some(m => m.role === 'tool' && m.tool_call_id === 'prior-call'));
   await waitFor(async () => JSON.parse(fs.readFileSync(path.join(dir, 'autonomous_state.json'), 'utf8')).activities[0].eventStatus === 'recorded');
+  assert.equal((await fetch(`${base}/v1/agent/context`)).status, 401);
+  const stateHeaders = { Authorization: 'Bearer state-test-only', 'Content-Type': 'application/json' };
+  const context = await (await fetch(`${base}/v1/agent/context`, { headers: stateHeaders })).json();
+  const saved = await fetch(`${base}/v1/agent/operations`, { method: 'POST', headers: stateHeaders, body: JSON.stringify({ requestId: 'integration_save', expectedRevision: context.revision, operations: [
+    { type: 'task', id: 'review', status: 'cancelled', evidence: '用户取消', nextStep: '' },
+    { type: 'memory', id: 'study', content: '新确认的学习记忆', source: '用户明确要求' }
+  ] }) });
+  assert.equal(saved.status, 200);
+  const verified = await (await fetch(`${base}/v1/agent/context`, { headers: stateHeaders })).json();
+  assert.equal(verified.tasks[0].status, 'cancelled');
+  assert.equal(verified.memoryEntries[0].content, '新确认的学习记忆');
+  await fetch(`${base}/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'mock', stream: false, messages: [{ role: 'user', content: '记得刚才的约定吗' }] }) });
+  assert.ok(chatRequest.messages.some(m => String(m.content).includes('新确认的学习记忆')));
+  assert.ok(chatRequest.messages.some(m => String(m.content).includes('cancelled')));
 });
-
