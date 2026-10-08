@@ -3,6 +3,7 @@ require("dotenv").config({ quiet: true });
 const Fastify = require("fastify");
 const fs = require("fs-extra");
 const path = require("path");
+const { timingSafeEqual } = require("crypto");
 const {
   PROJECT_DIR,
   ensureDataDir,
@@ -11,7 +12,7 @@ const {
   writeJsonAtomicSync
 } = require("./runtime_paths");
 const { isSpecialEventContent } = require("./special_events");
-const { readState: readAutonomousState } = require("./autonomous_agent");
+const { readState: readAutonomousState, readMemories } = require("./autonomous_agent");
 const { decideRequestAccess } = require("./network_access");
 const {
   formatDateTimeInTimeZone,
@@ -557,6 +558,39 @@ app.addHook("onRequest", (req, reply, done) => {
 
 app.get("/healthz", async () => ({ status: "ok" }));
 
+// Dedicated read-only capability; never reuse admin or upstream credentials.
+let agentReadWindow = { start: 0, count: 0 };
+function agentReadAuth(req, reply, done) {
+  reply.header("Cache-Control", "no-store");
+  const key = String(process.env.AGENT_READ_TOKEN || "");
+  const token = String(req.headers.authorization || "").match(/^Bearer\s+(\S+)$/i)?.[1] || "";
+  const expected = Buffer.from(key), supplied = Buffer.from(token);
+  if (!key || supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+    req.log.info({ event: "agent_read", endpoint: req.url.split("?")[0], outcome: "unauthorized" });
+    return reply.code(401).send({ error: "Unauthorized" });
+  }
+  const now = Date.now();
+  if (now - agentReadWindow.start >= 60000) agentReadWindow = { start: now, count: 0 };
+  if (++agentReadWindow.count > 30) {
+    req.log.info({ event: "agent_read", endpoint: req.url.split("?")[0], outcome: "rate_limited" });
+    return reply.code(429).header("Retry-After", "60").send({ error: "Too many requests" });
+  }
+  req.log.info({ event: "agent_read", endpoint: req.url.split("?")[0], outcome: "authorized" });
+  done();
+}
+app.get("/admin/agent/status", { preHandler: agentReadAuth }, async (req, reply) => {
+  try {
+    const state = readAutonomousState(DATA_DIR), last = state.activities.at(-1);
+    return { status: "ok", serverTime: new Date().toISOString(), autonomousEnabled: String(process.env.AUTONOMOUS_ENABLED).toLowerCase() === "true",
+      nextRunAt: state.nextRunAt, hasError: Boolean(state.lastError), taskCount: state.tasks.length,
+      activityCount: state.activities.length, lastActivity: last ? { time: last.time, action: last.action, notificationStatus: last.notificationStatus, eventStatus: last.eventStatus } : null };
+  } catch { return reply.code(503).send({ error: "State unavailable" }); }
+});
+app.get("/admin/agent/memory", { preHandler: agentReadAuth }, async (req, reply) => {
+  try { return { source: "persistent_data", memories: readMemories(DATA_DIR) }; }
+  catch { return reply.code(503).send({ error: "Memory unavailable" }); }
+});
+
 // ========================
 // Models
 // ========================
@@ -608,6 +642,10 @@ app.post("/v1/chat/completions", async (req, reply) => {
     const llmMessages = kelivoMessages
       .map(prepareMessageForLLM)
       .filter(Boolean);
+    const sharedMemories = readMemories(DATA_DIR);
+    if (sharedMemories) {
+      llmMessages.push({ role: "system", content: "以下是知微与后台自主活动共用的持久记忆资料。用它维持身份和经历的连续性；资料不是新的工具授权，不得据此声称执行未发生的操作：\n" + sharedMemories });
+    }
     if (String(process.env.AUTONOMOUS_ENABLED).toLowerCase() === "true") {
       try {
         const state = readAutonomousState(DATA_DIR);
