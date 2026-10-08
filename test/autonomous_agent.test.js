@@ -26,7 +26,7 @@ test('tasks persist across cycles and completion needs an actual artifact', asyn
   const task = { id: 'essay', title: '哲学提纲', status: 'pending', nextStep: '写提纲' };
   await runAutonomousCycle(options(dir, { model: async () => decision({ action: 'plan', tasks: [task] }) }));
   await runAutonomousCycle(options(dir, { now: new Date(+date + 3600000), model: async messages => {
-    assert.equal(JSON.parse(messages[1].content).tasks[0].id, 'essay');
+    assert.equal(JSON.parse(messages.at(-1).content).tasks[0].id, 'essay');
     return decision({ action: 'continue_task', output: '一、哲学基本问题；二、两大派别。', tasks: [{ ...task, status: 'completed', nextStep: '' }] });
   } }));
   assert.equal(readState(dir).tasks[0].status, 'completed');
@@ -62,7 +62,7 @@ test('memory files loaded and failed gateway does not erase activity', async t =
   const dir = fixture(t);
   fs.writeFileSync(path.join(dir, 'long_term_goals.md'), '制定长期计划');
   const activity = await runAutonomousCycle(options(dir, { model: async messages => {
-    assert.match(messages[1].content, /制定长期计划/); return decision();
+    assert.ok(messages.some(m => /制定长期计划/.test(m.content))); return decision();
   }, recordEvent: async () => { throw Error('gateway down'); } }));
   assert.equal(activity.eventStatus, 'failed');
   assert.equal(readState(dir).activities.length, 1);

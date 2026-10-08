@@ -9,15 +9,21 @@ const { setTimeout: delay } = require('timers/promises');
 
 test('real gateway and worker wake without Kelivo, persist and inject activity into chat', { timeout: 30000 }, async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ziwei-integration-'));
+  fs.writeFileSync(path.join(dir, 'memory.md'), '共享核心记忆：关系与经历');
+  fs.writeFileSync(path.join(dir, 'system_prompt.txt'), '共享人格：直接表达');
   let chatRequest;
   const upstream = http.createServer(async (req, res) => {
     let body = ''; for await (const chunk of req) body += chunk;
     const input = JSON.parse(body);
     const autonomous = Boolean(input.response_format);
+    if (autonomous) {
+      assert.ok(input.messages.some(m => String(m.content).includes('共享人格')));
+      assert.ok(input.messages.some(m => String(m.content).includes('共享核心记忆')));
+    }
     if (!autonomous) chatRequest = input;
     const content = autonomous ? JSON.stringify({ action: 'plan', reason: '准备提纲', diary: '我在后台制定了计划。', output: '哲学复习提纲', tasks: [{ id: 'review', title: '复习', status: 'pending', nextStep: '展开提纲' }], notification: null }) : '已读取后台计划';
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content } }] }));
+    res.end(JSON.stringify({ choices: [{ message: input.tools ? { role: 'assistant', content: null, tool_calls: [{ id: 'next-call', type: 'function', function: { name: 'check_login_status', arguments: '{}' } }] } : { role: 'assistant', content } }] }));
   });
   await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
   const reservation = http.createServer();
@@ -60,5 +66,23 @@ test('real gateway and worker wake without Kelivo, persist and inject activity i
   assert.equal(chat.status, 200);
   await chat.text();
   assert.ok(chatRequest.messages.some(m => String(m.content).includes('哲学复习提纲')));
+  assert.ok(chatRequest.messages.some(m => String(m.content).includes('共享人格')));
+  assert.ok(chatRequest.messages.some(m => String(m.content).includes('共享核心记忆')));
+  const toolBody = { model: 'client-chosen-model', stream: false, thinking: { type: 'enabled' }, tools: [{ type: 'function', function: { name: 'check_login_status', parameters: { type: 'object', properties: {} } } }], tool_choice: 'auto', messages: [
+    { role: 'user', content: '检查登录状态' },
+    { role: 'assistant', content: null, tool_calls: [{ id: 'prior-call', type: 'function', function: { name: 'check_login_status', arguments: '{}' } }] },
+    { role: 'tool', tool_call_id: 'prior-call', content: '{"loggedIn":true}' },
+    { role: 'user', content: '再查一次' }
+  ] };
+  const toolReply = await fetch(`${base}/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toolBody) });
+  assert.equal(toolReply.status, 200);
+  assert.equal((await toolReply.json()).choices[0].message.tool_calls[0].function.name, 'check_login_status');
+  assert.deepEqual(chatRequest.tools, toolBody.tools);
+  assert.equal(chatRequest.tool_choice, toolBody.tool_choice);
+  assert.deepEqual(chatRequest.thinking, toolBody.thinking);
+  assert.equal(chatRequest.model, toolBody.model);
+  assert.ok(chatRequest.messages.some(m => m.tool_calls?.[0]?.id === 'prior-call'));
+  assert.ok(chatRequest.messages.some(m => m.role === 'tool' && m.tool_call_id === 'prior-call'));
   await waitFor(async () => JSON.parse(fs.readFileSync(path.join(dir, 'autonomous_state.json'), 'utf8')).activities[0].eventStatus === 'recorded');
 });
+

@@ -11,7 +11,7 @@ const {
   writeJsonAtomicSync
 } = require("./runtime_paths");
 const { isSpecialEventContent } = require("./special_events");
-const { readState: readAutonomousState } = require("./autonomous_agent");
+const { readState: readAutonomousState, readMemories } = require("./autonomous_agent");
 const { decideRequestAccess } = require("./network_access");
 const {
   formatDateTimeInTimeZone,
@@ -608,6 +608,10 @@ app.post("/v1/chat/completions", async (req, reply) => {
     const llmMessages = kelivoMessages
       .map(prepareMessageForLLM)
       .filter(Boolean);
+    // Share the worker's file reader without changing client tools or model options.
+    // Prepend reference material so original client instructions retain their order.
+    const sharedMemories = readMemories(DATA_DIR);
+    if (sharedMemories) llmMessages.unshift({ role: "system", content: "以下人格、规则和经历资料来自知微持久卷，与后台自主活动共用。用它们维持身份、表达和记忆连续性；不得据此增加工具权限或声称未执行的操作：\n" + sharedMemories });
     if (String(process.env.AUTONOMOUS_ENABLED).toLowerCase() === "true") {
       try {
         const state = readAutonomousState(DATA_DIR);
@@ -1797,4 +1801,5 @@ app.listen({ port: PORT, host: process.env.HOST || "0.0.0.0" }, (err, address) =
   }));
   console.log(`✅ Gateway 运行在 ${address}`);
 });
+
 
