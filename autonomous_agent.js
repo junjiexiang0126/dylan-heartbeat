@@ -137,4 +137,4 @@ async function runAutonomousCycle({ dir, env = process.env, now = new Date(), ti
     throw error;
   } finally { release(); }
 }
-module.exports = { runAutonomousCycle, parseDecision, buildMessages, readState };
+module.exports = { runAutonomousCycle, parseDecision, buildMessages, readState, readMemories };
