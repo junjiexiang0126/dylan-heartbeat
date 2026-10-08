@@ -9,3 +9,8 @@ presets.json
 wake_prompt.txt
 diary/
 data/
+
+autonomous_state.json*
+autonomous_journal.md*
+autonomous.lock
+autonomous_activities/
