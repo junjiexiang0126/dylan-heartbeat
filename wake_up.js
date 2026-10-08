@@ -413,7 +413,10 @@ async function runWakeUp() {
           method: "POST",
           signal: AbortSignal.timeout(WAKE_UPSTREAM_TIMEOUT_MS),
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.TARGET_API_KEY}` },
-          body: JSON.stringify({ model: process.env.MODEL_NAME, messages, stream: false, temperature: 0.7, max_tokens: 4000, response_format: { type: "json_object" } })
+          // DeepSeek Flash may spend the whole completion budget in reasoning mode
+          // and return an empty message content. Autonomous decisions need a
+          // machine-readable JSON body, so explicitly disable reasoning here.
+          body: JSON.stringify({ model: process.env.MODEL_NAME, messages, stream: false, temperature: 0.7, max_tokens: 4000, response_format: { type: "json_object" }, thinking: { type: "disabled" } })
         });
         if (!response.ok) throw new Error(`自主活动模型请求失败 HTTP ${response.status}`);
         const data = parseChatCompletionResponse(await response.text(), response.headers.get("content-type") || "");
