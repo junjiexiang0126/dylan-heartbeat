@@ -122,7 +122,7 @@ def switch(release):
 def publish(state, result=None):
     # Public state contains fixed categories and hashes, never logs or credentials.
     public = {k: state.get(k) for k in ('active', 'previous', 'paused', 'failure_category')}
-    if result: public['last_result'] = result
+    if result or state.get('last_result'): public['last_result'] = result or state['last_result']
     fd = os.open(REQUESTS, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     name = '.status-' + secrets.token_hex(8)
     try:
@@ -207,7 +207,14 @@ def backup_profile(release):
 def restart_gateway():
     service = Path('/run/service/ziwei-gateway')
     if not service.exists(): raise ValueError('gateway_supervisor_missing')
+    old_pid = gateway_pid()
     subprocess.run(['/command/s6-svc', '-r', str(service)], check=True, timeout=10, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return old_pid
+
+
+def gateway_pid():
+    output = subprocess.check_output(['/command/s6-svstat', '-o', 'pid', '/run/service/ziwei-gateway'], timeout=5, stderr=subprocess.DEVNULL)
+    return int(output.strip())
 
 
 def health():
@@ -217,12 +224,13 @@ def health():
     except Exception: return False
 
 
-def await_health():
+def await_health(previous_pid=None):
     # Wait for the old process to leave before counting the new one as healthy.
     time.sleep(3)
     consecutive = 0
     for _ in range(45):
-        consecutive = consecutive + 1 if health() else 0
+        fresh = previous_pid is None or (gateway_pid() > 0 and gateway_pid() != previous_pid)
+        consecutive = consecutive + 1 if fresh and health() else 0
         if consecutive >= 3: return True
         time.sleep(1)
     return False
@@ -231,8 +239,9 @@ def await_health():
 def fail(state, request_id, category):
     state.update(paused=True, failure_category=category)
     state['processed'] = (state['processed'] + [request_id])[-100:]
-    atomic_json(CONTROL / 'state.json', state)
     result = {'id': request_id, 'ok': False, 'category': category, 'bark_accepted': notify(category, state['active'])}
+    state['last_result'] = result
+    atomic_json(CONTROL / 'state.json', state)
     publish(state, result)
 
 
@@ -271,14 +280,21 @@ def process_request(path, state):
         previous = state['active']
         # Journal before the switch: startup rolls interrupted promotions back.
         state['pending'] = {'new': release, 'old': previous}; atomic_json(CONTROL / 'state.json', state)
-        switch(release); restart_gateway()
-        if not await_health():
-            switch(previous); restart_gateway(); await_health()
-            state.pop('pending', None)
+        switch(release)
+        try:
+            previous_pid = restart_gateway()
+            if not await_health(previous_pid): raise ValueError('runtime_health')
+        except Exception:
+            switch(previous)
+            try:
+                previous_pid = restart_gateway(); await_health(previous_pid)
+            finally:
+                state.pop('pending', None)
             raise ValueError('runtime_rolled_back')
         state.update(active=release, previous=previous, failure_category=None)
         state.pop('pending', None); state['processed'] = (state['processed'] + [request_id])[-100:]
-        atomic_json(CONTROL / 'state.json', state); publish(state, {'id': request_id, 'ok': True, 'category': 'tests_and_restart_passed'})
+        state['last_result'] = {'id': request_id, 'ok': True, 'category': 'tests_and_restart_passed'}
+        atomic_json(CONTROL / 'state.json', state); publish(state)
         keep = {release, previous}
         for old in (CONTROL / 'releases').iterdir():
             if old.name not in keep: shutil.rmtree(old)
@@ -302,6 +318,7 @@ def initialize():
     if state.get('pending'):
         state['active'] = state['pending']['old']; state.pop('pending')
         state.update(paused=True, failure_category='interrupted_promotion')
+        state['last_result'] = {'ok':False,'category':'interrupted_promotion','bark_accepted':notify('interrupted_promotion',state['active'])}
         atomic_json(CONTROL / 'state.json', state)
     switch(state['active']); publish(state)
     return state
