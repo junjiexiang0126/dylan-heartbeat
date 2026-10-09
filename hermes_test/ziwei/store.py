@@ -104,7 +104,7 @@ class Store:
             return dict(db.execute('SELECT COUNT(*) calls,COALESCE(SUM(reserved_fen),0) reserved_fen,COALESCE(SUM(input_tokens),0) input_tokens,COALESCE(SUM(output_tokens),0) output_tokens FROM calls').fetchone())
 
     def reserve(self,limit,run_id,token=None):
-        if not 0<=limit<=2000: raise ValueError('Budget maximum is 2000 fen')
+        if not 0<=limit<=100000: raise ValueError('Test budget maximum is 100000 fen')
         with self.transaction() as db:
             if token: self._scope(db,token,'model:call',run_id)
             used=db.execute('SELECT COALESCE(SUM(reserved_fen),0) FROM calls').fetchone()[0]
