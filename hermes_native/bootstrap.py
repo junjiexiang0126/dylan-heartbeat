@@ -81,4 +81,12 @@ if __name__ == "__main__":
         raise SystemExit("Supply a distinct random API_SERVER_KEY of at least 32 characters.")
     seed(Path(os.environ.get("HERMES_HOME", "/opt/data")), Path(__file__).with_name("config.yaml"))
     check_native()
-    os.execvp("hermes", ["hermes", "gateway", "run", "--no-supervise"])
+    # Reuse Hermes's own singleton s6 slot, including persistent boot intent.
+    # Keep the container main alive independently of Gateway restarts.
+    from hermes_cli.service_manager import S6ServiceManager
+    manager = S6ServiceManager()
+    if not Path("/run/service/gateway-default").exists():
+        manager.register_profile_gateway("default", start_now=True)
+    else:
+        manager.start("gateway-default")
+    os.execvp("sleep", ["sleep", "infinity"])

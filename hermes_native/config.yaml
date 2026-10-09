@@ -19,7 +19,8 @@ auxiliary:
     provider: main
   background_review:
     provider: main
-    enabled: false
+    enabled: true
+    timeout: 60
 agent:
   max_turns: 8
   gateway_timeout: 300
@@ -90,3 +91,5 @@ updates:
   backup_keep: 2
 tts:
   provider: edge
+  edge:
+    voice: zh-CN-XiaoxiaoNeural

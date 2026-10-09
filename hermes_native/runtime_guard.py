@@ -172,7 +172,7 @@ def validate_candidate(tree):
         result = subprocess.run([str(BASE / '.venv/bin/python'), '/opt/ziwei-native/runtime_launch.py', '--preflight', str(tree)], env=env, cwd=tree, preexec_fn=unprivileged, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=90)
         if result.returncode: raise ValueError('native_import_test')
         env['ZIWEI_TEST_TREE'] = str(tree)
-        proc = subprocess.Popen([str(BASE / '.venv/bin/python'), '/opt/ziwei-native/runtime_launch.py', 'gateway', 'run', '--no-supervise'], env=env, cwd=tree, preexec_fn=unprivileged, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        proc = subprocess.Popen([str(BASE / '.venv/bin/python'), '/opt/ziwei-native/runtime_launch.py', 'gateway', 'run', '--no-supervise', '--force'], env=env, cwd=tree, preexec_fn=unprivileged, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
             deadline = time.monotonic() + 65
             while time.monotonic() < deadline:
@@ -205,15 +205,26 @@ def backup_profile(release):
 
 
 def restart_gateway():
-    service = Path('/run/service/ziwei-gateway')
+    service = Path('/run/service/gateway-default')
     if not service.exists(): raise ValueError('gateway_supervisor_missing')
     old_pid = gateway_pid()
-    subprocess.run(['/command/s6-svc', '-r', str(service)], check=True, timeout=10, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # Hermes's native finish script treats a clean exit as an intentional stop.
+    # Stop, wait for the actual child to exit, then explicitly bring it up.
+    subprocess.run(['/command/s6-svc', '-d', str(service)], check=True, timeout=10, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for _ in range(20):
+        if gateway_pid() == 0: break
+        time.sleep(0.5)
+    if gateway_pid() != 0:
+        subprocess.run(['/command/s6-svc', '-k', str(service)], check=True, timeout=10)
+        for _ in range(10):
+            if gateway_pid() == 0: break
+            time.sleep(0.5)
+    subprocess.run(['/command/s6-svc', '-u', str(service)], check=True, timeout=10, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return old_pid
 
 
 def gateway_pid():
-    output = subprocess.check_output(['/command/s6-svstat', '-o', 'pid', '/run/service/ziwei-gateway'], timeout=5, stderr=subprocess.DEVNULL)
+    output = subprocess.check_output(['/command/s6-svstat', '-o', 'pid', '/run/service/gateway-default'], timeout=5, stderr=subprocess.DEVNULL)
     return int(output.strip())
 
 
