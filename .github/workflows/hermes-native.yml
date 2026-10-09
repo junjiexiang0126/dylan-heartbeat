@@ -1,6 +1,9 @@
 name: Official Hermes preparation
 on:
   push:
+    branches: [feature/ziwei-hermes-native-v1, fix/ziwei-native-backup-profile-v1]
+    paths: [hermes_native/**, .github/workflows/hermes-native.yml]
+  pull_request:
     branches: [feature/ziwei-hermes-native-v1]
     paths: [hermes_native/**, .github/workflows/hermes-native.yml]
   workflow_dispatch:
@@ -17,6 +20,8 @@ jobs:
       HERMES_HOME: /data/hermes_native
     steps:
       - uses: actions/checkout@v4
+      - name: Run isolated Python bootstrap safety tests
+        run: python3 -m unittest discover -s hermes_native/tests -p 'test_entrypoint_safety.py' -v
       - name: Build the thin configuration layer on the exact official stable image
         run: docker build -f hermes_native/Dockerfile -t ziwei-native-preflight hermes_native
       - name: Start the actual official container and Gateway
