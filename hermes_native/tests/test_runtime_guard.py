@@ -130,6 +130,14 @@ class IncidentTests(unittest.TestCase):
             g.monitor_once(self.state,False);push.assert_called_once()
             self.assertEqual(self.state['last_result']['notification'],'submitted')
 
+    def test_short_network_blips_do_not_accumulate_failures(self):
+        with patch.object(g,'restart_gateway') as restart,patch.object(g,'notify') as push:
+            for healthy in [False,False,True,False,False,True,False]:
+                g.monitor_once(self.state,healthy)
+            restart.assert_not_called();push.assert_not_called()
+            self.assertEqual(self.state['health_monitor']['failures'],1)
+            self.assertFalse(self.state['paused'])
+
     def test_s6_down_pid_is_zero(self):
         with patch.object(g.subprocess,'check_output',return_value=b'-1\n'):
             self.assertEqual(g.gateway_pid(),0)

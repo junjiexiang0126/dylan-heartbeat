@@ -408,10 +408,16 @@ def monitor_once(state, healthy):
     """
     monitor = state.setdefault('health_monitor', {'failures': 0, 'successes': 0})
     if healthy:
-        if monitor['failures']:
+        if monitor.get('incident'):
+            monitor['failures'] = 0
             monitor['successes'] = monitor.get('successes', 0) + 1
             if monitor['successes'] >= RECOVERY_SUCCESSES:
                 monitor.clear(); monitor.update(failures=0, successes=0)
+            atomic_json(CONTROL / 'state.json', state)
+        elif monitor['failures']:
+            # A brief network blip must not accumulate toward an outage across
+            # successful checks. Only an open incident needs recovery debounce.
+            monitor.clear(); monitor.update(failures=0, successes=0)
             atomic_json(CONTROL / 'state.json', state)
         return
     monitor['failures'] += 1

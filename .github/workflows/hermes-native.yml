@@ -1,7 +1,7 @@
 name: Official Hermes preparation
 on:
   push:
-    branches: [feature/ziwei-hermes-native-v1, fix/ziwei-native-backup-profile-v1, fix/ziwei-security-guardian-audit-20261010]
+    branches: [feature/ziwei-hermes-native-v1, fix/ziwei-native-backup-profile-v1]
     paths: [hermes_native/**, .github/workflows/hermes-native.yml]
   pull_request:
     branches: [feature/ziwei-hermes-native-v1, fix/ziwei-native-backup-profile-v1]
