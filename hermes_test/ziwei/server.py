@@ -14,6 +14,14 @@ from .runner import Runner
 class Application:
     def __init__(self,settings):
         settings.validate();self.settings=settings;self.store=Store(settings.data)
+        # Seed a fixed, non-sensitive fixture only when absent; never overwrite user data.
+        dataset_dir=settings.data/'tools';dataset_dir.mkdir(parents=True,exist_ok=True,mode=0o700)
+        dataset=dataset_dir/'dataset.csv'
+        try:
+            with dataset.open('x',encoding='utf-8') as fixture:
+                fixture.write('item,quantity\napples,12\nbananas,18\noranges,23\n')
+        except FileExistsError:
+            pass
         if settings.prior_budget: self.store.import_prior(settings.prior_budget)
         self.store.recover();self.busy=threading.Lock();self.executor=None;self.stopped=threading.Event()
 
