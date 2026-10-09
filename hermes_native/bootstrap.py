@@ -26,8 +26,14 @@ def check_native() -> None:
     api = configuration.platforms[Platform.API_SERVER]
     if not api.enabled or api.extra.get("tool_progress_events") is not False:
         raise RuntimeError("Native API configuration is invalid; review the persistent config.")
-    if not all(write_approval_enabled(s) for s in ("memory", "skills")):
-        raise RuntimeError("Native write approval is unavailable or disabled; refusing startup.")
+    # Ordinary memory autonomy is explicitly authorized. Instruction/skill writes
+    # stay gated; do not conflate a memory entry with protected SOUL.md.
+    if not write_approval_enabled("skills"):
+        raise RuntimeError("Native skill write approval must remain enabled.")
+    from hermes_cli.config import load_config
+    config = load_config()
+    if not write_approval_enabled("memory") and not config.get("security", {}).get("protected_instruction_files", True):
+        raise RuntimeError("Autonomous memory requires protected instruction files.")
     provider = resolve_runtime_provider(requested="ziwei-deepseek")
     if provider.get("base_url", "").rstrip("/") != "https://api.deepseek.com/v1":
         raise RuntimeError("DeepSeek provider is not configured for the official endpoint.")

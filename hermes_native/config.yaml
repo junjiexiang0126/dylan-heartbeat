@@ -7,6 +7,8 @@ providers:
   ziwei-deepseek:
     base_url: https://api.deepseek.com/v1
     key_env: DEEPSEEK_API_KEY
+    extra_body:
+      max_tokens: 2048
 model_catalog:
   enabled: false
 fallback_model: []
@@ -18,20 +20,34 @@ auxiliary:
   background_review:
     provider: main
 agent:
-  max_turns: 50
-  gateway_timeout: 1800
+  max_turns: 8
+  gateway_timeout: 300
+  run_budget_seconds: 240
+  api_max_retries: 1
+  auto_recovery_cycles: 0
 terminal:
   backend: local
   cwd: ${HERMES_HOME}/workspace
+  timeout: 30
 memory:
   memory_enabled: true
   user_profile_enabled: true
-  write_approval: true
+  write_approval: false
+  memory_char_limit: 6000
+  user_char_limit: 2000
 skills:
   write_approval: true
 platform_toolsets:
-  api_server: [hermes-api-server]
-  cron: [hermes-cron]
+  api_server: [file, memory, todo]
+  cron: [file, memory, todo]
+security:
+  protected_instruction_files: true
+  protected_instruction_extra_patterns: [autonomy_gate_state.json]
+  redact_secrets: true
+cron:
+  max_parallel_jobs: 1
+  script_timeout_seconds: 10
+  inactivity_timeout_seconds: 90
 platforms:
   api_server:
     enabled: true
