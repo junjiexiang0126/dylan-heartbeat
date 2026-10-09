@@ -2,17 +2,6 @@
 import os
 import pwd
 from pathlib import Path
-import yaml
-
-
-def contains_configuration(actual, expected):
-    if isinstance(expected, dict):
-        return isinstance(actual, dict) and all(
-            key in actual and contains_configuration(actual[key], value)
-            for key, value in expected.items())
-    return actual == expected
-
-
 home = Path(os.environ.get("HERMES_HOME", "/opt/data"))
 if str(home) not in ("/opt/data", "/data/hermes_native") or home.is_symlink():
     raise SystemExit("Unsupported or symlinked profile path; refusing initialization.")
@@ -23,10 +12,11 @@ if home.exists() and any(home.iterdir()) and not marker.is_file():
     config_path = home / "config.yaml"
     if config_path.is_symlink() or not config_path.is_file():
         raise SystemExit("Unrecognized nonempty profile directory; refusing initialization.")
-    existing = yaml.safe_load(config_path.read_text()) or {}
-    expected = yaml.safe_load(Path(__file__).with_name("config.yaml").read_text())
-    if any(not contains_configuration(existing.get(key), expected.get(key))
-           for key in ("model", "providers", "memory", "skills")):
+    # Before the official setup activates its dependency environment, use only
+    # the standard library. Matching the exact seed is deliberately strict.
+    existing = config_path.read_bytes()
+    expected = Path(__file__).with_name("config.yaml").read_bytes()
+    if existing != expected:
         raise SystemExit("Existing profile does not match this deployment; refusing initialization.")
     archive = home / "history_archive"
     if archive.exists() and (archive.is_symlink() or any(archive.iterdir())):
