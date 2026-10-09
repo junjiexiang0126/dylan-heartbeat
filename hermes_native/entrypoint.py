@@ -1,41 +1,76 @@
-"""Validate the profile location before the official first-boot setup touches it."""
+"""Validate and carefully adopt a Hermes profile before official bootstrap.
+
+Runs as the container's initial privileged process, then delegates to
+the official Hermes entrypoint. The Agent does not retain root privileges.
+"""
 import os
 import pwd
+import sys
 from pathlib import Path
-home = Path(os.environ.get("HERMES_HOME", "/opt/data"))
-if str(home) not in ("/opt/data", "/data/hermes_native") or home.is_symlink():
-    raise SystemExit("Unsupported or symlinked profile path; refusing initialization.")
-marker = home / ".ziwei-native-profile"
-if home.exists() and any(home.iterdir()) and not marker.is_file():
-    # Adopt only our own failed pre-entrypoint initialization. Never overwrite
-    # its config or accept unrelated profiles/archives.
-    config_path = home / "config.yaml"
-    if config_path.is_symlink() or not config_path.is_file():
-        raise SystemExit("Unrecognized nonempty profile directory; refusing initialization.")
-    # Before the official setup activates its dependency environment, use only
-    # the standard library. Matching the exact seed is deliberately strict.
-    existing = config_path.read_bytes()
-    expected = Path(__file__).with_name("config.yaml").read_bytes()
-    if existing != expected:
-        raise SystemExit("Existing profile does not match this deployment; refusing initialization.")
+
+ALLOWED_HOMES = ("/opt/data", "/data/hermes_native")
+MARKER_CONTENT = "ziwei-native-v1\n"
+
+
+def require_regular_file(path: Path) -> None:
+    if path.is_symlink() or not path.is_file():
+        raise SystemExit(f"Unrecognized profile file: {path}")
+
+
+def validate_profile(home: Path) -> None:
+    """Require explicit operator opt-in before adopting an unmarked profile.
+
+    Official Hermes may reformat its live config, so byte-for-byte comparison
+    against the original seed template is not a valid compatibility test.
+    """
+    if os.environ.get("ZIWEI_ADOPT_EXISTING_PROFILE") != "1":
+        raise SystemExit(
+            "Unmarked existing profile: verify its source, back it up and set "
+            "ZIWEI_ADOPT_EXISTING_PROFILE=1 for one controlled deployment."
+        )
+    config = home / "config.yaml"
+    require_regular_file(config)
+    body = config.read_text(encoding="utf-8")
+    if not all(signature in body for signature in
+               ("ziwei-deepseek", "api_server", "DEEPSEEK_API_KEY")):
+        raise SystemExit("Existing profile is not a recognized Ziwei Hermes config.")
     archive = home / "history_archive"
-    if archive.exists() and (archive.is_symlink() or any(archive.iterdir())):
-        raise SystemExit("Unmarked profile contains archived history; manual review required.")
-    print("[ziwei] Recognized incomplete native initialization; preserving all existing files.")
-home.mkdir(parents=True, exist_ok=True)
-if not marker.exists():
-    with marker.open("x") as stream:
-        stream.write("ziwei-native-v1\n")
-# The official setup repairs its canonical directories. Its config backup
-# folder also needs repair after the previous entrypoint-bypassing startup.
-backups = home / "backups"
-if backups.exists():
-    paths = [backups, *backups.rglob("*")]
-    if any(path.is_symlink() for path in paths):
-        raise SystemExit("Refusing permission repair through a backup symlink.")
+    if archive.exists() and archive.is_symlink():
+        raise SystemExit("Refusing symlinked history archive.")
+    print("[ziwei] Explicitly adopting compatible existing profile; retaining all files.")
+
+
+def main() -> None:
+    home = Path(os.environ.get("HERMES_HOME", "/opt/data"))
+    if str(home) not in ALLOWED_HOMES or home.is_symlink():
+        raise SystemExit("Unsupported or symlinked profile path.")
+    marker = home / ".ziwei-native-profile"
+    if marker.exists():
+        require_regular_file(marker)
+        if marker.read_text(encoding="utf-8") != MARKER_CONTENT:
+            raise SystemExit("Unexpected native profile marker; refusing startup.")
+    elif home.exists() and any(home.iterdir()):
+        validate_profile(home)
+
+    home.mkdir(parents=True, exist_ok=True)
+    if not marker.exists():
+        with marker.open("x", encoding="utf-8") as stream:
+            stream.write(MARKER_CONTENT)
+
+    # Repair only the two known backup directories, not the full volume,
+    # archived history, or backup file contents.
     user = pwd.getpwnam("hermes")
-    for path in paths:
-        os.chown(path, user.pw_uid, user.pw_gid)
-# Keep PID 1 and hand all setup/supervision to the official entrypoint.
-os.execv("/opt/hermes/docker/entrypoint-dispatch.sh",
-         ["/opt/hermes/docker/entrypoint-dispatch.sh", *os.sys.argv[1:]])
+    for directory in (home / "backups", home / "backups" / "config"):
+        if directory.is_symlink():
+            raise SystemExit("Refusing backup symlink.")
+        if directory.exists():
+            if not directory.is_dir():
+                raise SystemExit("Backup path is not a directory.")
+            os.chown(directory, user.pw_uid, user.pw_gid)
+
+    os.execv("/opt/hermes/docker/entrypoint-dispatch.sh",
+             ["/opt/hermes/docker/entrypoint-dispatch.sh", *sys.argv[1:]])
+
+
+if __name__ == "__main__":
+    main()
