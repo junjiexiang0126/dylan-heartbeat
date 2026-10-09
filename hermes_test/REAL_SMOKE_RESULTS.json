@@ -1,0 +1,30 @@
+{
+  "kind": "real-hermes-inspection-and-zero-cost-http-memory-check",
+  "hermes_commit": "1744a19e0df568c647e4f3ff9c37f2a284a282fb",
+  "real_model_calls": 0,
+  "inspected": [
+    {
+      "allow_add": false,
+      "tools": [
+        "mcp__ziwei__read_dataset",
+        "mcp__ziwei__search_memories"
+      ],
+      "native_memory_disabled": true,
+      "model_called": false,
+      "ziwei_run_id": "64c3643216634691bf7fb0980d02965a"
+    },
+    {
+      "allow_add": true,
+      "tools": [
+        "mcp__ziwei__add_memory",
+        "mcp__ziwei__read_dataset",
+        "mcp__ziwei__search_memories"
+      ],
+      "native_memory_disabled": true,
+      "model_called": false,
+      "ziwei_run_id": "d3c546e48f394badbbee445ca4714598"
+    }
+  ],
+  "explicit_save_and_new_http_request_readback": "passed",
+  "not_claimed": "DeepSeek, cloud, model-driven autonomous task or Kelivo device end-to-end acceptance"
+}

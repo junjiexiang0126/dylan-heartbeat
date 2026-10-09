@@ -27,7 +27,8 @@ class Runner:
                     'tools':{'tool_search':{'enabled':'off'}},
                     'auxiliary':{'background_review':{'enabled':False},'session_title':{'enabled':False},'compression':{'provider':'main'}},
                     'model':{'provider':'custom','default':'deepseek-flash','base_url':self.url+'/internal/model/v1','api_key':token,'streaming':False},
-                    'mcp_servers':{'ziwei':{'command':s.hermes_python,'args':[str(root/'mcp_server.py')]}}}
+                    'mcp_servers':{'ziwei':{'command':s.hermes_python,'args':[str(root/'mcp_server.py')],
+                        'env':{'ZIWEI_INTERNAL_URL':self.url,'ZIWEI_RUN_CAPABILITY':token,'ZIWEI_CAN_ADD':'1' if allow_add else '0'}}}}
                 # JSON is a strict subset of YAML and needs no extra dependency.
                 Path(directory,'config.yaml').write_text(json.dumps(config))
                 env={k:v for k,v in os.environ.items() if k in ('PATH','HOME','LANG','LC_ALL','TMPDIR','SSL_CERT_FILE','SSL_CERT_DIR')}

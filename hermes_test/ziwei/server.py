@@ -125,7 +125,7 @@ def create_server(app):
                     permitted=('model','messages','tools','tool_choice','temperature','top_p','max_tokens','stream','stop','presence_penalty','frequency_penalty','parallel_tool_calls')
                     request={k:v for k,v in body.items() if k in permitted}
                     if request.get('model')!='deepseek-flash': raise ValueError('Fixed model required')
-                    request.update(stream=False,max_tokens=min(int(request.get('max_tokens',2048)),2048),thinking={'type':'disabled'})
+                    request.update(stream=False,max_tokens=max(1,min(int(request.get('max_tokens',2048)),2048)),thinking={'type':'disabled'})
                     encoded=json.dumps(request,ensure_ascii=False).encode()
                     if len(encoded)>100000: raise ValueError('Upstream byte cap exceeded')
                     ident=app.store.reserve(app.settings.budget_fen,run_id,token)

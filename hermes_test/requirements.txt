@@ -1,0 +1,2 @@
+# Service and component tests use Python standard library only.
+# Hermes is fixed by hermes-dependency-lock.json; build_runtime.sh uses its PM and frozen uv.lock.

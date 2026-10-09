@@ -35,4 +35,6 @@ class Settings:
             raise ValueError('Service keys must be distinct and at least 32 characters')
         if self.model_key and self.model_key in keys: raise ValueError('Separate model credential required')
         if not 0<=self.budget_fen<=2000: raise ValueError('Budget maximum is 2000 fen')
+        if self.budget_fen and not self.prior_budget:
+            raise ValueError('Positive budget requires the preserved prior validation audit; do not start a fresh allocation')
         self.data.mkdir(parents=True,exist_ok=True,mode=0o700)
