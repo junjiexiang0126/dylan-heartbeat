@@ -30,7 +30,7 @@ class RuntimeGuardTests(unittest.TestCase):
             root=Path(d); requests=root/'requests'; requests.mkdir(); control=root/'control'; control.mkdir()
             request=requests/'bad.json'; request.write_text(json.dumps({'base':'stale','files':['run_agent.py']}))
             state={'active':'baseline','previous':'baseline','paused':False,'processed':[],'attempts':[]}
-            with patch.object(g,'REQUESTS',requests),patch.object(g,'CONTROL',control),patch.object(g,'health',return_value=True),patch.object(g,'notify',return_value=True) as push,patch.object(g,'switch') as switch,patch.object(g,'restart_gateway') as restart:
+            with patch.object(g,'HOME',root),patch.object(g,'REQUESTS',requests),patch.object(g,'CONTROL',control),patch.object(g,'health',return_value=True),patch.object(g,'notify',return_value=True) as push,patch.object(g,'switch') as switch,patch.object(g,'restart_gateway') as restart:
                 g.process_request(request,state)
                 self.assertTrue(state['paused']); self.assertEqual(state['failure_category'],'stale_base')
                 self.assertTrue(json.loads((requests/'status.json').read_text())['last_result']['bark_accepted'])
@@ -44,7 +44,7 @@ class RuntimeGuardTests(unittest.TestCase):
             control=root/'control';(control/'releases').mkdir(parents=True);trees=root/'trees';trees.mkdir()
             req=requests/'test.json';req.write_text(json.dumps({'base':'baseline','files':['agent/a.py']}))
             state={'active':'baseline','previous':'baseline','paused':False,'processed':[],'attempts':[]}
-            with patch.object(g,'REQUESTS',requests),patch.object(g,'CONTROL',control),patch.object(g,'TREES',trees),patch.object(g,'health',return_value=True),patch.object(g,'notify',return_value=False),patch.object(g,'mirror_tree'),patch.object(g,'validate_candidate',side_effect=ValueError('native_import_test')),patch.object(g,'switch') as switch,patch.object(g,'backup_profile') as backup:
+            with patch.object(g,'HOME',root),patch.object(g,'REQUESTS',requests),patch.object(g,'CONTROL',control),patch.object(g,'TREES',trees),patch.object(g,'health',return_value=True),patch.object(g,'notify',return_value=False),patch.object(g,'mirror_tree'),patch.object(g,'validate_candidate',side_effect=ValueError('native_import_test')),patch.object(g,'switch') as switch,patch.object(g,'backup_profile') as backup:
                 g.process_request(req,state); switch.assert_not_called();backup.assert_not_called()
                 self.assertEqual(state['active'],'baseline'); self.assertTrue(state['paused'])
 
@@ -54,7 +54,7 @@ class RuntimeGuardTests(unittest.TestCase):
             (requests/'patches'/'agent'/'a.py').write_text('value = 2\n');control=root/'control';(control/'releases').mkdir(parents=True);trees=root/'trees';trees.mkdir()
             req=requests/'test.json';req.write_text(json.dumps({'base':'baseline','files':['agent/a.py']}))
             state={'active':'baseline','previous':'baseline','paused':False,'processed':[],'attempts':[]}
-            with patch.object(g,'REQUESTS',requests),patch.object(g,'CONTROL',control),patch.object(g,'TREES',trees),patch.object(g,'health',return_value=True),patch.object(g,'notify',return_value=False),patch.object(g,'mirror_tree'),patch.object(g,'validate_candidate'),patch.object(g,'backup_profile'),patch.object(g,'switch') as switch,patch.object(g,'restart_gateway') as restart,patch.object(g,'await_health',side_effect=[False,True]):
+            with patch.object(g,'HOME',root),patch.object(g,'REQUESTS',requests),patch.object(g,'CONTROL',control),patch.object(g,'TREES',trees),patch.object(g,'health',return_value=True),patch.object(g,'notify',return_value=False),patch.object(g,'mirror_tree'),patch.object(g,'validate_candidate'),patch.object(g,'backup_profile'),patch.object(g,'switch') as switch,patch.object(g,'restart_gateway') as restart,patch.object(g,'await_health',side_effect=[False,True]):
                 g.process_request(req,state); self.assertEqual(switch.call_args_list[-1].args,('baseline',));self.assertEqual(restart.call_count,2)
                 self.assertTrue(state['paused']);self.assertNotIn('pending',state)
 
@@ -71,7 +71,7 @@ class IncidentTests(unittest.TestCase):
         root = Path(self.tmp.name); self.control = root/'control'; self.control.mkdir()
         self.requests = root/'requests'; self.requests.mkdir()
         self.state = {'active':'r-new','previous':'baseline','paused':False,'processed':[],'attempts':[]}
-        for name,value in [('CONTROL',self.control),('REQUESTS',self.requests)]:
+        for name,value in [('HOME',root),('CONTROL',self.control),('REQUESTS',self.requests)]:
             p=patch.object(g,name,value);p.start();self.addCleanup(p.stop)
 
     def test_rollback_exception_still_pauses_records_and_notifies(self):
@@ -161,6 +161,41 @@ class IncidentTests(unittest.TestCase):
         with patch.object(g.urllib.request,'urlopen',side_effect=respond) as open_url:
             g.verify_candidate_auth('http://isolated.invalid','fake-key')
             self.assertEqual(open_url.call_count,20)
+
+
+class DirectoryBoundaryTests(unittest.TestCase):
+    def test_privileged_directory_owner_rejects_mutable_symlink_parents(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);outside=root/'outside';outside.mkdir();(outside/'self-update').mkdir()
+            home=root/'home';home.mkdir();(home/'workspace').symlink_to(outside)
+            with patch.object(g.os,'fchown') as chown:
+                with self.assertRaises(OSError):
+                    g.open_directory_beneath(home,'workspace/self-update',create=True,owner=(10000,10000))
+                chown.assert_not_called()
+
+    def test_status_publish_refuses_redirected_profile_parent(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);outside=root/'outside';outside.mkdir();(outside/'requests').mkdir()
+            home=root/'home';home.mkdir();(home/'workspace').symlink_to(outside)
+            with patch.object(g,'HOME',home),patch.object(g,'REQUESTS',home/'workspace/requests'):
+                with self.assertRaises(OSError):g.publish({'active':'baseline'})
+                self.assertFalse((outside/'requests/status.json').exists())
+
+    def test_directory_descriptor_stays_with_checked_inode_when_path_replaced(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);home=root/'home';home.mkdir();workspace=home/'workspace';workspace.mkdir()
+            outside=root/'outside';outside.mkdir()
+            real_open=g.os.open
+            def racing_open(path,flags,**kwargs):
+                fd=real_open(path,flags,**kwargs)
+                if path=='workspace':
+                    workspace.rename(home/'original');workspace.symlink_to(outside)
+                return fd
+            with patch.object(g.os,'open',side_effect=racing_open):
+                fd=g.open_directory_beneath(home,'workspace/self-update',create=True)
+                g.os.close(fd)
+            self.assertTrue((home/'original/self-update').is_dir())
+            self.assertFalse((outside/'self-update').exists())
 
 
 if __name__ == '__main__': unittest.main()

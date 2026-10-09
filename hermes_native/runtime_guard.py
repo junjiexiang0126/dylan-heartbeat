@@ -66,7 +66,8 @@ def read_regular_beneath(root, relative, limit):
     parts = Path(relative).parts
     if not parts or Path(relative).is_absolute() or '..' in parts:
         raise ValueError('unsafe_input')
-    fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    fd = (open_directory_beneath(HOME, root.relative_to(HOME)) if root == REQUESTS
+          else os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW))
     try:
         for part in parts[:-1]:
             child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
@@ -84,6 +85,26 @@ def read_regular_beneath(root, relative, limit):
             os.close(leaf)
     finally:
         os.close(fd)
+
+
+def open_directory_beneath(root, relative, create=False, owner=None):
+    """Never follow mutable profile parents during privileged directory work."""
+    relative = Path(relative)
+    if relative.is_absolute() or '..' in relative.parts:
+        raise ValueError('directory_boundary')
+    fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        for name in relative.parts:
+            if create:
+                try: os.mkdir(name, dir_fd=fd)
+                except FileExistsError: pass
+            child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd); fd = child
+        if owner is not None: os.fchown(fd, *owner)
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
 
 
 def mirror_tree(destination, overlays):
@@ -128,7 +149,7 @@ def publish(state, result=None):
     # Public state contains fixed categories and hashes, never logs or credentials.
     public = {k: state.get(k) for k in ('active', 'previous', 'paused', 'failure_category')}
     if result or state.get('last_result'): public['last_result'] = result or state['last_result']
-    fd = os.open(REQUESTS, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    fd = open_directory_beneath(HOME, REQUESTS.relative_to(HOME))
     name = '.status-' + secrets.token_hex(8)
     try:
         output = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644, dir_fd=fd)
@@ -366,8 +387,9 @@ def initialize():
     CONTROL.chmod(0o700); TREES.chmod(0o755)
     user = pwd.getpwnam('hermes')
     for p in [HOME / 'workspace', REQUESTS, REQUESTS / 'patches']:
-        if p.is_symlink(): raise RuntimeError('request_path_redirect')
-        p.mkdir(parents=True, exist_ok=True); os.chown(p, user.pw_uid, user.pw_gid)
+        fd = open_directory_beneath(HOME, p.relative_to(HOME), create=True,
+                                    owner=(user.pw_uid, user.pw_gid))
+        os.close(fd)
     state = read_state()
     if state.get('pending'):
         state['active'] = state['pending']['old']; state.pop('pending')
@@ -445,8 +467,11 @@ def main():
     # SOUL and the reviewed preflight while retaining normal profile writes.
     user = pwd.getpwnam('hermes')
     for directory in [HOME, HOME / 'scripts']:
-        if directory.exists() and not directory.is_symlink():
-            os.chown(directory, 0, user.pw_gid); directory.chmod(0o1770)
+        if directory.exists():
+            fd = open_directory_beneath(HOME, directory.relative_to(HOME))
+            try:
+                os.fchown(fd, 0, user.pw_gid); os.fchmod(fd, 0o1770)
+            finally: os.close(fd)
     while True:
         try:
             healthy = health()
