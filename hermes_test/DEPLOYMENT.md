@@ -1,17 +1,17 @@
 # 隔离部署与正式迁移门槛
 
-当前已完成本地隔离进程验证，尚未部署公网服务。没有真实测试域名。保留生产 Railway、原始记忆、旧分支、PR #1；本目录不可作为旧服务覆盖部署。
+当前已完成本地隔离进程验证。2026-10-09 用户批准后已创建空白 `ziwei-hermes-test` 环境、新测试服务与新卷并启动实际 Docker 构建；尚无公开测试域名，尚未完成云端聊天验收。保留生产 Railway、原始记忆、旧分支、PR #1；本目录不可作为旧服务覆盖部署。
 
 ## Railway 部署准备
 
 1. 用户确认后才新增独立测试服务和全新持久卷；可能增加账单。不能连接生产卷，不能把生产服务改指开发分支。
-2. 新服务连接 `junjiexiang0126/dylan-heartbeat` 的 `feature/ziwei-hermes-test-v1` 分支，Root Directory 填 `/hermes_test`；Railway Config File 单独填 `/hermes_test/railway.json`。配置文件路径不跟随 Root Directory。
+2. 新服务连接 `junjiexiang0126/dylan-heartbeat` 的 `feature/ziwei-hermes-test-v1` 分支，Root Directory 填 `/hermes_test`。实际 Railway 页面说明：2026-08-28 后从未使用 Config as Code 的新服务不能启用旧配置方式，因此本服务使用 UI 设置 Dockerfile 构建器、默认 `/hermes_test/Dockerfile`、启动 `bash scripts/start.sh`、健康检查 `/healthz`、超时 300 秒、失败重启最多 3 次。仓库中的 `railway.json` 仅保留为旧服务配置参考，不作为本次新服务部署入口。
 3. 新卷仅挂载新服务 `/data`，副本数量保持 1。SQLite 及进程锁按单实例设计，不适合多副本。
 4. 按 `.env.example` 提供四个独立随机服务凭证；Key 只放部署变量。默认预算 0，导入既有 `prior-budget-audit.json` 后仍保持封顶，不重复分配 ¥20。
 5. 构建镜像并检查启动日志、`/healthz`、`/admin/inspect`。本轮宿主没有 Docker CLI，镜像尚未实际构建，不能仅凭配置宣布部署成功。
 6. 通过新测试域名的 TLS 访问；确认备份可下载，重启后记忆存在，生产健康检查仍正常，再交付 Kelivo 配置。
 
-当前没有可调用的 Railway 部署连接器。若用户授权新增服务，先解决实际部署入口与费用确认，然后部署；不反复猜测权限或冒用生产服务。
+用户已安装 Railway 插件，但本轮实际工具列表没有暴露部署操作，因此沿用用户已明确批准的网页方式。测试环境独立创建为空白环境，不复制生产服务、变量或卷。实际套餐限制每服务 1 GB 内存、2 vCPU；没有购买升级。对运行占用仍须真实验证。
 
 ## 必须补做的真实验收
 
