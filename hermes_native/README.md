@@ -11,6 +11,11 @@
 独立持久卷挂载 `/opt/data`，单副本，关闭休眠。不能复用旧生产或测试版的数据卷。
 构建根目录 `/hermes_native`，Dockerfile 路径 `Dockerfile`，健康检查 `/health`，公开端口 8642。
 资源名额不足时，已获用户授权接管原测试服务及其 /data 卷；HERMES_HOME 为 /data/hermes_native。
+Railway 自定义 Start Command 会覆盖容器 ENTRYPOINT，必须使用：
+`python /opt/ziwei-native/entrypoint.py python /opt/ziwei-native/bootstrap.py`
+不能直接启动 bootstrap.py，否则跳过官方用户、权限和进程监督初始化。
+首次失败启动产生的本部署目录仅在配置吻合、历史归档为空时识别接管；原文件不覆盖。
+权限修复只触及新 HERMES_HOME 下的配置备份，旧测试数据不参与。
 不要使用根目录旧 Dockerfile，也不要连接旧测试版的自动部署。
 正式资源创建、运行、资料复制须经用户确认；本分支本身不会部署 Railway。
 
