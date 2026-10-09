@@ -69,6 +69,27 @@ class EntrypointTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             entry.main()
 
+    def test_refuses_symlinked_existing_backup_file(self):
+        (self.home / ".ziwei-native-profile").write_text(entry.MARKER_CONTENT)
+        folder = self.home / "backups" / "config"
+        folder.mkdir(parents=True)
+        outside = self.home / "private"
+        outside.write_text("untouched")
+        (folder / "linked").symlink_to(outside)
+        with patch.object(entry.os, "chown") as chown:
+            with self.assertRaises(SystemExit):
+                entry.main()
+        self.assertNotIn(outside, [call.args[0] for call in chown.call_args_list])
+        self.assertEqual(outside.read_text(), "untouched")
+
+    def test_refuses_unexpected_nested_backup_directory(self):
+        (self.home / ".ziwei-native-profile").write_text(entry.MARKER_CONTENT)
+        folder = self.home / "backups" / "config"
+        (folder / "unexpected").mkdir(parents=True)
+        with patch.object(entry.os, "chown"):
+            with self.assertRaises(SystemExit):
+                entry.main()
+
     def test_does_not_modify_backup_files(self):
         (self.home / ".ziwei-native-profile").write_text(entry.MARKER_CONTENT)
         (self.home / "backups" / "config").mkdir(parents=True)
@@ -76,7 +97,8 @@ class EntrypointTest(unittest.TestCase):
         original.write_text("safe")
         with patch.object(entry.os, "chown") as chown:
             entry.main()
-        self.assertEqual(chown.call_count, 2)
+        self.assertEqual(chown.call_count, 3)
+        self.assertIn(original, [call.args[0] for call in chown.call_args_list])
         self.assertEqual(original.read_text(), "safe")
 
 
