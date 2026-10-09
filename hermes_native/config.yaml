@@ -1,0 +1,29 @@
+model:
+  default: deepseek-flash
+  provider: ziwei-deepseek
+providers:
+  ziwei-deepseek:
+    base_url: https://api.deepseek.com/v1
+    key_env: DEEPSEEK_API_KEY
+agent:
+  max_turns: 50
+  gateway_timeout: 1800
+terminal:
+  backend: local
+  cwd: /opt/data/workspace
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  write_approval: true
+skills:
+  write_approval: true
+platform_toolsets:
+  api_server: [hermes-api-server]
+  cron: [hermes-cron]
+platforms:
+  api_server:
+    enabled: true
+    extra:
+      host: 0.0.0.0
+      port: 8642
+      tool_progress_events: false
