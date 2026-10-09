@@ -78,6 +78,10 @@ def main() -> None:
                 raise SystemExit("Unexpected config backup entry; refusing repair.")
             os.chown(child, user.pw_uid, user.pw_gid)
 
+    if os.environ.get("ZIWEI_RUNTIME_GUARD") == "1":
+        from runtime_guard import initialize
+        initialize()
+
     os.execv("/opt/hermes/docker/entrypoint-dispatch.sh",
              ["/opt/hermes/docker/entrypoint-dispatch.sh", *sys.argv[1:]])
 

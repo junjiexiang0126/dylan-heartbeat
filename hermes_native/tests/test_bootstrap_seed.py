@@ -14,6 +14,7 @@ class SeedTests(unittest.TestCase):
             root=Path(d); home=root/'profile'; source=root/'template'; source.mkdir()
             (source/'config.yaml').write_text('new default')
             (source/'autonomy_gate.py').write_text('new script')
+            (source/'self-update-skill.md').write_text('authorized self-update instructions')
             bootstrap.seed(home,source/'config.yaml')
             (home/'config.yaml').write_text('private persistent config')
             (home/'scripts/autonomy_gate.py').write_text('reviewed persistent script')

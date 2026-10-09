@@ -37,15 +37,16 @@ memory:
   memory_char_limit: 6000
   user_char_limit: 2000
 skills:
-  write_approval: true
+  write_approval: false
 platform_toolsets:
-  api_server: [file, memory, todo]
-  cron: [file, memory, todo]
+  api_server: [hermes-api-server, kanban, tts]
+  cron: [hermes-cron, kanban, tts]
 security:
   protected_instruction_files: true
   protected_instruction_extra_patterns: [autonomy_gate_state.json]
   redact_secrets: true
 cron:
+  allow_agent_scheduling: true
   max_parallel_jobs: 1
   script_timeout_seconds: 10
   inactivity_timeout_seconds: 90
@@ -56,3 +57,36 @@ platforms:
       host: 0.0.0.0
       port: 8642
       tool_progress_events: false
+
+# These features run on demand; no extra model/provider account is created.
+web:
+  keyless_fallback: true
+  keyless_rescue: true
+  cache_enabled: true
+browser:
+  headed: false
+  inactivity_timeout: 60
+  command_timeout: 30
+code_execution:
+  mode: project
+  kernel_idle_timeout: 120
+  max_session_kernels: 1
+delegation:
+  max_iterations: 8
+  max_concurrent_children: 1
+  oneshot_max_children: 1
+  child_timeout_seconds: 180
+  max_spawn_depth: 1
+kanban:
+  dispatch_in_gateway: true
+  review_dispatch: false
+  auto_decompose: false
+  max_in_progress: 1
+  max_in_progress_per_profile: 1
+  failure_limit: 2
+updates:
+  check: true
+  pre_update_backup: quick
+  backup_keep: 2
+tts:
+  provider: edge
