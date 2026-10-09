@@ -28,4 +28,8 @@ Hermes 源码固定 `1744a19e0df568c647e4f3ff9c37f2a284a282fb`，pyproject 和 u
 
 尚未保存/迁移旧完整人格，不提供微信/小红书发布或主动消息推送。当前自主能力范围为管理员建立的单次后台任务，经真实 Hermes 执行；模型自主挑选活动、周期性循环等未来功能不在本次已验证范围。
 
-源码、依赖锁、配置模板、Docker/Compose/Railway 配置、测试脚本和本记录随独立分支保存；没有提交 API Key、真实服务凭证、生产数据或私有身份内容。GitHub CI 的实际运行结果另核查，不把本地通过说成远端已通过。
+源码、依赖锁、配置模板、Docker/Compose/Railway 配置、测试脚本和本记录随独立分支保存；没有提交 API Key、真实服务凭证、生产数据或私有身份内容。
+
+远端复核：代码提交 `d08b07657b88c9e0a2fdbbf0b70c58709d205ac0` 的 [GitHub Actions 组件测试](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/37908115187) 实际状态为 `completed/success`。该工作流不调用付费模型，不构建 Docker，不代表云端或 Kelivo 验收。
+
+同轮只读检查：原生产 `https://dylan-heartbeat-production-1ff4.up.railway.app/healthz` 返回 200、`{"status":"ok"}`；PR #1 为 `open/draft`、`merged=false`，head 仍为 `092d1ae9f6aa7f4ec0ca50677e90dd62dd26bd93`。本轮没有执行生产写入、删除、部署或合并。
