@@ -7,6 +7,8 @@ import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from .pricing import (PRICE_CARD, NANO_PER_FEN, MAX_BUDGET_FEN, MAX_INPUT_TOKENS,
+                      MAX_OUTPUT_TOKENS, reservation, usage_cost, ceil_fen)
 
 class Denied(Exception): pass
 class Conflict(Exception): pass
@@ -27,6 +29,17 @@ class Store:
             CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY,prompt TEXT,due REAL,allow_add INTEGER,status TEXT,result TEXT,execution_id TEXT,updated REAL);
             CREATE TABLE IF NOT EXISTS conversations(id INTEGER PRIMARY KEY,run_id TEXT,messages TEXT,created REAL);
             ''')
+        # Additive, transactional migration. Old rows remain byte-for-byte in old columns.
+        with self.transaction() as db:
+            existing={r['name'] for r in db.execute('PRAGMA table_info(calls)')}
+            columns={'accounting_state': "TEXT NOT NULL DEFAULT 'legacy-unverified'",
+                     'reserved_nano': 'INTEGER NOT NULL DEFAULT 0',
+                     'charged_nano': 'INTEGER NOT NULL DEFAULT 0',
+                     'input_bound': 'INTEGER', 'output_bound': 'INTEGER',
+                     'price_json': 'TEXT', 'usage_json': 'TEXT'}
+            for name, declaration in columns.items():
+                if name not in existing: db.execute('ALTER TABLE calls ADD COLUMN '+name+' '+declaration)
+            db.execute("CREATE TABLE IF NOT EXISTS budget_flags(name TEXT PRIMARY KEY,value TEXT)")
         os.chmod(self.path,0o600)
 
     @contextmanager
@@ -99,22 +112,70 @@ class Store:
             db.execute('INSERT INTO audit(operation,object_id,actor,created) VALUES(?,?,?,?)',(operation,result['id'],actor,time.time()))
             return result
 
-    def budget(self):
-        with self.transaction() as db:
-            return dict(db.execute('SELECT COUNT(*) calls,COALESCE(SUM(reserved_fen),0) reserved_fen,COALESCE(SUM(input_tokens),0) input_tokens,COALESCE(SUM(output_tokens),0) output_tokens FROM calls').fetchone())
+    @staticmethod
+    def _budget(db):
+        totals=dict(db.execute("""SELECT COUNT(*) calls,
+            COALESCE(SUM(input_tokens),0) input_tokens, COALESCE(SUM(output_tokens),0) output_tokens,
+            COALESCE(SUM(CASE WHEN accounting_state='settled' THEN charged_nano ELSE 0 END),0) settled_nano,
+            COALESCE(SUM(CASE WHEN accounting_state='inflight' THEN reserved_nano ELSE 0 END),0) inflight_nano,
+            COALESCE(SUM(CASE WHEN accounting_state='uncertain' THEN reserved_nano ELSE 0 END),0) uncertain_nano,
+            COALESCE(SUM(CASE WHEN accounting_state='legacy-unverified' THEN reserved_fen*10000000 ELSE 0 END),0) historical_unverified_nano
+            FROM calls""").fetchone())
+        used=sum(totals[k] for k in ('settled_nano','inflight_nano','uncertain_nano','historical_unverified_nano'))
+        totals.update(used_nano=used,reserved_fen=ceil_fen(used),
+                      halted=bool(db.execute("SELECT 1 FROM budget_flags WHERE name='halt'").fetchone()),
+                      cost_basis='usage-priced peak ceiling, not provider invoice')
+        return totals
 
-    def reserve(self,limit,run_id,token=None):
-        if not 0<=limit<=100000: raise ValueError('Test budget maximum is 100000 fen')
+    def budget(self,limit=None):
+        with self.transaction() as db: result=self._budget(db)
+        if limit is not None:
+            result.update(limit_fen=limit,remaining_nano=max(0,limit*NANO_PER_FEN-result['used_nano']))
+        return result
+
+    def can_reserve(self,limit,input_bound=MAX_INPUT_TOKENS,output_bound=MAX_OUTPUT_TOKENS):
+        try: amount=reservation(input_bound,output_bound)
+        except ValueError: return False
+        budget=self.budget()
+        return 0<=limit<=MAX_BUDGET_FEN and not budget['halted'] and budget['used_nano']+amount<=limit*NANO_PER_FEN
+
+    def reserve(self,limit,run_id,token=None,input_bound=MAX_INPUT_TOKENS,output_bound=MAX_OUTPUT_TOKENS):
+        if type(limit) is not int or not 0<=limit<=MAX_BUDGET_FEN:
+            raise ValueError('Test budget maximum is 4000 fen')
+        amount=reservation(input_bound,output_bound)
         with self.transaction() as db:
             if token: self._scope(db,token,'model:call',run_id)
-            used=db.execute('SELECT COALESCE(SUM(reserved_fen),0) FROM calls').fetchone()[0]
-            if used+200>limit: raise BudgetExceeded('Budget exhausted; reservation is never reset')
-            return db.execute("INSERT INTO calls(run_id,reserved_fen,status,input_tokens,output_tokens,created) VALUES(?,200,'reserved',0,0,?)",(run_id,time.time())).lastrowid
+            budget=self._budget(db)
+            if budget['halted'] or budget['used_nano']+amount>limit*NANO_PER_FEN:
+                raise BudgetExceeded('Persisted budget exhausted or accounting halted')
+            return db.execute("""INSERT INTO calls(run_id,reserved_fen,status,input_tokens,output_tokens,created,
+                accounting_state,reserved_nano,input_bound,output_bound,price_json)
+                VALUES(?,?,'reserved',0,0,?,'inflight',?,?,?,?)""",
+                (run_id,ceil_fen(amount),time.time(),amount,input_bound,output_bound,json.dumps(PRICE_CARD))).lastrowid
 
     def complete_call(self,ident,status,usage=None):
-        usage=usage or {}
+        if status not in ('success','failed'): raise ValueError('Invalid completion state')
         with self.transaction() as db:
-            db.execute('UPDATE calls SET status=?,input_tokens=?,output_tokens=? WHERE id=?',(status,int(usage.get('prompt_tokens',0)),int(usage.get('completion_tokens',0)),ident))
+            row=db.execute('SELECT * FROM calls WHERE id=?',(ident,)).fetchone()
+            if not row: raise ValueError('Unknown call')
+            # Delivery errors cannot revert a completed settlement; old calls cannot be auto-repriced.
+            if row['accounting_state']!='inflight': return
+            cost=prompt=output=0; state='uncertain'
+            try:
+                if status!='success': raise ValueError('Failed/timeout calls retain reservation')
+                if isinstance(usage,dict) and any(type(usage.get(key)) is int and usage[key]>row[bound] for key,bound in [('prompt_tokens','input_bound'),('completion_tokens','output_bound')]):
+                    db.execute("INSERT OR REPLACE INTO budget_flags VALUES('halt','Provider usage exceeded token bounds')")
+                cost,prompt,output,hit=usage_cost(usage,json.loads(row['price_json']))
+                if prompt>row['input_bound'] or output>row['output_bound'] or cost>row['reserved_nano']:
+                    db.execute("INSERT OR REPLACE INTO budget_flags VALUES('halt','Provider usage exceeded reservation bounds')")
+                    raise ValueError('Usage exceeded bound')
+                state='settled'
+            except (ValueError,TypeError,KeyError):
+                if cost>row['reserved_nano']:
+                    db.execute('UPDATE calls SET reserved_nano=? WHERE id=?',(cost,ident))
+                cost=0
+            db.execute('UPDATE calls SET status=?,accounting_state=?,charged_nano=?,input_tokens=?,output_tokens=?,usage_json=? WHERE id=?',
+                       (status,state,cost,prompt,output,json.dumps(usage) if usage is not None else None,ident))
 
     def import_prior(self,path):
         audit=json.loads(Path(path).read_text())
@@ -146,6 +207,7 @@ class Store:
     def recover(self):
         with self.transaction() as db:
             db.execute('UPDATE grants SET revoked=1')
+            db.execute("UPDATE calls SET accounting_state='uncertain',status='interrupted' WHERE accounting_state='inflight'")
             db.execute("UPDATE jobs SET status='interrupted',result='Execution interrupted; requires explicit review',updated=? WHERE status='running'",(time.time(),))
 
     def context(self,query=''):
@@ -163,7 +225,7 @@ class Store:
     def run_usage(self,run_id):
         with self.transaction() as db:
             rows=db.execute('SELECT * FROM calls WHERE run_id=?',(run_id,)).fetchall()
-            if not rows or any(r['status']!='success' for r in rows): raise RuntimeError('Model call evidence missing or failed')
+            if not rows or any(r['status']!='success' or r['accounting_state']!='settled' for r in rows): raise RuntimeError('Model call evidence missing or failed')
             p=sum(r['input_tokens'] for r in rows); c=sum(r['output_tokens'] for r in rows)
             return {'prompt_tokens':p,'completion_tokens':c,'total_tokens':p+c}
 

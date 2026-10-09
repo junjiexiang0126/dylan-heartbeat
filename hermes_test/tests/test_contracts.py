@@ -15,6 +15,7 @@ import urllib.request
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from ziwei.config import Settings
+from ziwei.pricing import reservation, NANO_PER_FEN, ceil_fen
 from ziwei.store import Store,Denied,Conflict,BudgetExceeded
 from ziwei.server import Application,create_server
 from ziwei.admin import restore
@@ -57,13 +58,13 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(self.store.search('oldneedle')[0]['content'],'oldneedle')
     def test_budget_concurrency(self):
         def reserve(n):
-            try: self.store.reserve(2000,str(n));return True
+            try: self.store.reserve(ceil_fen(reservation()*10),str(n));return True
             except BudgetExceeded: return False
         with concurrent.futures.ThreadPoolExecutor(max_workers=16) as pool: accepted=list(pool.map(reserve,range(32)))
-        self.assertEqual(sum(accepted),10);self.assertEqual(self.store.budget()['reserved_fen'],2000)
+        self.assertEqual(sum(accepted),10);self.assertEqual(self.store.budget()['inflight_nano'],reservation()*10)
     def test_failed_call_retains_budget_after_restart(self):
-        ident=self.store.reserve(200,'r');self.store.complete_call(ident,'failed')
-        with self.assertRaises(BudgetExceeded): Store(self.tmp.name).reserve(200,'next')
+        limit=ceil_fen(reservation());ident=self.store.reserve(limit,'r');self.store.complete_call(ident,'failed')
+        with self.assertRaises(BudgetExceeded): Store(self.tmp.name).reserve(limit,'next')
     def test_prior_audit_import_once(self):
         path=Path(self.tmp.name)/'audit.json';path.write_text(json.dumps({'limit_cny':20,'reserved_cny':20,'input_tokens':31082,'output_tokens':822}))
         self.store.import_prior(path);self.store.import_prior(path)
@@ -72,7 +73,7 @@ class StoreTests(unittest.TestCase):
     def test_restore_preserves_higher_budget(self):
         self.store.mutate('add','fact',key='a');backup=self.store.backup();self.store.reserve(2000,'r')
         restore(self.tmp.name,backup)
-        self.assertEqual(self.store.budget()['reserved_fen'],200);self.assertEqual(self.store.search()[0]['content'],'fact')
+        self.assertEqual(self.store.budget()['reserved_fen'],ceil_fen(reservation()));self.assertEqual(self.store.search()[0]['content'],'fact')
     def test_restore_denies_active_lock(self):
         import fcntl
         backup=self.store.backup()

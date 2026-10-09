@@ -34,7 +34,7 @@ class Settings:
         if not self.read_key or any(len(k)<32 for k in keys) or len(set(keys))!=len(keys):
             raise ValueError('Service keys must be distinct and at least 32 characters')
         if self.model_key and self.model_key in keys: raise ValueError('Separate model credential required')
-        if not 0<=self.budget_fen<=100000: raise ValueError('Test budget maximum is 100000 fen')
+        if not 0<=self.budget_fen<=4000: raise ValueError('Test budget maximum is 4000 fen')
         if self.budget_fen and not self.prior_budget:
             raise ValueError('Positive budget requires the preserved prior validation audit; do not start a fresh allocation')
         self.data.mkdir(parents=True,exist_ok=True,mode=0o700)

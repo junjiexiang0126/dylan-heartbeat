@@ -8,6 +8,7 @@ import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from .config import Settings
+from .pricing import request_bounds
 from .store import Store,Denied,Conflict,BudgetExceeded
 from .runner import Runner
 
@@ -26,7 +27,7 @@ class Application:
         self.store.recover();self.busy=threading.Lock();self.executor=None;self.stopped=threading.Event()
 
     def model_ready(self):
-        return bool(self.settings.model_key and self.store.budget()['reserved_fen']+200<=self.settings.budget_fen)
+        return bool(self.settings.model_key and self.store.can_reserve(self.settings.budget_fen))
 
     def role(self,token):
         for role,key in [('read',self.settings.read_key),('write',self.settings.write_key),('delete',self.settings.delete_key),('admin',self.settings.admin_key)]:
@@ -136,12 +137,17 @@ def create_server(app):
                     request.update(stream=False,max_tokens=max(1,min(int(request.get('max_tokens',2048)),2048)),thinking={'type':'disabled'})
                     encoded=json.dumps(request,ensure_ascii=False).encode()
                     if len(encoded)>100000: raise ValueError('Upstream byte cap exceeded')
-                    ident=app.store.reserve(app.settings.budget_fen,run_id,token)
+                    input_bound,output_bound=request_bounds(encoded,request)
+                    ident=app.store.reserve(app.settings.budget_fen,run_id,token,input_bound,output_bound)
                     try:
                         req=urllib.request.Request('https://api.deepseek.com/chat/completions',data=encoded,
                             headers={'Authorization':'Bearer '+app.settings.model_key,'Content-Type':'application/json'})
                         with urllib.request.urlopen(req,timeout=60) as response: result=json.load(response)
                         if not result.get('choices'): raise RuntimeError('No choices')
+                        if result.get('model') not in ('deepseek-flash','deepseek-v4.1-flash','deepseek-v4-flash'):
+                            with app.store.transaction() as db:
+                                db.execute("INSERT OR REPLACE INTO budget_flags VALUES('halt','Unexpected provider model; verify pricing')")
+                            raise RuntimeError('Unexpected provider model')
                         app.store.complete_call(ident,'success',result.get('usage'));self.send(200,result)
                     except Exception:
                         app.store.complete_call(ident,'failed');raise
@@ -179,7 +185,7 @@ def create_server(app):
                 self.send(201,{'id':app.store.create_job(body['prompt'],body.get('due',time.time()),allow)});return
             if path.startswith('/admin/'):
                 self.require(role,('admin',))
-                if self.command=='GET' and path=='/admin/budget': self.send(200,app.store.budget());return
+                if self.command=='GET' and path=='/admin/budget': self.send(200,app.store.budget(app.settings.budget_fen));return
                 if self.command=='POST' and path=='/admin/inspect':
                     self.body();self.send(200,app.executor.run([{'role':'user','content':'inspect only'}],inspect_only=True));return
                 if self.command=='POST' and path=='/admin/backup':
