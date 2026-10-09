@@ -1,10 +1,10 @@
 name: Official Hermes preparation
 on:
   push:
-    branches: [feature/ziwei-hermes-native-v1, fix/ziwei-native-backup-profile-v1]
+    branches: [feature/ziwei-hermes-native-v1, fix/ziwei-native-backup-profile-v1, fix/ziwei-security-guardian-audit-20261010]
     paths: [hermes_native/**, .github/workflows/hermes-native.yml]
   pull_request:
-    branches: [feature/ziwei-hermes-native-v1]
+    branches: [feature/ziwei-hermes-native-v1, fix/ziwei-native-backup-profile-v1]
     paths: [hermes_native/**, .github/workflows/hermes-native.yml]
   workflow_dispatch:
 permissions:
@@ -43,6 +43,8 @@ jobs:
           docker exec ziwei-native-preflight /opt/hermes/.venv/bin/python -c \
             'import sys; sys.path.insert(0,"/opt/ziwei-native"); import runtime_guard as g; pid=g.restart_gateway(); assert g.await_health(pid)' 
           python3 hermes_native/check_api.py
+          docker exec -e ZIWEI_EPHEMERAL_FAULT_TEST=1 ziwei-native-preflight \
+            /opt/hermes/.venv/bin/python /opt/ziwei-native/tests/check_supervision.py
           docker restart ziwei-native-preflight
           python3 hermes_native/check_api.py
           docker exec ziwei-native-preflight python -c \

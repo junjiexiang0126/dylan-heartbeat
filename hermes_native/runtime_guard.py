@@ -19,6 +19,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import urllib.error
 from pathlib import Path
 
 BASE = Path('/opt/hermes')
@@ -31,6 +32,10 @@ ALLOWED = ('agent/', 'gateway/', 'tools/', 'cron/', 'plugins/')
 TOP_FILES = {'run_agent.py', 'model_tools.py', 'toolsets.py', 'hermes_state.py', 'hermes_state_messages.py'}
 ID_RE = re.compile(r'^[a-zA-Z0-9_-]{1,48}$')
 MAX_BYTES = 2 * 1024 * 1024
+HEALTH_INTERVAL = 15
+RESTART_FAILURES = 3
+INCIDENT_FAILURES = 6
+RECOVERY_SUCCESSES = 3
 
 
 def atomic_json(path, value):
@@ -66,7 +71,7 @@ def read_regular_beneath(root, relative, limit):
         for part in parts[:-1]:
             child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
             os.close(fd); fd = child
-        leaf = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
+        leaf = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
         try:
             info = os.fstat(leaf)
             if not stat.S_ISREG(info.st_mode) or info.st_size > limit:
@@ -158,6 +163,40 @@ def unprivileged():
     os.setgroups([]); os.setgid(user.pw_gid); os.setuid(user.pw_uid)
 
 
+def verify_candidate_auth(base_url, key):
+    """Immutable, model-free checks against the isolated candidate's real routes."""
+    routes = [('GET', '/v1/models'), ('GET', '/api/sessions'),
+              ('GET', '/api/sessions/security-probe/messages'),
+              ('GET', '/api/jobs'), ('GET', '/v1/runs/security-probe'),
+              ('GET', '/p/default/v1/models'),
+              ('POST', '/v1/chat/completions'), ('POST', '/v1/runs'),
+              ('POST', '/api/jobs')]
+
+    def status(method, path, token=None, origin=None):
+        headers = {'Content-Type': 'application/json'}
+        if token is not None: headers['Authorization'] = 'Bearer ' + token
+        if origin is not None: headers['Origin'] = origin
+        # Invalid JSON prevents a paid turn even if a candidate removes auth.
+        request = urllib.request.Request(base_url + path, method=method,
+                                         data=b'{' if method == 'POST' else None,
+                                         headers=headers)
+        try:
+            with urllib.request.urlopen(request, timeout=5) as response:
+                return response.status
+        except urllib.error.HTTPError as exc:
+            exc.close()
+            return exc.code
+
+    for method, path in routes:
+        for token in (None, 'wrong-isolated-auth-token'):
+            if status(method, path, token) != 401:
+                raise ValueError('isolated_gateway_auth')
+    if status('GET', '/v1/models', key) != 200:
+        raise ValueError('isolated_gateway_valid_auth')
+    if status('GET', '/v1/models', key, 'https://untrusted.example') != 403:
+        raise ValueError('isolated_gateway_cors')
+
+
 def validate_candidate(tree):
     """Canonical tests from the immutable integration layer, not candidate-authored tests."""
     user = pwd.getpwnam('hermes')
@@ -179,10 +218,13 @@ def validate_candidate(tree):
                 if proc.poll() is not None: raise ValueError('isolated_gateway_exit')
                 try:
                     with urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=2) as r:
-                        if r.status == 200: return
+                        if r.status == 200:
+                            break
                 except Exception: pass
                 time.sleep(1)
-            raise ValueError('isolated_gateway_health')
+            else:
+                raise ValueError('isolated_gateway_health')
+            verify_candidate_auth('http://127.0.0.1:8765', env['API_SERVER_KEY'])
         finally:
             if proc.poll() is None:
                 os.killpg(proc.pid, signal.SIGTERM)
@@ -225,7 +267,8 @@ def restart_gateway():
 
 def gateway_pid():
     output = subprocess.check_output(['/command/s6-svstat', '-o', 'pid', '/run/service/gateway-default'], timeout=5, stderr=subprocess.DEVNULL)
-    return int(output.strip())
+    # s6 reports -1 for a down service, rather than zero.
+    return max(0, int(output.strip()))
 
 
 def health():
@@ -335,8 +378,68 @@ def initialize():
     return state
 
 
+def monitor_once(state, healthy):
+    """Persist incident state before recovery/notification side effects.
+
+    A Guardian restart keeps the same incident. Three healthy checks close it;
+    recovery does not silently resume updates paused after a fault.
+    """
+    monitor = state.setdefault('health_monitor', {'failures': 0, 'successes': 0})
+    if healthy:
+        if monitor['failures']:
+            monitor['successes'] = monitor.get('successes', 0) + 1
+            if monitor['successes'] >= RECOVERY_SUCCESSES:
+                monitor.clear(); monitor.update(failures=0, successes=0)
+            atomic_json(CONTROL / 'state.json', state)
+        return
+    monitor['failures'] += 1
+    monitor['successes'] = 0
+    # Reserving attempts durably prevents retries/storms if this process exits.
+    restart_due = monitor['failures'] >= RESTART_FAILURES and not monitor.get('restart_attempted')
+    if restart_due: monitor['restart_attempted'] = True
+    incident_due = monitor['failures'] >= INCIDENT_FAILURES and not monitor.get('incident')
+    if incident_due:
+        monitor['incident'] = secrets.token_hex(8)
+        state.update(paused=True, failure_category='gateway_unhealthy')
+        state['last_result'] = {'ok': False, 'category': 'gateway_unhealthy',
+                                'incident': monitor['incident'], 'rollback': 'not_needed',
+                                'notification': 'not_attempted', 'bark_accepted': False}
+    atomic_json(CONTROL / 'state.json', state)
+    if restart_due:
+        try: restart_gateway()
+        except Exception:
+            monitor['restart_failed'] = True
+            atomic_json(CONTROL / 'state.json', state)
+    resume_incident = (monitor.get('incident') and
+                       state.get('last_result', {}).get('incident') == monitor['incident'] and
+                       state['last_result'].get('notification') == 'not_attempted')
+    if not (incident_due or resume_incident): return
+    result = state['last_result']
+    # Pausing has already been committed, even if switch/restart/publish fails.
+    if state['active'] != state['previous']:
+        try:
+            switch(state['previous'])
+            state['active'] = state['previous']
+            result['rollback'] = 'switched'
+            atomic_json(CONTROL / 'state.json', state)
+            restart_gateway()
+        except Exception:
+            result['rollback'] = 'recovery_failed'
+    # Write the attempt before sending: an interrupted send has unknown delivery,
+    # and is not automatically repeated on a Guardian process restart.
+    result['notification'] = 'delivery_unknown'
+    atomic_json(CONTROL / 'state.json', state)
+    try:
+        result['bark_accepted'] = bool(notify('gateway_unhealthy', state['active']))
+    except Exception:
+        result['bark_accepted'] = False
+    result['notification'] = 'submitted' if result['bark_accepted'] else 'not_accepted'
+    atomic_json(CONTROL / 'state.json', state)
+    publish(state)
+
+
 def main():
-    state = initialize(); failures = 0; notified = False
+    state = initialize()
     # The official bootstrap may adjust ownership. Apply this after cont-init:
     # sticky directories prevent terminal/code tools from replacing root-owned
     # SOUL and the reviewed preflight while retaining normal profile writes.
@@ -346,24 +449,15 @@ def main():
             os.chown(directory, 0, user.pw_gid); directory.chmod(0o1770)
     while True:
         try:
-            if health():
-                failures = 0; notified = False
+            healthy = health()
+            monitor_once(state, healthy)
+            if healthy:
                 for path in sorted(REQUESTS.glob('*.json')):
                     if path.name != 'status.json': process_request(path, state)
-            else:
-                failures += 1
-                if failures == 3:
-                    try: restart_gateway()
-                    except Exception: pass
-                if failures >= 6 and not notified:
-                    if state['active'] != state['previous']:
-                        switch(state['previous']); restart_gateway(); state['active'] = state['previous']
-                    state.update(paused=True, failure_category='gateway_unhealthy'); atomic_json(CONTROL / 'state.json', state)
-                    publish(state, {'ok': False, 'category': 'gateway_unhealthy', 'bark_accepted': notify('gateway_unhealthy', state['active'])}); notified = True
-            time.sleep(15)
+            time.sleep(HEALTH_INTERVAL)
         except Exception:
             # Fixed output only. A malformed agent request cannot kill the guardian.
-            print('[ziwei-guardian] control operation failed', flush=True); time.sleep(15)
+            print('[ziwei-guardian] control operation failed', flush=True); time.sleep(HEALTH_INTERVAL)
 
 
 if __name__ == '__main__':
