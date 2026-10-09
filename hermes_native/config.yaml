@@ -29,7 +29,7 @@ agent:
   auto_recovery_cycles: 0
 terminal:
   backend: local
-  cwd: ${HERMES_HOME}/workspace
+  cwd: /data/hermes_native/workspace
   timeout: 30
 memory:
   memory_enabled: true
