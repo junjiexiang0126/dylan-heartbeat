@@ -2,9 +2,21 @@ model:
   default: deepseek-flash
   provider: ziwei-deepseek
 providers:
+  openrouter:
+    enabled: false
   ziwei-deepseek:
     base_url: https://api.deepseek.com/v1
     key_env: DEEPSEEK_API_KEY
+model_catalog:
+  enabled: false
+fallback_model: []
+auxiliary:
+  compression:
+    provider: main
+  session_title:
+    provider: main
+  background_review:
+    provider: main
 agent:
   max_turns: 50
   gateway_timeout: 1800
