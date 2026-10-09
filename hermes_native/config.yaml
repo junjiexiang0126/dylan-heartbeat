@@ -22,7 +22,7 @@ agent:
   gateway_timeout: 1800
 terminal:
   backend: local
-  cwd: /opt/data/workspace
+  cwd: ${HERMES_HOME}/workspace
 memory:
   memory_enabled: true
   user_profile_enabled: true
