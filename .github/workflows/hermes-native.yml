@@ -27,7 +27,7 @@ jobs:
           docker run -d --name ziwei-native-preflight -p 8642:8642 \
             -v ziwei-native-preflight-data:/data -e HERMES_HOME \
             -e DEEPSEEK_API_KEY -e API_SERVER_KEY -e API_SERVER_ENABLED=true \
-            -e API_SERVER_HOST=0.0.0.0 -e HERMES_GATEWAY_NO_SUPERVISE=1 \
+            -e API_SERVER_HOST=0.0.0.0 \
             ziwei-native-preflight
           python3 hermes_native/check_api.py
           docker exec ziwei-native-preflight python -c \
