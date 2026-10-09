@@ -1,9 +1,0 @@
-[build]
-dockerfilePath = "hermes_native/Dockerfile"
-
-[deploy]
-startCommand = "python /opt/ziwei-native/bootstrap.py"
-healthcheckPath = "/health"
-healthcheckTimeout = 300
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3

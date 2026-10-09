@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build the thin configuration layer on the exact official stable image
-        run: docker build -f hermes_native/Dockerfile -t ziwei-native-preflight .
+        run: docker build -f hermes_native/Dockerfile -t ziwei-native-preflight hermes_native
       - name: Start the actual official container and Gateway
         run: |
           docker volume create ziwei-native-preflight-data
