@@ -18,10 +18,11 @@ jobs:
       DEEPSEEK_API_KEY: startup-check-only-no-model-request
       API_SERVER_KEY: startup-check-only-distinct-not-a-live-credential
       HERMES_HOME: /data/hermes_native
+      HERMES_WRITE_SAFE_ROOT: /data/hermes_native/workspace
     steps:
       - uses: actions/checkout@v4
       - name: Run isolated Python bootstrap safety tests
-        run: python3 -m unittest discover -s hermes_native/tests -p 'test_entrypoint_safety.py' -v
+        run: python3 -m unittest discover -s hermes_native/tests -v
       - name: Build the thin configuration layer on the exact official stable image
         run: docker build -f hermes_native/Dockerfile -t ziwei-native-preflight hermes_native
       - name: Start the actual official container and Gateway
@@ -30,7 +31,7 @@ jobs:
           docker run --rm --entrypoint sh -v ziwei-native-preflight-data:/data \
             ziwei-native-preflight -c 'printf legacy-data-preserved > /data/legacy-marker'
           docker run -d --name ziwei-native-preflight -p 8642:8642 \
-            -v ziwei-native-preflight-data:/data -e HERMES_HOME \
+            -v ziwei-native-preflight-data:/data -e HERMES_HOME -e HERMES_WRITE_SAFE_ROOT \
             -e DEEPSEEK_API_KEY -e API_SERVER_KEY -e API_SERVER_ENABLED=true \
             -e API_SERVER_HOST=0.0.0.0 \
             ziwei-native-preflight

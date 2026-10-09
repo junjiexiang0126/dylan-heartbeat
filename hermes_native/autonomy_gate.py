@@ -76,16 +76,22 @@ def atomic_json(path: Path, data):
 
 
 def main():
-    home = Path(os.environ["HERMES_HOME"])
-    with (home / ".autonomy-gate.lock").open("a") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        try:
+    home = None
+    try:
+        home = Path(os.environ["HERMES_HOME"])
+        with (home / ".autonomy-gate.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
             result = evaluate(home, datetime.now().astimezone())
-        except (OSError, ValueError, TypeError, KeyError) as exc:
-            result = {"wakeAgent": False, "reason": "preflight invalid; operator review needed", "error_type": type(exc).__name__}
+    except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+        # Hermes treats a nonzero script exit as prompt context and may still
+        # invoke the model. Always return a successful wakeAgent=false gate.
+        result = {"wakeAgent": False, "reason": "preflight invalid; operator review needed", "error_type": type(exc).__name__}
+    try:
         with (home / "logs" / "autonomy_preflight.jsonl").open("a") as log:
             log.write(json.dumps(result, ensure_ascii=False) + "\n")
-        print(json.dumps(result, ensure_ascii=False))
+    except (OSError, TypeError):
+        pass  # Losing an audit sink must not turn the gate into a paid run.
+    print(json.dumps(result, ensure_ascii=False))
 
 
 if __name__ == "__main__":

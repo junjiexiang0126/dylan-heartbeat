@@ -2,6 +2,9 @@ import importlib.util
 import json
 import tempfile
 import unittest
+import contextlib
+import io
+from unittest.mock import patch
 from datetime import datetime
 from pathlib import Path
 
@@ -45,3 +48,16 @@ class GateTests(unittest.TestCase):
         self.write_tasks([{"status": "pretend"}])
         with self.assertRaises(ValueError):
             gate.evaluate(self.home, self.now)
+
+    def test_main_returns_false_even_without_lock_or_log_directory(self):
+        out = io.StringIO()
+        with patch.dict(gate.os.environ, {"HERMES_HOME": str(self.home / "missing")}), contextlib.redirect_stdout(out):
+            gate.main()
+        self.assertFalse(json.loads(out.getvalue())["wakeAgent"])
+
+    def test_malformed_task_shape_fails_closed(self):
+        self.write_tasks(["bad shape"])
+        out = io.StringIO()
+        with patch.dict(gate.os.environ, {"HERMES_HOME": str(self.home)}), contextlib.redirect_stdout(out):
+            gate.main()
+        self.assertFalse(json.loads(out.getvalue())["wakeAgent"])

@@ -16,6 +16,21 @@ def seed(home: Path, template: Path) -> None:
             target.write(template.read_text(encoding="utf-8"))
     except FileExistsError:
         pass
+    # Official Cron accepts scripts only below HERMES_HOME/scripts. Keep the
+    # running profile's reviewed copy across builds; seed only when absent.
+    script_dir = home / "scripts"
+    if script_dir.is_symlink():
+        raise RuntimeError("Refusing symlinked Cron script directory.")
+    script_dir.mkdir(exist_ok=True)
+    script = script_dir / "autonomy_gate.py"
+    if script.is_symlink():
+        raise RuntimeError("Refusing symlinked Cron preflight script.")
+    try:
+        with script.open("x", encoding="utf-8") as target:
+            target.write(template.with_name("autonomy_gate.py").read_text(encoding="utf-8"))
+    except FileExistsError:
+        if not script.is_file():
+            raise RuntimeError("Cron preflight is not a regular file.")
 
 
 def check_native() -> None:
@@ -32,8 +47,15 @@ def check_native() -> None:
         raise RuntimeError("Native skill write approval must remain enabled.")
     from hermes_cli.config import load_config
     config = load_config()
-    if not write_approval_enabled("memory") and not config.get("security", {}).get("protected_instruction_files", True):
-        raise RuntimeError("Autonomous memory requires protected instruction files.")
+    if not write_approval_enabled("memory"):
+        if not config.get("security", {}).get("protected_instruction_files", True):
+            raise RuntimeError("Autonomous memory requires protected instruction files.")
+        # Hermes exempts its own profile from the project-instruction gate;
+        # the actual core boundary is the native file-tool safe-root filter.
+        expected = (Path(os.environ["HERMES_HOME"]) / "workspace").resolve()
+        roots = [Path(p).resolve() for p in os.environ.get("HERMES_WRITE_SAFE_ROOT", "").split(os.pathsep) if p]
+        if roots != [expected]:
+            raise RuntimeError("Autonomous memory requires workspace-only file writes.")
     provider = resolve_runtime_provider(requested="ziwei-deepseek")
     if provider.get("base_url", "").rstrip("/") != "https://api.deepseek.com/v1":
         raise RuntimeError("DeepSeek provider is not configured for the official endpoint.")

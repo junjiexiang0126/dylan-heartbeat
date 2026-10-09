@@ -19,6 +19,7 @@ auxiliary:
     provider: main
   background_review:
     provider: main
+    enabled: false
 agent:
   max_turns: 8
   gateway_timeout: 300
