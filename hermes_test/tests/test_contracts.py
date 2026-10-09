@@ -151,9 +151,15 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(self.request('/internal/memory/add',token,{'content':'no','idempotency_key':'x'})[0],403)
         self.app.store.revoke('r')
         self.assertEqual(self.request('/internal/memory/read',token,{'query':''})[0],403)
-    def test_missing_dataset_actual_failure(self):
+    def test_seeded_dataset_read_and_preserve(self):
         token=self.app.store.grant('r')
-        self.assertEqual(self.request('/internal/dataset',token,{})[0],503)
+        status,raw=self.request('/internal/dataset',token,{})
+        self.assertEqual(status,200)
+        self.assertEqual(json.loads(raw)['csv'],'item,quantity\napples,12\nbananas,18\noranges,23\n')
+        dataset=self.app.settings.data/'tools'/'dataset.csv'
+        dataset.write_text('custom,value\nkept,1\n',encoding='utf-8')
+        Application(self.app.settings)
+        self.assertEqual(dataset.read_text(encoding='utf-8'),'custom,value\nkept,1\n')
     def test_background_job_readback_component_only(self):
         executor=CannedExecutor();self.app.executor=executor;self.app.settings.model_key='not-real';self.app.settings.budget_fen=200
         self.app.store.create_job('fixture',time.time()-1);self.app.tick();self.app.tick()
