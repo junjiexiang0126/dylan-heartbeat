@@ -12,7 +12,7 @@ while True:
         with urlopen(base + "/health", timeout=2) as response:
             assert response.status == 200
         break
-    except (URLError, TimeoutError):
+    except (URLError, TimeoutError, ConnectionError):
         if time.monotonic() >= deadline:
             raise SystemExit("Official Gateway did not become healthy within 45 seconds.")
         time.sleep(1)
