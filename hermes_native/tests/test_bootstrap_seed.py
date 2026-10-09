@@ -22,6 +22,11 @@ class SeedTests(unittest.TestCase):
             self.assertEqual((home/'config.yaml').read_text(),'private persistent config')
             self.assertEqual((home/'scripts/autonomy_gate.py').read_text(),'reviewed persistent script')
 
+    def test_default_terminal_cwd_uses_literal_persistent_absolute_path(self):
+        config = (Path(__file__).parents[1] / 'config.yaml').read_text(encoding='utf-8')
+        self.assertIn('  cwd: /data/hermes_native/workspace', config)
+        self.assertNotIn('  cwd: ${HERMES_HOME}/workspace', config)
+
     def test_symlinked_script_directory_refused(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); home=root/'profile'; home.mkdir(); source=root/'config.yaml'
