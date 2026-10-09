@@ -57,8 +57,8 @@ def main() -> None:
         with marker.open("x", encoding="utf-8") as stream:
             stream.write(MARKER_CONTENT)
 
-    # Repair only the two known backup directories, not the full volume,
-    # archived history, or backup file contents.
+    # Repair only the two known backup directories and existing regular
+    # config backup files, never the full volume or archived history.
     user = pwd.getpwnam("hermes")
     for directory in (home / "backups", home / "backups" / "config"):
         if directory.is_symlink():
@@ -67,6 +67,16 @@ def main() -> None:
             if not directory.is_dir():
                 raise SystemExit("Backup path is not a directory.")
             os.chown(directory, user.pw_uid, user.pw_gid)
+
+    # Old root-owned backups may be overwritten by Hermes rotation. Change
+    # ownership of regular files directly in the known config backup folder.
+    # Reject symlinks and unexpected nested directories instead of traversing.
+    config_backups = home / "backups" / "config"
+    if config_backups.exists():
+        for child in config_backups.iterdir():
+            if child.is_symlink() or not child.is_file():
+                raise SystemExit("Unexpected config backup entry; refusing repair.")
+            os.chown(child, user.pw_uid, user.pw_gid)
 
     os.execv("/opt/hermes/docker/entrypoint-dispatch.sh",
              ["/opt/hermes/docker/entrypoint-dispatch.sh", *sys.argv[1:]])
