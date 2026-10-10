@@ -22,7 +22,7 @@ async function proxy(req,res,pathname,url){
    body=JSON.stringify({message:obj.message});
  }else return err(res,404,'route_not_allowed');
  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),stream?240000:15000);
- req.on('close',()=>{if(!res.writableEnded)controller.abort()});
+ res.on('close',()=>{if(!res.writableEnded)controller.abort()});
  try{
    const upstream=await fetch(new URL(target,base),{method,headers:{Authorization:'Bearer '+secret,'X-Hermes-Session-Key':SESSION_KEY,...(stream?{'Content-Type':'application/json',Accept:'text/event-stream'}:{Accept:'application/json'})},body,signal:controller.signal,redirect:'error'});
    if(!upstream.ok)return err(res,upstream.status===429?429:502,'upstream_unavailable');
