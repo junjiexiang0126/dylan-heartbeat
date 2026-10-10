@@ -28,3 +28,10 @@
 - 本轮仅按知微阶段 0 **源码报告**准备 POST chat/stream 请求体，未取得生产原始帧或实际 POST 结构的端到端证据。即使 mock 测试通过，也不能视为真实 Hermes 兼容验收。
 - mock 测试运行在本地假 Hermes，不调用 DeepSeek，不读取生产记忆。
 - 当前单进程 session 和限速实现仍不适合无持久化卷、多副本生产环境；禁止直接作为生产登录系统上线。
+
+## 上线前稳定性门槛（新增）
+- 网页同一时刻只允许一个流式聊天请求；并发请求返回 `409 chat_in_progress`。**这是单进程锁，不是跨实例分布式锁**。
+- 流式转发监听 Hermes 的 `assistant.completed` 和 `event: done`；缺失时追加 `bridge.incomplete`（`retrySafe:false`）。不能将中断自动重发，以免重复执行。
+- `bridge.incomplete` 仅表示无法确认完整交付，**不是证明 Hermes 没有完成执行**。恢复时应先读取 Hermes 历史核对，仍不能保证 exactly-once。
+- 仍缺：持久化消息幂等账本、跨进程锁、连接断开后的终态核对、断线恢复验收、长期会话创建格式的生产兼容确认。
+- 在以上项目验收前，`ZIWEI_BRIDGE_ENABLED` 必须保持 `false`，不部署为可用聊天网站。
