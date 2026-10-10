@@ -52,7 +52,7 @@ class EntrypointTest(unittest.TestCase):
         )
         (self.home / "backups" / "config").mkdir(parents=True)
         with patch.dict(os.environ, {"ZIWEI_ADOPT_EXISTING_PROFILE": "1"}):
-            with patch.object(entry.os, "chown") as chown:
+            with patch.object(entry.os, "fchown") as chown:
                 entry.main()
         self.assertTrue((self.home / ".ziwei-native-profile").exists())
         self.assertEqual(chown.call_count, 2)
@@ -76,17 +76,17 @@ class EntrypointTest(unittest.TestCase):
         outside = self.home / "private"
         outside.write_text("untouched")
         (folder / "linked").symlink_to(outside)
-        with patch.object(entry.os, "chown") as chown:
+        with patch.object(entry.os, "fchown") as chown:
             with self.assertRaises(SystemExit):
                 entry.main()
-        self.assertNotIn(outside, [call.args[0] for call in chown.call_args_list])
+        self.assertEqual(chown.call_count, 2)
         self.assertEqual(outside.read_text(), "untouched")
 
     def test_refuses_unexpected_nested_backup_directory(self):
         (self.home / ".ziwei-native-profile").write_text(entry.MARKER_CONTENT)
         folder = self.home / "backups" / "config"
         (folder / "unexpected").mkdir(parents=True)
-        with patch.object(entry.os, "chown"):
+        with patch.object(entry.os, "fchown"):
             with self.assertRaises(SystemExit):
                 entry.main()
 
@@ -95,11 +95,54 @@ class EntrypointTest(unittest.TestCase):
         (self.home / "backups" / "config").mkdir(parents=True)
         original = self.home / "backups" / "config" / "original"
         original.write_text("safe")
-        with patch.object(entry.os, "chown") as chown:
+        with patch.object(entry.os, "fchown") as chown:
             entry.main()
         self.assertEqual(chown.call_count, 3)
-        self.assertIn(original, [call.args[0] for call in chown.call_args_list])
+        self.assertTrue(all(isinstance(call.args[0], int) for call in chown.call_args_list))
         self.assertEqual(original.read_text(), "safe")
+
+    def test_refuses_hardlinked_backup_without_chowning_identity(self):
+        (self.home / ".ziwei-native-profile").write_text(entry.MARKER_CONTENT)
+        folder = self.home / "backups/config"
+        folder.mkdir(parents=True)
+        identity = self.home / "SOUL.md"
+        identity.write_text("identity must remain protected")
+        os.link(identity, folder / "linked")
+        with patch.object(entry.os, "fchown") as chown:
+            with self.assertRaises(SystemExit):
+                entry.main()
+        self.assertEqual(chown.call_count, 2)
+        self.assertEqual(identity.read_text(), "identity must remain protected")
+
+    def test_directory_swap_cannot_redirect_privileged_repair(self):
+        folder = self.home / "backups/config"
+        folder.mkdir(parents=True)
+        (folder / "original").write_text("backup")
+        outside = self.home / "outside"
+        outside.mkdir()
+        (outside / "private").write_text("untouched")
+        touched = []
+
+        def swap_on_directory(fd, uid, gid):
+            touched.append(os.fstat(fd).st_ino)
+            if len(touched) == 1:
+                folder.parent.rename(self.home / "backups-saved")
+                (self.home / "backups").symlink_to(outside, target_is_directory=True)
+            # A mock avoids changing this test machine's ownership.
+
+        with patch.object(entry.os, "fchown", side_effect=swap_on_directory):
+            entry.repair_backup_ownership(self.home, os.getuid(), os.getgid())
+        self.assertNotIn((outside / "private").stat().st_ino, touched)
+        self.assertEqual(len(touched), 3)
+
+    def test_refuses_fifo_backup_without_blocking(self):
+        folder = self.home / "backups/config"
+        folder.mkdir(parents=True)
+        os.mkfifo(folder / "pipe")
+        with patch.object(entry.os, "fchown") as chown:
+            with self.assertRaises(SystemExit):
+                entry.repair_backup_ownership(self.home, os.getuid(), os.getgid())
+        self.assertEqual(chown.call_count, 2)
 
 
 if __name__ == "__main__":
