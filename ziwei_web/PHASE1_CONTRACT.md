@@ -1,3 +1,13 @@
+# 本轮知微之家第一阶段状态（2026-10-10）
+
+以下旧 Bridge 实验记录保留为历史。当前阶段仅启用首页、资料和认证，Bridge 默认关闭；未进行真实 Hermes 聊天/附件/记忆验收。
+
+新增 `GET /api/home`、`PUT /api/home`：会话权限；写入需 Origin+CSRF+revision。纪念文字/相识日期/命名日/今日状态拒绝由资料接口覆盖。仅展示资料落盘，不写原生人格或长期记忆。
+
+新增 `POST /api/logout-all` 和 `/api/passkey/register/{options,verify}`、`/api/passkey/login/{options,verify}`、`/api/passkey/remove-all`。注册及移除须密码复验；登录使用一次性 challenge 和真实 WebAuthn 校验；详见 README。会话有效期改为30天，单进程/单副本/独立持久目录边界保留。本轮本地测试结果与未完成验收见 `../docs/ziwei-home/PHASE1_ACCEPTANCE.md`；旧文中的“未跑测试”不代表本轮状态。
+
+---
+
 # 知微 PWA Phase 1 接口合同（待实测冻结）
 
 ## 已实现
