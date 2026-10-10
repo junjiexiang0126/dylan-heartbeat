@@ -44,7 +44,7 @@ nav{bottom:calc(var(--nav-offset) + env(safe-area-inset-bottom,0px))}
 }
 .glass{
   position:relative;
-  isolation:isolate;
+  z-index:0;
   background:transparent;
   border:0;
   box-shadow:none;
@@ -55,7 +55,7 @@ nav{bottom:calc(var(--nav-offset) + env(safe-area-inset-bottom,0px))}
   content:"";
   position:absolute;
   inset:0;
-  z-index:0;
+  z-index:-1;
   pointer-events:none;
   border-radius:inherit;
   background:linear-gradient(180deg,rgb(var(--glass-fill-rgb) / var(--glass-fill-alpha-top)),rgb(var(--glass-fill-rgb) / var(--glass-fill-alpha-bottom)));
@@ -72,6 +72,5 @@ dialog.glass::before{display:none}
   .glass::before{background:var(--bg)}
 }
 
-/* WebKit: keep the backdrop-filter pseudo-element in the visible stacking plane.
-   A negative z-index may composite against the isolated surface instead of the page. */
-.glass > *{position:relative;z-index:1}
+/* Preserve floating navigation above panels after the glass stacking change. */
+nav.glass{z-index:5}
