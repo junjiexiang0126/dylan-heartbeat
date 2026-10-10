@@ -8,7 +8,7 @@
 
 分支：`feature/ziwei-pwa-phase1-foundation`。沿用现有 [PR #10](https://github.com/junjiexiang0126/dylan-heartbeat/pull/10)，目标 `develop/ziwei-hermes-unified-v1`，不合并/修改生产主线。
 
-恢复起点提交：`f98d69de294335a5de577524df47610eca5deb99`。本轮功能提交哈希在提交后补录；最终文档提交可从 PR 当前 HEAD 核对（文档不嵌入自身尚未生成的哈希）。
+恢复起点提交：`f98d69de294335a5de577524df47610eca5deb99`。本轮功能提交：`02143a2b3d25ca1cd607b1ccd94f43dd7e1a676d`；最近代码/CI配置提交：`ff9e0d572617a13f40a921a582e0c9b8538082b1`。其后只补录验收文档；最终完整文档提交可从 PR 当前 HEAD 核对（文档不嵌入自身尚未生成的哈希）。
 
 ## 完成功能
 
@@ -26,7 +26,7 @@
 
 详见 [PHASE1_ACCEPTANCE.md](PHASE1_ACCEPTANCE.md) 与 [首页日间](evidence/home-light.jpg)、[首页夜间](evidence/home-dark.jpg)。
 
-本轮 `npm test` 11通过；语法检查通过；浏览器端到端 Chromium/WebKit 3通过、WebKit虚拟生物识别1明确跳过。虚拟验证器不是实际 iPhone Face ID 验收。GitHub 新提交的 CI 状态将在提交后核对并补录。未复跑没有受修改影响的整套 Hermes 审计；核心原生与 Gateway 文件相对线上 `3ef373a` 无差异。
+本轮 `npm test` 11通过；语法检查通过；浏览器端到端 Chromium/WebKit 3通过、WebKit虚拟生物识别1明确跳过。虚拟验证器不是实际 iPhone Face ID 验收。首个提交的前端 CI 成功；统一回归曾因误收集 Web 测试且缺少独立依赖而失败。`ff9e0d5` 明确根目录测试范围，修复后本地根目录33项回归通过；修复提交 `ff9e0d5` 的全部3个远程检查已成功：两个 Web（push/PR）和 retained-components。具体不可变运行链接见验收报告。未复跑没有受修改影响的整套 Hermes 审计；核心原生与 Gateway 文件相对线上 `3ef373a` 无差异。
 
 ## Railway 实际状态
 
@@ -46,7 +46,7 @@
 
 相识日期由最早真实记录核实后再交用户确认。今日状态真实接入、真实 iPhone 安装/解锁、公网部署、大陆网络为待验收，不得宣称已通过。
 
-Web 持久化仅单进程/单副本；生产强制独立持久目录；最多10个Passkey/128活跃会话/500条完整资料历史，达限拒绝而不删除历史。需要后续无损归档、多实例存储与更强边缘限流。现有 Hermes 公网 + local 后端警告与记忆容量风险保留，不在本阶段做生产修复。
+Web 持久化仅单进程/单副本；生产强制独立持久目录；最多10个Passkey/128活跃会话/500条完整资料历史，达限拒绝而不删除历史。需要后续无损归档、多实例存储与更强边缘限流。现有 Hermes 公网 + local 后端警告与记忆容量风险保留，不在本阶段做生产修复。根目录旧 Gateway 依赖扫描发现 Fastify/fast-uri 共2项 high 包风险；根 lockfile/运行依赖未修改。独立 Web 包当时0 vulnerabilities。详情与维护边界见验收文档。
 
 ## 下一阶段接手
 

@@ -18,7 +18,8 @@
 | `npm run check` | 通过 | server、home_store、前端和 service worker 语法 |
 | `npm run test:e2e` | 3 通过，1 明确跳过 | Chromium/WebKit 中实际登录、五导航、头像解码缩放/保存、昵称文本防注入、设置主题、刷新持久化、横向溢出检查、会话撤销；Chromium 虚拟验证器实际产生 WebAuthn 签名并由服务器验证 |
 | WebKit Passkey 专项 | 跳过 | CDP 虚拟验证器只适用于 Chromium；不能当成真实 iPhone Face ID 通过 |
-| `npm install` 包审查 | 当时 0 vulnerabilities | 固定依赖/lockfile；不是完整安全审计结论 |
+| 独立 Web 包依赖审查 | 当时 0 vulnerabilities | 固定依赖/lockfile；不是完整安全审计结论 |
+| 根目录回归范围修复后 `npm test` | 33 通过 | 明确测试发现范围，Gateway 运行逻辑与依赖未改动 |
 | `git diff --check` | 通过 | 无空白错误 |
 | 原 Hermes/Gateway 文件保护 | 通过 | 与 `3ef373a` 比较 `hermes_native/`、根 `server.js`、`railway_start.js` 均无差异 |
 
@@ -68,3 +69,19 @@
 `frontend-spec-v3-for-ai.md` 和 `ziwei-frontend-spec-v3.1-amendment.md`：已搜索当前仓库、全部克隆远程历史文件名与本机 Codex 文件；未找到原文。现有 PR 文件也没有这些文件。用户告知 v3.1 在 ChatGPT 文件资料中，但本轮没有取得可读取的文件位置；未虚构其中细节。以定稿规格、用户补充和真实代码为依据；原文缺失作为交接事项保留。
 
 待验收：真实 iPhone Safari/PWA 安装、Face ID/Touch ID/设备 PIN、实际设备安全区域；正式/公网 Web 部署与服务重启；真实大陆网络；今日状态真实来源与更新时间。相识日期待最早记录核实与用户确认。第二阶段真实聊天、附件、历史导入及后续其他功能未实施。
+
+## 补充维护记录
+
+根目录旧 Gateway 的 `npm ci` 提示2个 high 风险包，随后只读 `npm audit --json` 确认为 `fastify` 与 `fast-uri`；这是原有 lockfile 的依赖，本轮没有升级生产/原生 Hermes 或改动该 lockfile。相关官方公告示例：[Fastify 认证绕过](https://github.com/advisories/GHSA-p68q-wchp-6fh7)、[fast-uri authority 注入](https://github.com/advisories/GHSA-qw65-cvwx-89v3)。依赖风险不等于已证明现有部署可利用，但应在旧 Gateway 后续启用或发布前做单独修复与验证。独立 Web 包不依赖 Fastify/fast-uri，不能因此宣称原系统的安全问题已全部解决。
+
+## 最终代码提交的远程 CI
+
+功能提交：`02143a2b3d25ca1cd607b1ccd94f43dd7e1a676d`。测试发现范围修复后的最后代码提交：`ff9e0d572617a13f40a921a582e0c9b8538082b1`。其后的交接提交仅改本文与 PROJECT_STATUS，不改运行代码。
+
+已从 GitHub 当前 API 核实，以下3个检查均 completed/success：
+
+- [Web PR 检查（含浏览器验收）](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/38061996653/job/114241961171)
+- [Web push 检查（含浏览器验收）](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/38061991421/job/114241945721)
+- [retained-components 统一回归](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/38061996623/job/114241960859)
+
+保留组件回归由仓库已有 CI 自动触发。本轮没有人工重新进行完整线上审计、故障注入、备份恢复或模型聊天实测。
