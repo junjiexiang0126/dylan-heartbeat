@@ -1,12 +1,12 @@
 'use strict';
 // Restricted, opt-in bridge. Never exposes an arbitrary upstream path or an API key.
-const {Readable}=require('node:stream');
+const {SSEParser}=require('./sse_parser');
 const SESSION_KEY='agent:main:web:yu';
 const enabled=process.env.ZIWEI_BRIDGE_ENABLED==='true';
 const base=process.env.ZIWEI_HERMES_URL||'';
 const secret=process.env.ZIWEI_HERMES_API_KEY||'';
 const sessionId=process.env.ZIWEI_HERMES_WEB_SESSION_ID||'';
-let sessionReady=false,creationPromise=null;
+let sessionReady=false,creationPromise=null,streamBusy=false;
 function ready(){if(!enabled)return false;if(!base||!secret||!/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId))return false;try{const u=new URL(base);return (u.protocol==='https:'||process.env.ZIWEI_BRIDGE_ALLOW_HTTP_FOR_TESTS==='true'&&u.protocol==='http:')&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname==='/'}catch{return false}}
 function status(){return ready()}
 function err(res,status,code){res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({error:code}))}
@@ -28,10 +28,12 @@ async function proxy(req,res,pathname,url){
    method='POST';stream=true;let input='';try{for await(const part of req){input+=part;if(Buffer.byteLength(input)>8192)return err(res,413,'request_too_large')}}catch{return err(res,400,'invalid_body')}
    let obj;try{obj=JSON.parse(input)}catch{return err(res,400,'invalid_json')}
    if(typeof obj.message!=='string'||!obj.message.trim()||obj.message.length>4000||Object.keys(obj).some(k=>k!=='message'))return err(res,400,'invalid_message');
+   if(streamBusy)return err(res,409,'chat_in_progress');
+   streamBusy=true;
    target='/api/sessions/'+encodeURIComponent(sessionId)+'/chat/stream';
    body=JSON.stringify({message:obj.message});
  }else return err(res,404,'route_not_allowed');
- try{await ensureSession()}catch{return err(res,502,'session_initialization_failed')}
+ try{await ensureSession()}catch{if(stream)streamBusy=false;return err(res,502,'session_initialization_failed')}
  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),stream?240000:15000);
  res.on('close',()=>{if(!res.writableEnded)controller.abort()});
  try{
@@ -41,7 +43,21 @@ async function proxy(req,res,pathname,url){
      const type=upstream.headers.get('content-type')||'';if(!type.includes('text/event-stream'))return err(res,502,'invalid_stream_type');
      res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'});
      if(!upstream.body){res.end();return}
-     Readable.fromWeb(upstream.body).on('error',()=>res.destroy()).pipe(res);
+     let completed=false,assistantCompleted=false;
+     const parser=new SSEParser(({event,data})=>{if(event==='done')completed=true;if(event==='assistant.completed'&&data&&typeof data.content==='string')assistantCompleted=true});
+     try{
+       for await(const chunk of upstream.body){
+         parser.feed(chunk);
+         if(!res.write(Buffer.from(chunk)))await new Promise(resolve=>res.once('drain',resolve));
+       }
+       parser.end();
+       if(!completed||!assistantCompleted){
+         res.write('event: bridge.incomplete\ndata: {"error":"stream_incomplete","retrySafe":false}\n\n');
+       }
+       res.end();
+     }catch{
+       if(!res.destroyed){res.write('event: bridge.incomplete\ndata: {"error":"stream_interrupted","retrySafe":false}\n\n');res.end()}
+     }
    }else{
      const raw=await upstream.text();if(Buffer.byteLength(raw)>2*1024*1024)return err(res,502,'upstream_too_large');
      let obj;try{obj=JSON.parse(raw)}catch{return err(res,502,'invalid_upstream_json')}
@@ -49,6 +65,6 @@ async function proxy(req,res,pathname,url){
      res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(obj));
    }
  }catch{if(!res.headersSent)err(res,502,'upstream_unavailable');else res.destroy()}
- finally{clearTimeout(timer)}
+ finally{clearTimeout(timer);if(stream)streamBusy=false}
 }
 module.exports={proxy,status,pathForHistory};
