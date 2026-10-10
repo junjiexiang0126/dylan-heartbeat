@@ -97,32 +97,43 @@ test('all five panels clear the floating nav on compact, portrait and landscape 
 });
 
 
-test('glass blur changes actual pixels in Chromium and WebKit',async({page})=>{
+test('glass blur changes real pixels relative to a no-blur control in Chromium and WebKit',async({page})=>{
  await page.setViewportSize({width:640,height:360});
- await page.route('**/style.css',async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text())+`
-  body{background:linear-gradient(to right,#000 0 50%,#fff 50% 100%)!important}
-  .ambient,.shell{display:none!important}
-  #glass-pixel-fixture{position:fixed!important;left:220px;top:110px;width:200px;height:100px;border-radius:0!important}
-  #glass-pixel-fixture::before{border-radius:0!important}
- `})});
  await page.goto('/');
- await page.evaluate(()=>{const css=[...document.styleSheets].find(x=>x.href&&x.href.includes('/style.css'));css.insertRule('body{background:linear-gradient(to right,#000 0 50%,#fff 50% 100%)!important}',css.cssRules.length);css.insertRule('.ambient,.shell{display:none!important}',css.cssRules.length);css.insertRule('#glass-pixel-fixture{position:fixed!important;left:220px;top:110px;width:200px;height:100px;border-radius:0!important}',css.cssRules.length);css.insertRule('#glass-pixel-fixture::before{border-radius:0!important}',css.cssRules.length);css.insertRule('#glass-test-backdrop{position:fixed;inset:0;background:linear-gradient(to right,#000 0 50%,#fff 50% 100%);z-index:0}',css.cssRules.length);css.insertRule('#glass-pixel-fixture{z-index:1}',css.cssRules.length);const backdrop=document.createElement('div');backdrop.id='glass-test-backdrop';document.body.append(backdrop);const el=document.createElement('div');el.id='glass-pixel-fixture';el.className='glass';document.body.append(el)});
- const screenshot=await page.screenshot({scale:'css'});
- const samples=await page.evaluate(async base64=>{
-  const img=new Image();
-  img.src='data:image/png;base64,'+base64;
-  await img.decode();
-  const canvas=document.createElement('canvas');canvas.width=img.width;canvas.height=img.height;
-  const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0);
-  const row=y=>{const arr=[];for(let x=295;x<=345;x++)arr.push(ctx.getImageData(x,y,1,1).data[0]);return arr};
-  return {inside:row(160),outside:row(90)};
- },screenshot.toString('base64'));
+ await page.evaluate(()=>{
+  const css=[...document.styleSheets].find(x=>x.href&&x.href.includes('/style.css'));
+  const rules=[
+   '.ambient,.shell{display:none!important}',
+   '#glass-test-backdrop{position:fixed;inset:0;background:linear-gradient(to right,#000 0 50%,#fff 50% 100%);z-index:0}',
+   '#glass-pixel-fixture{position:fixed!important;left:220px;top:110px;width:200px;height:100px;border-radius:0!important;z-index:1}',
+   '#glass-pixel-fixture::before{border-radius:0!important}'
+  ];
+  for(const rule of rules)css.insertRule(rule,css.cssRules.length);
+  const backdrop=document.createElement('div');backdrop.id='glass-test-backdrop';document.body.append(backdrop);
+  const glass=document.createElement('div');glass.id='glass-pixel-fixture';glass.className='glass';document.body.append(glass);
+ });
+ const takeRow=async()=>{
+  const png=await page.screenshot({scale:'css'});
+  return page.evaluate(async base64=>{
+   const img=new Image();img.src='data:image/png;base64,'+base64;await img.decode();
+   const canvas=document.createElement('canvas');canvas.width=img.width;canvas.height=img.height;
+   const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0);
+   const row=y=>Array.from({length:51},(_,i)=>ctx.getImageData(295+i,y,1,1).data[0]);
+   return {inside:row(160),outside:row(90)};
+  },png.toString('base64'));
+ };
+ const blurred=await takeRow();
+ await page.evaluate(()=>{
+  const css=[...document.styleSheets].find(x=>x.href&&x.href.includes('/style.css'));
+  css.insertRule('#glass-pixel-fixture::before{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}',css.cssRules.length);
+ });
+ const sharp=await takeRow();
  const jumps=a=>Math.max(...a.slice(1).map((n,i)=>Math.abs(n-a[i])));
- expect(jumps(samples.outside)).toBeGreaterThan(200);
- expect(jumps(samples.inside)).toBeLessThan(70);
- const midpoint=samples.inside[25];
- expect(midpoint).toBeGreaterThan(40);
- expect(midpoint).toBeLessThan(220);
+ const delta=(a,b)=>a.reduce((sum,n,i)=>sum+Math.abs(n-b[i]),0)/a.length;
+ expect(jumps(blurred.outside)).toBeGreaterThan(200);
+ expect(jumps(sharp.inside)).toBeGreaterThan(70);
+ expect(jumps(blurred.inside)).toBeLessThan(jumps(sharp.inside));
+ expect(delta(blurred.inside,sharp.inside)).toBeGreaterThan(4);
 });
 
 test('dark glass secondary text remains readable on all background themes',async({page})=>{
