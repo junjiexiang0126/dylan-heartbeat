@@ -6,3 +6,13 @@
 @media(max-width:360px){.shell{padding:0 14px}.home-badge{display:none}.pair{gap:9px}.person{min-width:64px}.avatar{width:62px;height:62px}.heartbeat{width:80px}.memorial{padding:20px}.anniversaries strong{font-size:18px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.pulse{stroke-dasharray:none}}
 @supports not (backdrop-filter:blur(1px)){.glass{background:var(--bg)}}
+
+/* Keep the last home card and chat controls scrollable above the floating navigation.
+   The reserve includes the 76px nav, its bottom offset, and the device safe area. */
+.panel{padding-bottom:calc(136px + env(safe-area-inset-bottom, 0px))}
+@media(max-width:550px){.panel{padding-bottom:calc(132px + env(safe-area-inset-bottom, 0px))}}
+/* Secondary status text needs to remain legible on the dark glass surface. */
+:root[data-theme=dark]{--muted:#d1bec8}
+:root[data-theme=dark] .today p,
+:root[data-theme=dark] .status-tag,
+:root[data-theme=dark] .footnote{color:var(--muted);opacity:1}
