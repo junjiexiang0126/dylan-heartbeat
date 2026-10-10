@@ -45,10 +45,14 @@ jobs:
           python3 hermes_native/check_api.py
           docker exec -e ZIWEI_EPHEMERAL_FAULT_TEST=1 ziwei-native-preflight \
             /opt/hermes/.venv/bin/python /opt/ziwei-native/tests/check_supervision.py
+          docker exec -u hermes -e ZIWEI_EPHEMERAL_BROWSER_TEST=1 ziwei-native-preflight \
+            /opt/hermes/.venv/bin/python /opt/ziwei-native/tests/check_browser_persistence.py write
           docker restart ziwei-native-preflight
           python3 hermes_native/check_api.py
           docker exec ziwei-native-preflight python -c \
             'from pathlib import Path; assert Path("/data/legacy-marker").read_text() == "legacy-data-preserved"; assert Path("/data/hermes_native/workspace/restart-marker").read_text() == "persisted"'
+          docker exec -u hermes -e ZIWEI_EPHEMERAL_BROWSER_TEST=1 ziwei-native-preflight \
+            /opt/hermes/.venv/bin/python /opt/ziwei-native/tests/check_browser_persistence.py read
       - name: Show startup evidence and stop ephemeral container
         if: always()
         run: |

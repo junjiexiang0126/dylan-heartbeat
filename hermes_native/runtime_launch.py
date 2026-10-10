@@ -23,6 +23,10 @@ def activate(tree):
             del sys.modules[name]
     sys.path.insert(0, str(tree))
     os.environ['HERMES_PYTHON_SRC_ROOT'] = str(tree)
+    # Immutable adapter binds native browser calls to the owning profile. It is
+    # also checked by candidate preflight, after imports switch to that tree.
+    from browser_persistence import install
+    install()
     return main
 
 
