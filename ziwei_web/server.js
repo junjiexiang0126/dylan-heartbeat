@@ -23,14 +23,35 @@ if (SECURE) headers['Strict-Transport-Security'] = 'max-age=31536000';
 if (PASSWORD && PASSWORD.length < 16) throw Error('ZIWEI_WEB_PASSWORD must be at least 16 characters');
 fs.mkdirSync(DATA_DIR, {recursive:true, mode:0o700});
 const LOCK_FILE=path.join(DATA_DIR,'server.lock');
+// Railway restarts reuse PID namespaces: a persisted numeric PID alone is not
+// proof that the old Web process is still alive. Record deployment identity too.
+const deploymentId = process.env.RAILWAY_DEPLOYMENT_ID || '';
+const lockToken = crypto.randomUUID();
+const lockRecord = JSON.stringify({pid:process.pid, deploymentId, token:lockToken});
 if(fs.existsSync(LOCK_FILE)){
- const pid=Number(fs.readFileSync(LOCK_FILE,'utf8'));
- if(!Number.isSafeInteger(pid)||pid<1)throw Error('invalid_server_lock');
- try{process.kill(pid,0);throw Error('Web data directory already in use');}catch(e){if(e.code!=='ESRCH')throw e;}
+ const previous = fs.readFileSync(LOCK_FILE,'utf8');
+ let lock;
+ try {
+   lock = previous.trim().startsWith('{') ? JSON.parse(previous) : {pid:Number(previous)};
+ } catch { throw Error('invalid_server_lock'); }
+ if(!Number.isSafeInteger(lock.pid)||lock.pid<1)throw Error('invalid_server_lock');
+ // Never assume a PID from an older Railway deployment refers to this container.
+ // Deploy overlap is disabled for this single-replica, volume-backed service.
+ const sameDeployment = !deploymentId || !lock.deploymentId || lock.deploymentId===deploymentId;
+ if(sameDeployment && lock.pid!==process.pid){
+   try{process.kill(lock.pid,0);throw Error('Web data directory already in use');}
+   catch(e){if(e.code!=='ESRCH')throw e;}
+ }
+ // The previous lock is stale if it names this very PID before we acquired it,
+ // or belongs to a different Railway deployment.
+ if(fs.readFileSync(LOCK_FILE,'utf8')!==previous)throw Error('server_lock_changed');
  fs.unlinkSync(LOCK_FILE);
 }
-fs.writeFileSync(LOCK_FILE,String(process.pid),{flag:'wx',mode:0o600});
-process.on('exit',()=>{if(fs.existsSync(LOCK_FILE)&&fs.readFileSync(LOCK_FILE,'utf8')===String(process.pid))fs.unlinkSync(LOCK_FILE);});
+fs.writeFileSync(LOCK_FILE,lockRecord,{flag:'wx',mode:0o600});
+process.on('exit',()=>{
+ try{if(fs.readFileSync(LOCK_FILE,'utf8')===lockRecord)fs.unlinkSync(LOCK_FILE);}
+ catch(e){if(e.code!=='ENOENT')console.error('web_lock_cleanup_failed',e.message);}
+});
 const bridge=createChatService(DATA_DIR,{authorized:req=>!!session(req)});
 const home = createHomeStore(DATA_DIR);
 const sessions = new Map(), attempts = new Map(), challenges = new Map();
