@@ -42,3 +42,10 @@
 - 重复 UUID 永不自动重新调用 Hermes；返回 `409 request_already_seen`；同 UUID 不同消息返回 `409 request_id_conflict`。
 - 此机制**仅限单进程、单副本、独立持久化卷**；不是分布式 exactly-once。服务器中断后应查询 Hermes 权威历史，再决定是否由用户发起新请求。
 - 账本只保存消息 SHA-256，不保存消息明文；需要安全备份并保证目录权限，30 天后过期。多实例部署前须改为事务性共享存储。
+
+## 断线恢复（开发态）
+- `GET /api/web/recover?requestId=<UUID>`：需已登录；不触发新的 Hermes 对话。
+- BFF 在发送前读取 Hermes 最新消息 ID 作为 baseline；恢复时从 Hermes 读取最新 100 条，寻找 baseline 之后**唯一**的同文用户消息及其唯一助手回复。
+- 返回 `completed`（流已完整结束）、`history_confirmed`（权威历史中可见对应回复）、`uncertain`（证据不足）或 `503 recovery_unavailable`。所有状态 `retrySafe:false`，不自动重新提交消息。
+- 仅匹配字符串类型 content；消息被压缩、分页超过 100 条、重复文本、工具复杂消息或其他歧义时保守返回 uncertain。`history_confirmed` 不等于流完整送达客户端。
+- **限制**：单进程、单副本；没有跨副本锁，尚未进行真实 Railway 断线/重启验收，不能视为生产就绪。
