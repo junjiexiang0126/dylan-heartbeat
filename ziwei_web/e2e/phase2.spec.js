@@ -1,15 +1,29 @@
 'use strict';
 const {test,expect}=require('@playwright/test');
 async function login(page){await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.getByRole('button',{name:'进入知微之家'}).click();await expect(page.locator('#home')).toBeVisible();await page.locator('[data-tab=chat]').click();await expect(page.locator('#chat')).toBeVisible();await expect.poll(()=>page.evaluate(()=>!!window.ZiweiChat&&!!document.querySelector('#chatForm')?.onsubmit)).toBe(true);}
+async function sendAndConfirm(page,message){
+ const responses=[],failures=[],events=[];
+ const onResponse=r=>{if(new URL(r.url()).pathname==='/api/chat/send')responses.push(r.status());};
+ const onFailure=r=>{if(new URL(r.url()).pathname==='/api/chat/send')failures.push(r.failure()?.errorText);};
+ page.on('response',onResponse);page.on('requestfailed',onFailure);
+ try{
+  await page.locator('#chatInput').fill(message);
+  const target=await page.locator('#chatSend').evaluate(button=>{const b=button.getBoundingClientRect(),x=b.left+b.width/2,y=b.top+b.height/2,t=document.elementFromPoint(x,y);return {hit:t?.outerHTML?.slice(0,250),isButton:t===button||button.contains(t),rect:{x:b.x,y:b.y,width:b.width,height:b.height}};});
+  await page.locator('#chatSend').evaluate(button=>{window.__clickAudit=[];button.addEventListener('pointerdown',()=>window.__clickAudit.push('pointerdown'),{once:true});button.addEventListener('click',()=>window.__clickAudit.push('click'),{once:true});});
+  await page.locator('#chatSend').click();
+  try{await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(1,{timeout:7000});}
+  catch(e){const state=await page.evaluate(()=>({events:window.__clickAudit,active:document.activeElement?.id,buttonDisabled:document.querySelector('#chatSend').disabled,formHidden:document.querySelector('#chatForm').hidden,input:document.querySelector('#chatInput').value,error:document.querySelector('#chatError').textContent,search:document.querySelector('#chatSearch').value,favorite:document.querySelector('#chatFavorites').getAttribute('aria-pressed'),messages:document.querySelector('#chatMessages').textContent.slice(0,500)}));throw Error('send audit '+JSON.stringify({message,target,responses,failures,state})+'; '+e.message);}
+ }finally{page.off('response',onResponse);page.off('requestfailed',onFailure);}
+}
 test('chat, attachments, quotations, favorites, searching, history, reload and lock on mobile',async({page,context})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await login(page);
  const video=require('../test/helpers/video_fixture.json');
  await page.locator('#chatFiles').setInputFiles([{name:'notes.txt',mimeType:'text/plain',buffer:Buffer.from('浏览器附件验收')},{name:'sticker.gif',mimeType:'image/gif',buffer:Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7','base64')},{name:'video.webm',mimeType:'video/webm',buffer:Buffer.from(video.base64,'base64')}]);await expect(page.locator('#chatAttachments')).toContainText('notes.txt');await expect(page.locator('#chatAttachments')).toContainText('video.webm');
- const message='浏览器真实界面测试 '+Date.now();await page.locator('#chatInput').fill(message);await page.locator('#chatSend').click();
+ const message='浏览器真实界面测试 '+Date.now();await sendAndConfirm(page,message);
  const first=page.locator('.message.user').filter({hasText:message});await expect(first).toHaveCount(1);const originalId=await first.getAttribute('data-id');await expect(page.locator('#chatMessages')).toContainText('协议测试回复');await expect(first.locator('a').filter({hasText:'notes.txt'})).toBeVisible();await expect(first.locator('img')).toBeVisible();await expect.poll(()=>first.locator('img').evaluate(img=>img.naturalWidth)).toBe(1);await expect.poll(()=>first.locator('video').evaluate(v=>v.readyState)).toBeGreaterThanOrEqual(1);await expect.poll(()=>first.locator('video').evaluate(v=>v.videoWidth)).toBe(32);
  await first.locator('video').evaluate(async v=>{v.muted=true;v.loop=true;await v.play()});await expect.poll(()=>first.locator('video').evaluate(v=>({ready:v.readyState,width:v.videoWidth,paused:v.paused,loop:v.loop}))).toMatchObject({width:32,paused:false,loop:true});
  await first.getByRole('button',{name:'复制',exact:true}).click();await expect(page.locator('#chatError')).toHaveText('已复制。');await first.getByRole('button',{name:'收藏',exact:true}).click();await page.locator('#chatSearchToggle').click();await expect(page.locator('#chatToolbar')).toBeVisible();await page.locator('#chatFavorites').click();await expect(page.locator('#chatFavorites')).toHaveAttribute('aria-pressed','true');await expect(first).toBeVisible();await expect(page.locator('#chatMessages .message').filter({hasText:message})).toHaveCount(1);
- await first.getByRole('button',{name:'引用',exact:true}).click();await expect(page.locator('#chatQuote')).toBeVisible();await page.locator('#chatFavorites').click();await page.locator('#chatInput').fill('带引用的第二条消息');await expect(page.locator('#chatSend')).toBeEnabled();await page.locator('#chatSend').click();await expect(page.locator('.message.user').filter({hasText:'带引用的第二条消息'})).toHaveCount(1);await expect(page.locator('.message-quote').filter({hasText:message})).toHaveCount(1);
+ await first.getByRole('button',{name:'引用',exact:true}).click();await expect(page.locator('#chatQuote')).toBeVisible();await page.locator('#chatFavorites').click();await expect(page.locator('#chatSend')).toBeEnabled();await sendAndConfirm(page,'带引用的第二条消息');await expect(page.locator('.message.user').filter({hasText:'带引用的第二条消息'})).toHaveCount(1);await expect(page.locator('.message-quote').filter({hasText:message})).toHaveCount(1);
  await page.locator('#chatSearch').fill(message);await expect(page.locator('#chatMessages .message')).toHaveCount(1);await page.locator('#chatSearch').fill('');
  await page.reload();await page.locator('[data-tab=chat]').click();await page.locator('#chatSearchToggle').click();await expect(page.locator('#chatMessages')).toContainText(message);
  await page.locator('#chatSource').selectOption('archive');await expect(page.locator('#archiveNotice')).toContainText('不代表已成为知微的长期记忆');await expect(page.locator('#chatMessages')).toContainText('历史档案验收样本');await expect(page.locator('#chatForm')).toBeHidden();await page.locator('#chatSource').selectOption('live');
