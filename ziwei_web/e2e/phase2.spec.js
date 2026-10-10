@@ -7,7 +7,7 @@ test('chat, attachments, quotations, favorites, searching, history, reload and l
  await page.locator('#chatFiles').setInputFiles([{name:'notes.txt',mimeType:'text/plain',buffer:Buffer.from('浏览器附件验收')},{name:'sticker.gif',mimeType:'image/gif',buffer:Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7','base64')},{name:'video.webm',mimeType:'video/webm',buffer:Buffer.from(video.base64,'base64')}]);await expect(page.locator('#chatAttachments')).toContainText('notes.txt');await expect(page.locator('#chatAttachments')).toContainText('video.webm');
  const message='浏览器真实界面测试 '+Date.now();await page.locator('#chatInput').fill(message);await page.locator('#chatSend').click();
  const first=page.locator('.message.user').filter({hasText:message});await expect(first).toHaveCount(1);const originalId=await first.getAttribute('data-id');await expect(page.locator('#chatMessages')).toContainText('协议测试回复');await expect(first.locator('a').filter({hasText:'notes.txt'})).toBeVisible();await expect(first.locator('img')).toBeVisible();await expect.poll(()=>first.locator('img').evaluate(img=>img.naturalWidth)).toBe(1);await expect.poll(()=>first.locator('video').evaluate(v=>v.readyState)).toBeGreaterThanOrEqual(1);await expect.poll(()=>first.locator('video').evaluate(v=>v.videoWidth)).toBe(32);
- await first.locator('video').evaluate(v=>v.play());await expect.poll(()=>first.locator('video').evaluate(v=>v.currentTime)).toBeGreaterThan(0);
+ await first.locator('video').evaluate(async v=>{v.muted=true;await v.play()});await expect.poll(()=>first.locator('video').evaluate(v=>v.currentTime),{timeout:12000}).toBeGreaterThan(0);
  await first.getByRole('button',{name:'复制',exact:true}).click();await expect(page.locator('#chatError')).toHaveText('已复制。');await first.getByRole('button',{name:'收藏',exact:true}).click();await page.locator('#chatFavorites').click();await expect(page.locator('#chatMessages .message')).toHaveCount(1);
  await first.getByRole('button',{name:'引用',exact:true}).click();await expect(page.locator('#chatQuote')).toBeVisible();await page.locator('#chatFavorites').click();await page.locator('#chatInput').fill('带引用的第二条消息');await page.locator('#chatSend').click();await expect(page.locator('.message-quote').filter({hasText:message})).toHaveCount(1);
  await page.locator('#chatSearch').fill(message);await expect(page.locator('#chatMessages .message')).toHaveCount(1);await page.locator('#chatSearch').fill('');
@@ -99,13 +99,13 @@ test('all five panels clear the floating nav on compact, portrait and landscape 
 
 test('glass blur changes actual pixels in Chromium and WebKit',async({page})=>{
  await page.setViewportSize({width:640,height:360});
- await page.goto('/');
- await page.addStyleTag({content:`
+ await page.route('**/style.css',async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text())+`
   body{background:linear-gradient(to right,#000 0 50%,#fff 50% 100%)!important}
   .ambient,.shell{display:none!important}
   #glass-pixel-fixture{position:fixed!important;left:220px;top:110px;width:200px;height:100px;border-radius:0!important}
   #glass-pixel-fixture::before{border-radius:0!important}
- `});
+ `})});
+ await page.goto('/');
  await page.evaluate(()=>{const el=document.createElement('div');el.id='glass-pixel-fixture';el.className='glass';document.body.append(el)});
  const screenshot=await page.screenshot();
  const samples=await page.evaluate(async base64=>{
@@ -157,8 +157,8 @@ test('dark glass secondary text remains readable on all background themes',async
 });
 
 test('glass fallback remains opaque when blur is disabled',async({page})=>{
+ await page.route('**/style.css',async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text())+'\\n.glass::before{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--bg)!important}'})});
  await page.goto('/');
- await page.addStyleTag({content:'.glass::before{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--bg)!important}'});
  const info=await page.locator('#login').evaluate(el=>({
   background:getComputedStyle(el,'::before').backgroundColor,
   blur:getComputedStyle(el,'::before').backdropFilter||getComputedStyle(el,'::before').webkitBackdropFilter
