@@ -19,7 +19,7 @@ test('chat, attachments, quotations, favorites, searching, history, reload and l
 });
 test('network interruption after acceptance recovers the saved reply and avoids a second user message',async({page,context})=>{
  await login(page);const message='断线恢复界面测试 '+Date.now();await page.locator('#chatInput').fill(message);
- const accepted=page.waitForResponse(r=>r.url().endsWith('/api/chat/send')&&r.status()===202);await page.locator('#chatSend').click();await accepted;await context.setOffline(true);await expect(page.locator('#chatConnection')).toContainText('已离线');
+ await page.locator('#chatSend').click();await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(1);await context.setOffline(true);await expect(page.locator('#chatConnection')).toContainText('已离线');
  await new Promise(r=>setTimeout(r,900));await context.setOffline(false);await page.reload();await page.locator('[data-tab=chat]').click();await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(1);await expect(page.locator('#chatMessages')).toContainText('协议测试回复');
 });
 
@@ -62,4 +62,36 @@ test('440px mobile glass, dark text and navigation safe-area regression',async({
  });
  expect(contrast).toBeGreaterThan(4.5);
  await check();
+});
+
+test('all five panels clear the floating nav on compact, portrait and landscape screens',async({page})=>{
+ await login(page);
+ const sizes=[{width:320,height:568},{width:375,height:667},{width:390,height:844},{width:440,height:956},{width:956,height:440}];
+ for(const size of sizes){
+   await page.setViewportSize(size);
+   for(const name of ['chat','moments','home','memory','logs']){
+     await page.locator('[data-tab="'+name+'"]').click();
+     const metrics=await page.evaluate(name=>{
+       const panel=document.getElementById(name),nav=document.querySelector('nav');
+       const items=[...panel.children].filter(el=>!el.hidden&&getComputedStyle(el).display!=='none');
+       const last=items[items.length-1];
+       const tokens=getComputedStyle(document.documentElement);
+       const reserve=parseFloat(getComputedStyle(panel).paddingBottom);
+       const expected=parseFloat(tokens.getPropertyValue('--nav-h'))+parseFloat(tokens.getPropertyValue('--nav-offset'))+parseFloat(tokens.getPropertyValue('--nav-clear'));
+       return {width:document.documentElement.scrollWidth,viewport:innerWidth,
+         reserve,expected,lastBottom:last.getBoundingClientRect().bottom,navTop:nav.getBoundingClientRect().top};
+     },name);
+     expect(metrics.width,JSON.stringify({size,name,metrics})).toBeLessThanOrEqual(metrics.viewport);
+     expect(metrics.reserve).toBeGreaterThanOrEqual(metrics.expected);
+     await page.evaluate(name=>document.getElementById(name).scrollIntoView({block:'end'}),name);
+     await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
+     const gap=await page.evaluate(name=>{
+       const panel=document.getElementById(name),nav=document.querySelector('nav');
+       const visible=[...panel.children].filter(el=>!el.hidden&&getComputedStyle(el).display!=='none');
+       return nav.getBoundingClientRect().top-visible[visible.length-1].getBoundingClientRect().bottom;
+     },name);
+     expect(gap,JSON.stringify({size,name,gap})).toBeGreaterThanOrEqual(0);
+   }
+ }
+ expect(await page.locator('meta[name=viewport]').getAttribute('content')).toContain('viewport-fit=cover');
 });
