@@ -1,6 +1,9 @@
 'use strict';
 // Restricted, opt-in bridge. Never exposes an arbitrary upstream path or an API key.
 const {SSEParser}=require('./sse_parser');
+const path=require('node:path');
+const {RequestLedger}=require('./request_ledger');
+const ledger=new RequestLedger(process.env.ZIWEI_WEB_DATA_DIR||path.join(__dirname,'.data'));
 const SESSION_KEY='agent:main:web:yu';
 const enabled=process.env.ZIWEI_BRIDGE_ENABLED==='true';
 const base=process.env.ZIWEI_HERMES_URL||'';
@@ -22,13 +25,16 @@ async function ensureSession(){
 function pathForHistory(url){const n=Number(url.searchParams.get('limit')||30),offset=Number(url.searchParams.get('offset')||0);if(!Number.isSafeInteger(n)||n<1||n>100||!Number.isSafeInteger(offset)||offset<0||offset>100000)return null;return '/api/sessions/'+encodeURIComponent(sessionId)+'/messages?order=latest&limit='+n+'&offset='+offset}
 async function proxy(req,res,pathname,url){
  if(!ready())return err(res,503,'hermes_bridge_not_enabled');
- let target,method='GET',body,stream=false;
+ let target,method='GET',body,stream=false,requestId=null,requestComplete=false;
  if(pathname==='/api/web/history'&&req.method==='GET'){target=pathForHistory(url);if(!target)return err(res,400,'invalid_pagination')}
  else if(pathname==='/api/web/stream'&&req.method==='POST'){
    method='POST';stream=true;let input='';try{for await(const part of req){input+=part;if(Buffer.byteLength(input)>8192)return err(res,413,'request_too_large')}}catch{return err(res,400,'invalid_body')}
    let obj;try{obj=JSON.parse(input)}catch{return err(res,400,'invalid_json')}
-   if(typeof obj.message!=='string'||!obj.message.trim()||obj.message.length>4000||Object.keys(obj).some(k=>k!=='message'))return err(res,400,'invalid_message');
+   if(typeof obj.message!=='string'||!obj.message.trim()||obj.message.length>4000||Object.keys(obj).some(k=>k!=='message'&&k!=='requestId'))return err(res,400,'invalid_message');
+   if(typeof obj.requestId!=='string'||!/^[a-f0-9-]{36}$/.test(obj.requestId))return err(res,400,'request_id_required');
    if(streamBusy)return err(res,409,'chat_in_progress');
+   const started=ledger.begin(obj.requestId,obj.message);if(!started.ok)return err(res,409,started.error);
+   requestId=obj.requestId;
    streamBusy=true;
    target='/api/sessions/'+encodeURIComponent(sessionId)+'/chat/stream';
    body=JSON.stringify({message:obj.message});
@@ -51,7 +57,8 @@ async function proxy(req,res,pathname,url){
          if(!res.write(Buffer.from(chunk)))await new Promise(resolve=>res.once('drain',resolve));
        }
        parser.end();
-       if(!completed||!assistantCompleted){
+       requestComplete=completed&&assistantCompleted;
+       if(!requestComplete){
          res.write('event: bridge.incomplete\ndata: {"error":"stream_incomplete","retrySafe":false}\n\n');
        }
        res.end();
@@ -65,6 +72,6 @@ async function proxy(req,res,pathname,url){
      res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(obj));
    }
  }catch{if(!res.headersSent)err(res,502,'upstream_unavailable');else res.destroy()}
- finally{clearTimeout(timer);if(stream)streamBusy=false}
+ finally{clearTimeout(timer);if(stream){try{ledger.finish(requestId,requestComplete)}finally{streamBusy=false}}}
 }
 module.exports={proxy,status,pathForHistory};
