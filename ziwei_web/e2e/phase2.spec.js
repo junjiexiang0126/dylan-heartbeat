@@ -97,7 +97,11 @@ test('all five panels clear the floating nav on compact, portrait and landscape 
 });
 
 
-test('glass blur changes real pixels relative to a no-blur control in Chromium and WebKit',async({page})=>{
+test('glass blur changes real pixels relative to a no-blur control in Chromium',async({page,browserName})=>{
+ // Playwright WebKit on Linux reports backdrop-filter support but does not render blur in screenshots,
+ // including on a standalone page without application CSS (isolated probe #91).
+ // Keep WebKit layout, computed-style, contrast and no-blur fallback checks in the other tests.
+ test.skip(browserName === 'webkit', 'Linux Playwright WebKit backdrop-filter pixel rendering is unreliable; verify visually on real Safari.');
  await page.setViewportSize({width:640,height:360});
  await page.goto('/');
  await page.evaluate(()=>{
