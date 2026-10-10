@@ -18,6 +18,7 @@ test('bridge only permits authenticated, CSRF-protected, pinned session paths',a
  assert.equal((await fetch(origin+'/api/web/history?order=latest&limit=999',{headers:{Cookie:cookie}})).status,400);
  assert.equal((await fetch(origin+'/api/admin/jobs',{headers:{Cookie:cookie}})).status,404);
  const history=await fetch(origin+'/api/web/history?limit=2',{headers:{Cookie:cookie}});assert.equal(history.status,200);assert.equal((await history.json()).pagination.order,'latest');
- const stream=await fetch(origin+'/api/web/stream',{method:'POST',headers,body:JSON.stringify({message:'test'})});assert.equal(stream.status,200);assert.match(await stream.text(),/event: done/);
+ const stream=await fetch(origin+'/api/web/stream',{method:'POST',headers,body:JSON.stringify({message:'test',requestId:'11111111-1111-4111-8111-111111111111'})});assert.equal(stream.status,200);assert.match(await stream.text(),/event: done/);
+ const duplicate=await fetch(origin+'/api/web/stream',{method:'POST',headers,body:JSON.stringify({message:'test',requestId:'11111111-1111-4111-8111-111111111111'})});assert.equal(duplicate.status,409);assert.equal((await duplicate.json()).error,'request_already_seen');
  assert.equal(seen.length,3);assert.equal(seen[0].url,'/api/sessions');assert.equal(seen[1].url,'/api/sessions/isolated-test-session/messages?order=latest&limit=2&offset=0');assert.equal(seen[2].url,'/api/sessions/isolated-test-session/chat/stream');assert.equal(seen[2].auth,'Bearer mock-key-not-a-real-secret');assert.equal(seen[2].session,'agent:main:web:yu');
 });
