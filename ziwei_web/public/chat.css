@@ -1,3 +1,24 @@
 .chat-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.chat-toolbar{display:flex;gap:8px;padding:12px;align-items:center;margin-bottom:12px}.chat-toolbar input{min-width:0;flex:1;margin:0}.chat-toolbar select{width:auto;max-width:130px;margin:0}.chat-toolbar button{white-space:nowrap}.chat-messages{display:flex;flex-direction:column;gap:18px;margin:24px 0}.message{max-width:88%;align-self:flex-start;min-width:0}.message.user{align-self:flex-end}.message.archive{max-width:100%;align-self:stretch}.message-label{font-size:11px;color:var(--muted);margin:0 8px 6px}.message-bubble{padding:16px 18px;border-radius:22px 22px 22px 6px;overflow-wrap:anywhere}.message.user .message-bubble{border-radius:22px 22px 6px 22px;background:color-mix(in srgb,var(--accent) 16%,var(--glass))}.message-content{white-space:pre-wrap;line-height:1.75;margin:0}.message-actions{display:flex;gap:12px;padding:4px 8px;flex-wrap:wrap}.message-actions button{font-size:11px;padding:4px 0}.message-favorite{color:var(--accent)}.message-quote{font-size:12px;border-left:2px solid var(--accent);padding:6px 10px;margin:0 0 12px;color:var(--muted);white-space:pre-wrap}.message-media{display:block;max-width:100%;max-height:320px;border-radius:14px;margin:12px 0}.file-link{display:block;margin:8px 0;overflow-wrap:anywhere;color:var(--accent);font-size:13px}.chat-compose{padding:16px;margin:20px 0}.chat-compose textarea{width:100%;background:transparent;border:0;resize:vertical;min-height:72px;max-height:260px;font:inherit;color:inherit;line-height:1.6;padding:6px;outline-offset:3px}.compose-actions{display:flex;align-items:center;gap:8px;justify-content:space-between}.compose-actions small{font-size:10px;color:var(--muted)}.compose-actions .primary{width:auto;white-space:nowrap;padding:10px 16px;margin:0}.attachment-button{font-size:13px;cursor:pointer;white-space:nowrap;color:var(--accent)}#chatFiles{position:absolute;width:1px;height:1px;opacity:0}.chat-compose .hint{font-size:10px;line-height:1.6;margin-bottom:0}.chat-quote{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:8px;border-left:2px solid var(--accent);margin-bottom:8px;overflow-wrap:anywhere}.attachment-chips{display:flex;gap:6px;flex-wrap:wrap}.attachment-chip{font-size:11px;padding:6px 10px;border-radius:12px;background:color-mix(in srgb,var(--accent) 12%,transparent);max-width:100%;overflow-wrap:anywhere}.attachment-chip button{border:0;background:none;color:inherit;cursor:pointer}.chat-empty{padding:60px 12px;text-align:center;color:var(--muted);font-size:14px}.chat-progress{padding:16px;margin:12px 0;overflow-wrap:anywhere}.chat-progress p{white-space:pre-wrap;line-height:1.75}.chat-progress small{color:var(--muted)}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}@media(max-width:440px){.chat-toolbar{flex-wrap:wrap}.chat-toolbar input{flex-basis:100%}.compose-actions small{display:none}.message{max-width:94%}}[data-theme=dark] .message.user .message-bubble{background:color-mix(in srgb,var(--accent) 16%,#25202a)}
 
 .message-label{overflow-wrap:anywhere}.chat-toolbar button[aria-pressed=true]{color:var(--accent);font-weight:600}
+
+/* Compact Ziwei chat header and composer */
+.chat-heading{display:grid;grid-template-columns:88px minmax(0,1fr) 44px;align-items:center;gap:6px}
+.chat-header-tools{display:flex;gap:4px}
+.chat-title{text-align:center;min-width:0}
+.chat-name{display:flex;align-items:center;justify-content:center;gap:7px}
+.chat-name h1{font-size:22px;margin:0;white-space:nowrap}
+.pulse-mark{font-size:14px;color:#cb809c;white-space:nowrap}
+.chat-icon-button{border:0;background:rgba(255,235,243,.78);border-radius:50%;width:40px;height:40px;display:grid;place-items:center;color:#a55d7d;font-size:24px;cursor:pointer;padding:0}
+.chat-title .status-tag{font-size:11px;margin-top:3px;display:inline-block}
+.chat-toolbar[hidden]{display:none!important}
+.chat-toolbar{flex-wrap:wrap}
+.chat-toolbar input{flex-basis:100%}
+.chat-compose{padding:9px 12px;margin:10px 0;border-radius:24px}
+.chat-compose textarea{min-height:39px;max-height:120px;resize:none;line-height:1.4;padding:8px 6px}
+.compose-actions{gap:8px}
+.compose-actions .primary{padding:8px 14px}
+.attachment-help{font-size:10px;color:var(--muted);margin-top:4px}
+.attachment-help summary{cursor:pointer}
+.attachment-help:not([open]){opacity:.7}
+@media(max-width:440px){.chat-heading{grid-template-columns:82px minmax(0,1fr) 40px}.chat-icon-button{width:37px;height:37px}.pulse-mark{font-size:12px}.chat-name{gap:4px}}

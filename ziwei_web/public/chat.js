@@ -66,7 +66,11 @@ window.ZiweiChat=(()=>{
   catch(e){if([400,403,404,413].includes(e.status)||['queue_full','hermes_not_configured'].includes(e.code)){pending=null;$('#chatError').textContent=e.message;}else $('#chatError').textContent=e.message+' 发送状态尚未确认，请用同一编号核对；确认前请保持页面打开。';}
   finally{busy=false;controls();}
  }
- $('#chatForm').onsubmit=e=>{e.preventDefault();if(busy||pending)return;const message=$('#chatInput').value;if(!message.trim()&&!attachments.length)return;pending={requestId:crypto.randomUUID(),message,attachments:attachments.map(a=>a.id),...(quote?{replyTo:quote.id}:{})};void deliver();};
+ function submitMessage(){if(busy||pending)return;const message=$('#chatInput').value;if(!message.trim()&&!attachments.length)return;pending={requestId:crypto.randomUUID(),message,attachments:attachments.map(a=>a.id),...(quote?{replyTo:quote.id}:{})};void deliver();}
+ $('#chatForm').onsubmit=e=>{e.preventDefault();submitMessage();};
+ // Handle the send control directly as well: mobile WebKit may not dispatch a
+ // form submit when the compact composer is rearranged during keyboard focus.
+ $('#chatSend').onclick=e=>{e.preventDefault();submitMessage();};
  $('#chatRecover').onclick=()=>deliver();
  $('#chatFiles').onchange=async e=>{
   const epoch=version,selected=[...e.target.files];e.target.value='';if(selected.length+attachments.length>6){$('#chatError').textContent='每条消息最多 6 个附件。';return;}
@@ -78,6 +82,20 @@ window.ZiweiChat=(()=>{
  $('#chatSource').onchange=()=>{source=$('#chatSource').value;before=null;trash=false;$('#chatTrash').setAttribute('aria-pressed','false');controls();load().catch(e=>$('#chatError').textContent=e.message);};
  $('#chatTrash').onclick=()=>{trash=!trash;favorite=false;source='live';$('#chatSource').value=source;$('#chatFavorites').setAttribute('aria-pressed','false');$('#chatTrash').setAttribute('aria-pressed',String(trash));controls();load().catch(()=>{});};
  $('#chatFavorites').onclick=()=>{favorite=!favorite;$('#chatFavorites').setAttribute('aria-pressed',String(favorite));load().catch(()=>{});};
+ const searchPanel=$('#chatToolbar');
+ function toggleSearch(force){
+  const open=typeof force==='boolean'?force:searchPanel.hidden;
+  searchPanel.hidden=!open;
+  $('#chatSearchToggle').setAttribute('aria-expanded',String(open));
+  $('#chatMore').setAttribute('aria-expanded',String(open));
+  if(open)$('#chatSearch').focus();
+ }
+ $('#chatSearchToggle').onclick=()=>toggleSearch();
+ $('#chatMore').onclick=()=>toggleSearch();
+ $('#chatCall').onclick=()=>window.alert('语音通话正在开发中，尚未接入实时语音服务。');
+ $('#chatInput').addEventListener('input',()=>{
+  const el=$('#chatInput');el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';
+ });
  $('#chatSearch').oninput=()=>scheduleLoad();$('#chatOlder').onclick=()=>load(true).catch(()=>{});
  window.addEventListener('online',()=>{if(token){void connection().catch(()=>{});if(pending)void deliver();}});window.addEventListener('offline',()=>{$('#chatConnection').textContent='已离线';});
  function stop(){version++;token=null;events?.close();events=null;clearTimeout(reloadTimer);attachments=[];quote=null;pending=null;busy=false;active.clear();buffers.clear();$('#chatMessages').replaceChildren();$('#chatInput').value='';$('#chatSearch').value='';$('#chatQuote').hidden=true;$('#chatError').textContent='';$('#chatStreaming').textContent='';$('#chatProgress').hidden=true;chips();controls();}
