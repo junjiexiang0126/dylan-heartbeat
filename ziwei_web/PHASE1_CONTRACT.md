@@ -20,3 +20,11 @@
 - 登录失败计数目前在内存，重启会重置；没有分布式限速或边缘 WAF。
 - 仅凭单密码不应允许高风险管理操作。
 - 暂未部署、未跑测试、未进行真实 Hermes SSE 验收。请在隔离环境执行 `npm test`。
+
+## 隔离 Bridge v0（2026-10-10）
+- `ZIWEI_BRIDGE_ENABLED` 默认关闭；需要显式设为 `true`，并配置 `ZIWEI_HERMES_URL`、`ZIWEI_HERMES_API_KEY`、`ZIWEI_HERMES_WEB_SESSION_ID`。默认仅接受 HTTPS upstream。
+- 白名单：`GET /api/web/history?limit=1..100&offset=0..` 固定转到 `/api/sessions/<固定会话ID>/messages?order=latest`；`POST /api/web/stream` 固定转到 `/api/sessions/<固定会话ID>/chat/stream`，只接受 `{"message":"..."}`。
+- 浏览器不能指定上游 URL、session id、API key、工具调用或额外请求字段。固定 `X-Hermes-Session-Key: agent:main:web:yu`。聊天要求有效 Cookie、同源 Origin 和 CSRF。
+- 本轮仅按知微阶段 0 **源码报告**准备 POST chat/stream 请求体，未取得生产原始帧或实际 POST 结构的端到端证据。即使 mock 测试通过，也不能视为真实 Hermes 兼容验收。
+- mock 测试运行在本地假 Hermes，不调用 DeepSeek，不读取生产记忆。
+- 当前单进程 session 和限速实现仍不适合无持久化卷、多副本生产环境；禁止直接作为生产登录系统上线。
