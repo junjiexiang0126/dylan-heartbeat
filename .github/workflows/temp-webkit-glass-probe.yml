@@ -1,0 +1,26 @@
+name: Temporary WebKit Glass Probe
+on:
+  push:
+    branches:
+      - diagnostic/webkit-glass-probe-20261011
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ziwei_web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ziwei_web/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - name: Six-variant WebKit probe
+        env:
+          TMPDIR: /tmp
+        run: npx playwright test e2e/_probe.spec.js --project=webkit --reporter=list
