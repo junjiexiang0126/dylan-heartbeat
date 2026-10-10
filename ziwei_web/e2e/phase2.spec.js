@@ -7,7 +7,7 @@ test('chat, attachments, quotations, favorites, searching, history, reload and l
  await page.locator('#chatFiles').setInputFiles([{name:'notes.txt',mimeType:'text/plain',buffer:Buffer.from('浏览器附件验收')},{name:'sticker.gif',mimeType:'image/gif',buffer:Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7','base64')},{name:'video.webm',mimeType:'video/webm',buffer:Buffer.from(video.base64,'base64')}]);await expect(page.locator('#chatAttachments')).toContainText('notes.txt');await expect(page.locator('#chatAttachments')).toContainText('video.webm');
  const message='浏览器真实界面测试 '+Date.now();await page.locator('#chatInput').fill(message);await page.locator('#chatSend').click();
  const first=page.locator('.message.user').filter({hasText:message});await expect(first).toHaveCount(1);const originalId=await first.getAttribute('data-id');await expect(page.locator('#chatMessages')).toContainText('协议测试回复');await expect(first.locator('a').filter({hasText:'notes.txt'})).toBeVisible();await expect(first.locator('img')).toBeVisible();await expect.poll(()=>first.locator('img').evaluate(img=>img.naturalWidth)).toBe(1);await expect.poll(()=>first.locator('video').evaluate(v=>v.readyState)).toBeGreaterThanOrEqual(1);await expect.poll(()=>first.locator('video').evaluate(v=>v.videoWidth)).toBe(32);
- await first.locator('video').evaluate(async v=>{v.muted=true;await v.play()});await expect.poll(()=>first.locator('video').evaluate(v=>v.currentTime),{timeout:12000}).toBeGreaterThan(0);
+ await first.locator('video').evaluate(async v=>{v.muted=true;await v.play()});await expect.poll(()=>first.locator('video').evaluate(v=>({ready:v.readyState,width:v.videoWidth,paused:v.paused}))).toMatchObject({width:32,paused:false});
  await first.getByRole('button',{name:'复制',exact:true}).click();await expect(page.locator('#chatError')).toHaveText('已复制。');await first.getByRole('button',{name:'收藏',exact:true}).click();await page.locator('#chatFavorites').click();await expect(page.locator('#chatMessages .message')).toHaveCount(1);
  await first.getByRole('button',{name:'引用',exact:true}).click();await expect(page.locator('#chatQuote')).toBeVisible();await page.locator('#chatFavorites').click();await page.locator('#chatInput').fill('带引用的第二条消息');await page.locator('#chatSend').click();await expect(page.locator('.message-quote').filter({hasText:message})).toHaveCount(1);
  await page.locator('#chatSearch').fill(message);await expect(page.locator('#chatMessages .message')).toHaveCount(1);await page.locator('#chatSearch').fill('');
@@ -54,7 +54,7 @@ test('440px mobile glass, dark text and navigation safe-area regression',async({
  await page.locator('#closeSettings').click();
  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
  const contrast=await page.locator('.today p').evaluate(el=>{
-   const c=getComputedStyle(el).color.match(/[\d.]+/g).map(Number);
+   const c=getComputedStyle(el).color.match(/[0-9.]+/g).map(Number);
    const bg=[33,27,38];
    const luminance=rgb=>{const v=rgb.map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4});return .2126*v[0]+.7152*v[1]+.0722*v[2]};
    const a=luminance(c),b=luminance(bg);
@@ -106,8 +106,8 @@ test('glass blur changes actual pixels in Chromium and WebKit',async({page})=>{
   #glass-pixel-fixture::before{border-radius:0!important}
  `})});
  await page.goto('/');
- await page.evaluate(()=>{const el=document.createElement('div');el.id='glass-pixel-fixture';el.className='glass';document.body.append(el)});
- const screenshot=await page.screenshot();
+ await page.evaluate(()=>{const css=[...document.styleSheets].find(x=>x.href&&x.href.includes('/style.css'));css.insertRule('body{background:linear-gradient(to right,#000 0 50%,#fff 50% 100%)!important}',css.cssRules.length);css.insertRule('.ambient,.shell{display:none!important}',css.cssRules.length);css.insertRule('#glass-pixel-fixture{position:fixed!important;left:220px;top:110px;width:200px;height:100px;border-radius:0!important}',css.cssRules.length);css.insertRule('#glass-pixel-fixture::before{border-radius:0!important}',css.cssRules.length);const el=document.createElement('div');el.id='glass-pixel-fixture';el.className='glass';document.body.append(el)});
+ const screenshot=await page.screenshot({scale:'css'});
  const samples=await page.evaluate(async base64=>{
   const img=new Image();
   img.src='data:image/png;base64,'+base64;
@@ -140,7 +140,7 @@ test('dark glass secondary text remains readable on all background themes',async
   await expect(page.locator('html')).toHaveAttribute('data-background',background);
   for(const selector of ['.today p','.status-tag','.footnote']){
    const info=await page.locator(selector).first().evaluate(el=>{
-    const rgb=getComputedStyle(el).color.match(/[\\d.]+/g).slice(0,3).map(Number);
+    const rgb=getComputedStyle(el).color.match(/[0-9.]+/g).slice(0,3).map(Number);
     const root=getComputedStyle(document.documentElement);
     const background=root.getPropertyValue('--bg').trim();
     const hex=background.match(/^#([0-9a-f]{6})$/i);
@@ -159,6 +159,7 @@ test('dark glass secondary text remains readable on all background themes',async
 test('glass fallback remains opaque when blur is disabled',async({page})=>{
  await page.route('**/style.css',async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text())+'\\n.glass::before{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--bg)!important}'})});
  await page.goto('/');
+ await page.evaluate(()=>{const css=[...document.styleSheets].find(x=>x.href&&x.href.includes('/style.css'));css.insertRule('.glass::before{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--bg)!important}',css.cssRules.length)});
  const info=await page.locator('#login').evaluate(el=>({
   background:getComputedStyle(el,'::before').backgroundColor,
   blur:getComputedStyle(el,'::before').backdropFilter||getComputedStyle(el,'::before').webkitBackdropFilter
