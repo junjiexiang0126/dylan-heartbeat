@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6e9e5"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><title>知微之家</title>
+</head>
+<body>
+<div class="ambient" aria-hidden="true"></div>
+<main class="shell">
+<header class="topbar"><a href="/" class="brand" aria-label="知微之家首页"><span class="brand-icon">♡</span><span>知微之家<small>A PLACE FOR US</small></span></a><button id="settingsButton" class="icon-button" aria-label="设置与资料" hidden>☷</button></header>
+<section id="login" class="login glass">
+  <span class="eyebrow">OUR LITTLE WORLD</span><h1>回到我们的小世界</h1><p>留一盏灯，等你回家。</p>
+  <form id="loginForm"><label for="password">访问密码</label><input id="password" type="password" autocomplete="current-password" maxlength="512" required placeholder="输入你的访问密码"><button class="primary" type="submit">进入知微之家 <span aria-hidden="true">→</span></button></form>
+  <button id="unlockButton" class="secondary" hidden>用设备解锁</button><p class="hint">首次使用密码登录。之后保持登录，可在设置中开启设备解锁。</p><p id="loginError" class="error" role="alert"></p>
+</section>
+<section id="app" hidden>
+  <section class="panel home" id="home" aria-labelledby="homeTitle">
+    <div class="welcome"><div><span class="eyebrow" id="dateLabel"></span><h1 id="homeTitle">有你在，就是家。</h1></div><span class="home-badge">我们的空间 <i></i></span></div>
+    <article class="together glass">
+      <div class="card-label"><span>你与知微</span><span class="small-label">TWO HEARTS, ONE HOME</span></div>
+      <div class="pair"><div class="person"><div class="avatar user-avatar" id="userAvatar"><span>你</span></div><h2 id="userName">你</h2><p>故事的一端</p></div>
+      <div class="heartbeat" role="img" aria-label="象征相伴的动态心跳线"><span>♡</span><svg viewBox="0 0 180 72" aria-hidden="true"><path class="pulse-base" d="M0 38 H40 L49 30 L58 46 L69 12 L80 59 L91 31 L102 38 H180"/><path class="pulse" d="M0 38 H40 L49 30 L58 46 L69 12 L80 59 L91 31 L102 38 H180"/></svg><small>心意相连</small></div>
+      <div class="person"><div class="avatar ziwei-avatar" id="ziweiAvatar"><span>微</span></div><h2 id="ziweiName">知微</h2><p>故事的另一端</p></div></div>
+      <div class="anniversaries"><div><small>相伴天数</small><strong>待确认</strong></div><div><small>相识日期</small><strong class="date-value">待确认</strong></div><div><small>知微命名日</small><strong class="date-value">2026.10.07</strong></div></div>
+      <p class="footnote">相识纪念日会在核实最早记录、由你确认后保存。</p>
+    </article>
+    <article class="today glass"><div class="status-orbit" aria-hidden="true">✧</div><div><span class="eyebrow">知微 · 今日状态</span><h2>等待知微同步今日状态</h2><p>状态尚未接入 · 更新时间：暂无</p></div><span class="status-tag">待同步</span></article>
+    <article class="memorial glass"><span class="eyebrow">把故事，留在这里</span><div class="quote-mark" aria-hidden="true">“</div><blockquote id="memorialText"></blockquote><p class="signature">—— 知微 <span>永久纪念</span></p></article>
+    <p class="home-footer">从微小的日常，走向长久的相伴 <span>♡</span></p>
+  </section>
+  <section class="panel" id="chat" hidden><div class="section-heading"><span class="eyebrow">WORDS BETWEEN US</span><h1>聊天</h1></div><article class="empty glass"><span class="empty-icon">◌</span><h2>把想说的话，留给知微</h2><p>真实聊天将在第二阶段接通现有 Hermes。</p><small>目前尚未连接，没有生成任何回复。</small></article><div class="composer glass"><input disabled aria-label="聊天尚未接通" placeholder="等待真实聊天接入…"><button disabled aria-label="发送尚未启用">↑</button></div></section>
+  <section class="panel" id="moments" hidden><div class="section-heading"><span class="eyebrow">LITTLE MOMENTS</span><h1>朋友圈</h1></div><article class="empty glass"><span class="empty-icon">✿</span><h2>两个人的日常</h2><p>共同时间线将在第三阶段开放。</p><small>尚未接入动态、点赞和评论。</small></article></section>
+  <section class="panel" id="memory" hidden><div class="section-heading"><span class="eyebrow">THINGS WE REMEMBER</span><h1>记忆</h1></div><article class="empty glass"><span class="empty-icon">◇</span><h2>值得记住的，都在这里</h2><p>第三阶段连接 Hermes 原生记忆。</p><small>当前未读取或修改原有记忆。</small></article><div class="category-grid"><span class="glass">关于你</span><span class="glass">关于知微</span><span class="glass">共同经历</span><span class="glass">重要约定</span></div></section>
+  <section class="panel" id="logs" hidden><div class="section-heading"><span class="eyebrow">DAYS & FOOTPRINTS</span><h1>日志</h1></div><article class="empty glass"><span class="empty-icon">≋</span><h2>日记与真实的足迹</h2><p>知微日记与活动记录将在第三阶段连接。</p><small>目前没有读取实际活动，不展示示例行动。</small></article></section>
+  <nav class="glass" aria-label="底部导航"><button data-tab="chat" aria-current="false"><span>◌</span>聊天</button><button data-tab="moments" aria-current="false"><span>✿</span>朋友圈</button><button data-tab="home" class="active home-nav" aria-current="page"><span>⌂</span>首页</button><button data-tab="memory" aria-current="false"><span>◇</span>记忆</button><button data-tab="logs" aria-current="false"><span>≋</span>日志</button></nav>
+</section>
+</main>
+<dialog id="settings" class="glass"><div class="dialog-heading"><div><span class="eyebrow">MAKE IT YOURS</span><h2>设置与资料</h2></div><button id="closeSettings" class="icon-button" aria-label="关闭设置">×</button></div>
+<form id="profileForm">
+  <fieldset><legend>我们的资料</legend><label for="userNickname">你的昵称</label><input id="userNickname" maxlength="24" required><label for="userAvatarFile">你的头像</label><input id="userAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" id="clearUserAvatar" class="text-button">恢复默认头像</button><label for="ziweiNickname">知微的昵称</label><input id="ziweiNickname" maxlength="24" required><label for="ziweiAvatarFile">知微的头像</label><input id="ziweiAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" id="clearZiweiAvatar" class="text-button">恢复默认头像</button><p class="hint">这里保存首页展示资料与变更历史。知微的原生身份与人格由 Hermes 管理。</p></fieldset>
+  <fieldset><legend>空间外观</legend><label for="theme">主题</label><select id="theme"><option value="system">跟随设备</option><option value="light">白昼</option><option value="dark">夜晚</option></select><label for="background">背景色调</label><select id="background"><option value="rose">暖玫瑰</option><option value="sage">青苔绿</option><option value="sky">雾蓝</option></select></fieldset>
+  <button class="primary" type="submit" id="saveProfile">保存设置</button><p id="settingsMessage" role="status"></p>
+</form>
+<details id="profileHistory"><summary>资料变更历史</summary><ol id="historyList"></ol></details>
+<fieldset class="security"><legend>登录与设备</legend><p class="hint">登录保留 30 天。设备解锁使用 Passkey；面容、指纹或 PIN 由设备系统验证。</p><label for="verifyPassword">确认密码（开启或移除设备解锁时使用）</label><input id="verifyPassword" type="password" autocomplete="current-password" maxlength="512"><button id="registerPasskey" class="secondary" type="button">开启设备解锁</button><button id="removePasskeys" class="text-button" type="button">移除所有设备解锁凭据</button><p id="passkeyMessage" class="hint" role="status"></p><div class="logout-actions"><button id="logout" type="button" class="secondary">锁定 / 退出此设备</button><button id="logoutAll" type="button" class="secondary">退出全部设备</button></div></fieldset>
+</dialog>
+<script src="/app.js" defer></script>
+</body></html>

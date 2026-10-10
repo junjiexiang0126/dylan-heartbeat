@@ -1,0 +1,26 @@
+name: Ziwei Web isolated tests
+on:
+  push:
+    branches:
+      - feature/ziwei-pwa-phase1-foundation
+  pull_request:
+    paths:
+      - 'ziwei_web/**'
+      - '.github/workflows/ziwei-web-tests.yml'
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ziwei_web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e
+      - run: python -m py_compile scripts/live_sse_probe.py

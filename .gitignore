@@ -18,3 +18,8 @@ autonomous_activities/
 # Generated Python bytecode across retained runtime generations.
 __pycache__/
 *.py[cod]
+
+# Private Web sessions, credentials and profile data.
+ziwei_web/.data/
+ziwei_web/test-results/
+ziwei_web/playwright-report/
