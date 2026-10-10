@@ -76,3 +76,8 @@ dialog.glass::before{display:none}
    Explicitly restore fixed positioning for the glass navigation so it stays
    attached to the viewport while the page scrolls on iPhone Safari. */
 nav.glass{position:fixed;z-index:5;bottom:calc(var(--nav-offset) + env(safe-area-inset-bottom,0px))}
+
+/* iPhone Safari: keep the navigation dock fixed and allow the chat composer to receive keyboard focus. */
+nav.glass{position:fixed;bottom:calc(var(--nav-offset) + env(safe-area-inset-bottom,0px))}
+body:has(#chatInput:focus) nav.glass{visibility:hidden;pointer-events:none}
+body:has(#chatInput:focus) #chat{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
