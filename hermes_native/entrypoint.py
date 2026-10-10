@@ -5,11 +5,47 @@ the official Hermes entrypoint. The Agent does not retain root privileges.
 """
 import os
 import pwd
+import stat
 import sys
 from pathlib import Path
 
 ALLOWED_HOMES = ("/opt/data", "/data/hermes_native")
 MARKER_CONTENT = "ziwei-native-v1\n"
+
+
+def repair_backup_ownership(home: Path, uid: int, gid: int) -> None:
+    """Bind privileged repairs to checked descriptors, never mutable paths."""
+    home_fd = os.open(home, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    backups_fd = config_fd = None
+    try:
+        try:
+            backups_fd = os.open("backups", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                 dir_fd=home_fd)
+        except FileNotFoundError:
+            return
+        os.fchown(backups_fd, uid, gid)
+        try:
+            config_fd = os.open("config", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                dir_fd=backups_fd)
+        except FileNotFoundError:
+            return
+        os.fchown(config_fd, uid, gid)
+        for name in os.listdir(config_fd):
+            fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                         dir_fd=config_fd)
+            try:
+                info = os.fstat(fd)
+                if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                    raise SystemExit("Unexpected config backup entry; refusing repair.")
+                os.fchown(fd, uid, gid)
+            finally:
+                os.close(fd)
+    except OSError as exc:
+        raise SystemExit("Unsafe or inaccessible backup path; refusing repair.") from exc
+    finally:
+        for fd in (config_fd, backups_fd, home_fd):
+            if fd is not None:
+                os.close(fd)
 
 
 def require_regular_file(path: Path) -> None:
@@ -60,23 +96,7 @@ def main() -> None:
     # Repair only the two known backup directories and existing regular
     # config backup files, never the full volume or archived history.
     user = pwd.getpwnam("hermes")
-    for directory in (home / "backups", home / "backups" / "config"):
-        if directory.is_symlink():
-            raise SystemExit("Refusing backup symlink.")
-        if directory.exists():
-            if not directory.is_dir():
-                raise SystemExit("Backup path is not a directory.")
-            os.chown(directory, user.pw_uid, user.pw_gid)
-
-    # Old root-owned backups may be overwritten by Hermes rotation. Change
-    # ownership of regular files directly in the known config backup folder.
-    # Reject symlinks and unexpected nested directories instead of traversing.
-    config_backups = home / "backups" / "config"
-    if config_backups.exists():
-        for child in config_backups.iterdir():
-            if child.is_symlink() or not child.is_file():
-                raise SystemExit("Unexpected config backup entry; refusing repair.")
-            os.chown(child, user.pw_uid, user.pw_gid)
+    repair_backup_ownership(home, user.pw_uid, user.pw_gid)
 
     if os.environ.get("ZIWEI_RUNTIME_GUARD") == "1":
         from runtime_guard import initialize
