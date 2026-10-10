@@ -95,3 +95,74 @@ test('all five panels clear the floating nav on compact, portrait and landscape 
  }
  expect(await page.locator('meta[name=viewport]').getAttribute('content')).toContain('viewport-fit=cover');
 });
+
+
+test('glass blur changes actual pixels in Chromium and WebKit',async({page})=>{
+ await page.setViewportSize({width:640,height:360});
+ await page.goto('/');
+ await page.addStyleTag({content:`
+  body{background:linear-gradient(to right,#000 0 50%,#fff 50% 100%)!important}
+  .ambient,.shell{display:none!important}
+  #glass-pixel-fixture{position:fixed!important;left:220px;top:110px;width:200px;height:100px;border-radius:0!important}
+  #glass-pixel-fixture::before{border-radius:0!important}
+ `});
+ await page.evaluate(()=>{const el=document.createElement('div');el.id='glass-pixel-fixture';el.className='glass';document.body.append(el)});
+ const screenshot=await page.screenshot();
+ const samples=await page.evaluate(async base64=>{
+  const img=new Image();
+  img.src='data:image/png;base64,'+base64;
+  await img.decode();
+  const canvas=document.createElement('canvas');canvas.width=img.width;canvas.height=img.height;
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0);
+  const row=y=>{const arr=[];for(let x=295;x<=345;x++)arr.push(ctx.getImageData(x,y,1,1).data[0]);return arr};
+  return {inside:row(160),outside:row(90)};
+ },screenshot.toString('base64'));
+ const jumps=a=>Math.max(...a.slice(1).map((n,i)=>Math.abs(n-a[i])));
+ expect(jumps(samples.outside)).toBeGreaterThan(200);
+ expect(jumps(samples.inside)).toBeLessThan(70);
+ const midpoint=samples.inside[25];
+ expect(midpoint).toBeGreaterThan(40);
+ expect(midpoint).toBeLessThan(220);
+});
+
+test('dark glass secondary text remains readable on all background themes',async({page})=>{
+ await login(page);
+ await page.locator('[data-tab=home]').click();
+ await page.locator('#settingsButton').click();
+ await page.locator('#theme').selectOption('dark');
+ await page.locator('#saveProfile').click();
+ await page.locator('#closeSettings').click();
+ for(const background of ['rose','sage','sky']){
+  await page.locator('#settingsButton').click();
+  await page.locator('#background').selectOption(background);
+  await page.locator('#saveProfile').click();
+  await page.locator('#closeSettings').click();
+  await expect(page.locator('html')).toHaveAttribute('data-background',background);
+  for(const selector of ['.today p','.status-tag','.footnote']){
+   const info=await page.locator(selector).first().evaluate(el=>{
+    const rgb=getComputedStyle(el).color.match(/[\\d.]+/g).slice(0,3).map(Number);
+    const root=getComputedStyle(document.documentElement);
+    const background=root.getPropertyValue('--bg').trim();
+    const hex=background.match(/^#([0-9a-f]{6})$/i);
+    if(!hex)throw Error('Unknown background token: '+background);
+    const bg=[1,3,5].map(i=>parseInt(hex[1].slice(i-1,i+1),16));
+    const lum=a=>{const c=a.map(x=>{x/=255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4});return c[0]*.2126+c[1]*.7152+c[2]*.0722};
+    const x=lum(rgb),y=lum(bg);
+    return {contrast:(Math.max(x,y)+.05)/(Math.min(x,y)+.05),opacity:getComputedStyle(el).opacity};
+   });
+   expect(info.opacity,selector+' '+background).toBe('1');
+   expect(info.contrast,selector+' '+background).toBeGreaterThan(4.5);
+  }
+ }
+});
+
+test('glass fallback remains opaque when blur is disabled',async({page})=>{
+ await page.goto('/');
+ await page.addStyleTag({content:'.glass::before{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--bg)!important}'});
+ const info=await page.locator('#login').evaluate(el=>({
+  background:getComputedStyle(el,'::before').backgroundColor,
+  blur:getComputedStyle(el,'::before').backdropFilter||getComputedStyle(el,'::before').webkitBackdropFilter
+ }));
+ expect(info.blur).toBe('none');
+ expect(info.background).not.toBe('rgba(0, 0, 0, 0)');
+});
