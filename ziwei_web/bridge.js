@@ -6,9 +6,19 @@ const enabled=process.env.ZIWEI_BRIDGE_ENABLED==='true';
 const base=process.env.ZIWEI_HERMES_URL||'';
 const secret=process.env.ZIWEI_HERMES_API_KEY||'';
 const sessionId=process.env.ZIWEI_HERMES_WEB_SESSION_ID||'';
+let sessionReady=false,creationPromise=null;
 function ready(){if(!enabled)return false;if(!base||!secret||!/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId))return false;try{const u=new URL(base);return (u.protocol==='https:'||process.env.ZIWEI_BRIDGE_ALLOW_HTTP_FOR_TESTS==='true'&&u.protocol==='http:')&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname==='/'}catch{return false}}
 function status(){return ready()}
 function err(res,status,code){res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({error:code}))}
+async function ensureSession(){
+ if(sessionReady)return;
+ if(!creationPromise)creationPromise=(async()=>{
+  const r=await fetch(new URL('/api/sessions',base),{method:'POST',headers:{Authorization:'Bearer '+secret,'X-Hermes-Session-Key':SESSION_KEY,'Content-Type':'application/json'},body:JSON.stringify({id:sessionId,source:'api_server',title:'网页对话'}),signal:AbortSignal.timeout(15000),redirect:'error'});
+  if(r.status!==201&&r.status!==409)throw Error('session_create_failed');
+  sessionReady=true;
+ })().finally(()=>{creationPromise=null});
+ return creationPromise;
+}
 function pathForHistory(url){const n=Number(url.searchParams.get('limit')||30),offset=Number(url.searchParams.get('offset')||0);if(!Number.isSafeInteger(n)||n<1||n>100||!Number.isSafeInteger(offset)||offset<0||offset>100000)return null;return '/api/sessions/'+encodeURIComponent(sessionId)+'/messages?order=latest&limit='+n+'&offset='+offset}
 async function proxy(req,res,pathname,url){
  if(!ready())return err(res,503,'hermes_bridge_not_enabled');
@@ -21,6 +31,7 @@ async function proxy(req,res,pathname,url){
    target='/api/sessions/'+encodeURIComponent(sessionId)+'/chat/stream';
    body=JSON.stringify({message:obj.message});
  }else return err(res,404,'route_not_allowed');
+ try{await ensureSession()}catch{return err(res,502,'session_initialization_failed')}
  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),stream?240000:15000);
  res.on('close',()=>{if(!res.writableEnded)controller.abort()});
  try{
