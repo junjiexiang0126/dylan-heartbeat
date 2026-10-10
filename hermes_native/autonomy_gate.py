@@ -29,7 +29,7 @@ def evaluate(home: Path, now: datetime) -> dict:
             jobs = jobs.get("jobs", [])
         if any(j.get("name", "").startswith("ziwei-") and int(j.get("failure_streak") or 0) >= 3 for j in jobs):
             return {"wakeAgent": False, "reason": "three consecutive failures; operator review needed"}
-    changed = False
+    invalid_completions = []
     for task in tasks:
         if task["status"] != "completed":
             continue
@@ -39,11 +39,14 @@ def evaluate(home: Path, now: datetime) -> dict:
             p = (workspace / str(item)).resolve()
             valid = valid and p.is_relative_to(workspace.resolve()) and p.is_file() and p.stat().st_size > 0
         if not valid:
-            task["status"] = "failed"
-            task["verification"] = "claimed completion has no nonempty workspace file evidence"
-            changed = True
-    if changed:
-        atomic_json(tasks_path, tasks)
+            invalid_completions.append(task.get("id"))
+    if invalid_completions:
+        # The gate lock is not shared by native file/kanban tools. Rewriting
+        # tasks.json here can silently discard a concurrent Agent update.
+        # Pause instead; retain the original task document for reconciliation.
+        return {"wakeAgent": False,
+                "reason": "completed task lacks scoped nonempty file evidence; operator review needed",
+                "invalid_completions": invalid_completions}
     date = now.date().isoformat()
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
     if state.get("date") != date:
@@ -51,7 +54,8 @@ def evaluate(home: Path, now: datetime) -> dict:
     if int(state.get("wakes", 0)) >= 6:
         return {"wakeAgent": False, "reason": "six daily opportunities used"}
     active = [t for t in tasks if t["status"] in ACTIVE]
-    diary_due = not (workspace / "diary" / (date + ".md")).exists()
+    diary = workspace / "diary" / (date + ".md")
+    diary_due = not (diary.is_file() and not diary.is_symlink() and diary.stat().st_size > 0)
     if not active and not diary_due:
         return {"wakeAgent": False, "reason": "idle; no active task and diary already present"}
     state["wakes"] += 1
