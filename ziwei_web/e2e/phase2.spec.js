@@ -24,10 +24,12 @@ test('network interruption after acceptance recovers the saved reply and avoids 
  page.on('response',async response=>{if(new URL(response.url()).pathname==='/api/chat/send'){let body='';try{body=(await response.text()).slice(0,1200);}catch(e){body='unreadable: '+e.message;}sendResponses.push({status:response.status(),body});}});
  page.on('requestfailed',request=>{if(new URL(request.url()).pathname.startsWith('/api/chat/'))sendFailures.push({url:new URL(request.url()).pathname,error:request.failure()?.errorText});});
  page.on('pageerror',error=>pageErrors.push(error.message));
+ const beforeClick=await page.locator('#chatSend').evaluate(button=>{const r=button.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,top=document.elementFromPoint(x,y);return {rect:{x:r.x,y:r.y,width:r.width,height:r.height},topElement:top?.outerHTML?.slice(0,350),topIsButton:top===button||button.contains(top),pointerEvents:getComputedStyle(button).pointerEvents,visibility:getComputedStyle(button).visibility,disabled:button.disabled,activeElement:document.activeElement?.id};});
  await page.locator('#chatSend').click();
- try{await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(1);}catch(error){
+ const afterClick=await page.evaluate(()=>({events:window.__sendEvents,activeElement:document.activeElement?.id,buttonDisabled:document.querySelector('#chatSend').disabled}));
+ try{await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(1);} catch(error){
   const ui=await page.evaluate(()=>({chatError:document.querySelector('#chatError')?.textContent,chatWork:document.querySelector('#chatWork')?.textContent,connection:document.querySelector('#chatConnection')?.textContent,sendDisabled:document.querySelector('#chatSend')?.disabled,inputValue:document.querySelector('#chatInput')?.value,visibleMessages:document.querySelector('#chatMessages')?.textContent?.slice(0,800),sendEvents:window.__sendEvents,formConnected:document.querySelector('#chatForm')?.isConnected,buttonForm:document.querySelector('#chatSend')?.form?.id,formHasSubmitHandler:!!document.querySelector('#chatForm')?.onsubmit,buttonHasClickHandler:!!document.querySelector('#chatSend')?.onclick}));
-  throw new Error('Send diagnostic: '+JSON.stringify({sendResponses,sendFailures,pageErrors,ui})+'; '+error.message);
+  throw new Error('Send diagnostic: '+JSON.stringify({beforeClick,afterClick,sendResponses,sendFailures,pageErrors,ui})+'; '+error.message);
  }
  await context.setOffline(true);await expect(page.locator('#chatConnection')).toContainText('已离线');
  await new Promise(r=>setTimeout(r,900));await context.setOffline(false);await page.reload();await page.locator('[data-tab=chat]').click();await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(1);await expect(page.locator('#chatMessages')).toContainText('协议测试回复');
