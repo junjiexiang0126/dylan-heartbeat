@@ -78,6 +78,20 @@ window.ZiweiChat=(()=>{
  $('#chatSource').onchange=()=>{source=$('#chatSource').value;before=null;trash=false;$('#chatTrash').setAttribute('aria-pressed','false');controls();load().catch(e=>$('#chatError').textContent=e.message);};
  $('#chatTrash').onclick=()=>{trash=!trash;favorite=false;source='live';$('#chatSource').value=source;$('#chatFavorites').setAttribute('aria-pressed','false');$('#chatTrash').setAttribute('aria-pressed',String(trash));controls();load().catch(()=>{});};
  $('#chatFavorites').onclick=()=>{favorite=!favorite;$('#chatFavorites').setAttribute('aria-pressed',String(favorite));load().catch(()=>{});};
+ const searchPanel=$('#chatToolbar');
+ function toggleSearch(force){
+  const open=typeof force==='boolean'?force:searchPanel.hidden;
+  searchPanel.hidden=!open;
+  $('#chatSearchToggle').setAttribute('aria-expanded',String(open));
+  $('#chatMore').setAttribute('aria-expanded',String(open));
+  if(open)$('#chatSearch').focus();
+ }
+ $('#chatSearchToggle').onclick=()=>toggleSearch();
+ $('#chatMore').onclick=()=>toggleSearch();
+ $('#chatCall').onclick=()=>window.alert('语音通话正在开发中，尚未接入实时语音服务。');
+ $('#chatInput').addEventListener('input',()=>{
+  const el=$('#chatInput');el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';
+ });
  $('#chatSearch').oninput=()=>scheduleLoad();$('#chatOlder').onclick=()=>load(true).catch(()=>{});
  window.addEventListener('online',()=>{if(token){void connection().catch(()=>{});if(pending)void deliver();}});window.addEventListener('offline',()=>{$('#chatConnection').textContent='已离线';});
  function stop(){version++;token=null;events?.close();events=null;clearTimeout(reloadTimer);attachments=[];quote=null;pending=null;busy=false;active.clear();buffers.clear();$('#chatMessages').replaceChildren();$('#chatInput').value='';$('#chatSearch').value='';$('#chatQuote').hidden=true;$('#chatError').textContent='';$('#chatStreaming').textContent='';$('#chatProgress').hidden=true;chips();controls();}
