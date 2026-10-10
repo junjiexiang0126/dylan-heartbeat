@@ -30,8 +30,8 @@
     <p class="home-footer">从微小的日常，走向长久的相伴 <span>♡</span></p>
   </section>
   <section class="panel chat-panel" id="chat" hidden>
-    <div class="section-heading chat-heading"><div><span class="eyebrow">WORDS BETWEEN US</span><h1>聊天</h1></div><span id="chatConnection" class="status-tag">正在连接</span></div>
-    <div class="chat-toolbar glass"><input id="chatSearch" type="search" maxlength="200" placeholder="搜索我们的对话…" aria-label="搜索聊天记录"><select id="chatSource" aria-label="记录来源"><option value="live">我们的对话</option><option value="archive">历史档案</option></select><button id="chatFavorites" class="text-button" aria-pressed="false">收藏</button><button id="chatTrash" class="text-button" aria-pressed="false">回收站</button></div>
+    <div class="section-heading chat-heading"><div class="chat-header-tools"><button type="button" id="chatSearchToggle" class="chat-icon-button" aria-label="搜索聊天记录" aria-expanded="false" aria-controls="chatToolbar">⌕</button><button type="button" id="chatCall" class="chat-icon-button" aria-label="语音通话">♧</button></div><div class="chat-title"><div class="chat-name"><span class="pulse-mark" aria-hidden="true">⌁♡⌁</span><h1>知微</h1><span class="pulse-mark" aria-hidden="true">⌁♡⌁</span></div><span id="chatConnection" class="status-tag">正在连接</span></div><button type="button" id="chatMore" class="chat-icon-button" aria-label="更多聊天功能" aria-expanded="false" aria-controls="chatToolbar">⋯</button></div>
+    <div class="chat-toolbar glass" id="chatToolbar" hidden><input id="chatSearch" type="search" maxlength="200" placeholder="搜索我们的对话…" aria-label="搜索聊天记录"><select id="chatSource" aria-label="记录来源"><option value="live">我们的对话</option><option value="archive">历史档案</option></select><button id="chatFavorites" class="text-button" aria-pressed="false">收藏</button><button id="chatTrash" class="text-button" aria-pressed="false">回收站</button></div>
     <p id="archiveNotice" class="hint" hidden>这些是保留来源的历史档案，可查询，不代表已成为知微的长期记忆。</p>
     <button id="chatOlder" class="secondary" hidden>查看更早记录</button>
     <p id="chatEmpty" class="chat-empty">这里，留给我们慢慢说。</p>
@@ -40,16 +40,16 @@
     <form id="chatForm" class="glass chat-compose">
       <div id="chatQuote" class="chat-quote" hidden><span id="chatQuoteText"></span><button id="clearChatQuote" type="button" class="text-button" aria-label="取消引用">×</button></div>
       <div id="chatAttachments" class="attachment-chips"></div>
-      <label class="sr-only" for="chatInput">给知微的消息</label><textarea id="chatInput" rows="2" maxlength="10000" placeholder="把今天，讲给知微听…"></textarea>
-      <div class="compose-actions"><label for="chatFiles" class="attachment-button">＋ 附件</label><input id="chatFiles" type="file" multiple accept="image/*,video/mp4,video/webm,.pdf,.txt,.md,.csv,.json,.doc,.docx,.xls,.xlsx,.zip"><small>图片 · GIF · 表情包 · 文件 · 视频</small><button id="chatSend" class="primary" type="submit" aria-label="发送消息">发送 ↑</button></div>
-      <p class="hint">附件每个限 20 MB，最多 6 个。图片和小文本可传给知微；视频与其他文件目前保存供查看、下载，仅传递文件信息。</p>
+      <label class="sr-only" for="chatInput">给知微的消息</label><textarea id="chatInput" rows="1" maxlength="10000" placeholder="把今天，讲给知微听…"></textarea>
+      <div class="compose-actions"><label for="chatFiles" class="attachment-button">＋ 附件</label><input id="chatFiles" type="file" multiple accept="image/*,video/mp4,video/webm,.pdf,.txt,.md,.csv,.json,.doc,.docx,.xls,.xlsx,.zip"><button id="chatSend" class="primary" type="submit" aria-label="发送消息">发送 ↑</button></div>
+      <details class="attachment-help"><summary>附件说明</summary><p class="hint">每个附件限 20 MB，最多 6 个。视频及其他文件目前仅保存供查看、下载。</p></details>
       <p id="chatError" class="error" role="alert"></p><button id="chatRecover" type="button" class="secondary" hidden>确认发送状态</button>
     </form>
   </section>
   <section class="panel" id="moments" hidden><div class="section-heading"><span class="eyebrow">LITTLE MOMENTS</span><h1>朋友圈</h1></div><article class="empty glass"><span class="empty-icon">✿</span><h2>两个人的日常</h2><p>共同时间线将在第三阶段开放。</p><small>尚未接入动态、点赞和评论。</small></article></section>
   <section class="panel" id="memory" hidden><div class="section-heading"><span class="eyebrow">THINGS WE REMEMBER</span><h1>记忆</h1></div><article class="empty glass"><span class="empty-icon">◇</span><h2>值得记住的，都在这里</h2><p>第三阶段连接 Hermes 原生记忆。</p><small>当前未读取或修改原有记忆。</small></article><div class="category-grid"><span class="glass">关于你</span><span class="glass">关于知微</span><span class="glass">共同经历</span><span class="glass">重要约定</span></div></section>
   <section class="panel" id="logs" hidden><div class="section-heading"><span class="eyebrow">DAYS & FOOTPRINTS</span><h1>日志</h1></div><article class="empty glass"><span class="empty-icon">≋</span><h2>日记与真实的足迹</h2><p>知微日记与活动记录将在第三阶段连接。</p><small>目前没有读取实际活动，不展示示例行动。</small></article></section>
-  <nav class="glass" aria-label="底部导航"><button data-tab="chat" aria-current="false"><span>◌</span>聊天</button><button data-tab="moments" aria-current="false"><span>✿</span>朋友圈</button><button data-tab="home" class="active home-nav" aria-current="page"><span>⌂</span>首页</button><button data-tab="memory" aria-current="false"><span>◇</span>记忆</button><button data-tab="logs" aria-current="false"><span>≋</span>日志</button></nav>
+  <nav class="glass" aria-label="底部导航"><button data-tab="chat" aria-current="false"><span>💌</span>聊天</button><button data-tab="moments" aria-current="false"><span>💐</span>朋友圈</button><button data-tab="home" class="active home-nav" aria-current="page"><span>🏡</span>首页</button><button data-tab="memory" aria-current="false"><span>📖</span>记忆</button><button data-tab="logs" aria-current="false"><span>🪶</span>日志</button></nav>
 </section>
 </main>
 <dialog id="settings" class="glass"><div class="dialog-heading"><div><span class="eyebrow">MAKE IT YOURS</span><h2>设置与资料</h2></div><button id="closeSettings" class="icon-button" aria-label="关闭设置">×</button></div>
