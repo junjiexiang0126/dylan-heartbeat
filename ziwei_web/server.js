@@ -1,5 +1,6 @@
 'use strict';
 const http=require('node:http'),crypto=require('node:crypto'),fs=require('node:fs'),path=require('node:path');
+const bridge=require('./bridge');
 const PORT=Number(process.env.PORT||3000),PASSWORD=process.env.ZIWEI_WEB_PASSWORD||'';
 const SECURE=process.env.NODE_ENV==='production';
 const DATA_DIR=process.env.ZIWEI_WEB_DATA_DIR||path.join(__dirname,'.data');
@@ -29,7 +30,7 @@ function failureKey(req){return crypto.createHash('sha256').update(req.socket.re
 const server=http.createServer(async(req,res)=>{try{
  const pathname=new URL(req.url,'http://localhost').pathname;
  if(pathname==='/health'&&req.method==='GET')return json(res,200,{status:'ok',component:'ziwei-web-foundation'});
- if(pathname==='/api/session'&&req.method==='GET'){prune();const s=session(req);return json(res,200,{authenticated:!!s,csrf:s?.csrf||null,chatReady:false})}
+ if(pathname==='/api/session'&&req.method==='GET'){prune();const s=session(req);return json(res,200,{authenticated:!!s,csrf:s?.csrf||null,chatReady:bridge.status()})}
  if(pathname==='/api/login'&&req.method==='POST'){
   if(!validOrigin(req))return json(res,403,{error:'origin_rejected'});
   if(!PASSWORD)return json(res,503,{error:'password_not_configured'});
@@ -45,7 +46,7 @@ const server=http.createServer(async(req,res)=>{try{
   if(!validOrigin(req)||!csrfOk(req,s))return json(res,403,{error:'csrf_rejected'});
   sessions.delete(tokenHash(cookies(req)[COOKIE]));persist();return json(res,200,{ok:true},{'Set-Cookie':cookie('',0)});
  }
- if(pathname.startsWith('/api/')){const s=session(req);if(!s)return json(res,401,{error:'unauthorized'});if(req.method!=='GET'&&(!validOrigin(req)||!csrfOk(req,s)))return json(res,403,{error:'csrf_rejected'});return json(res,503,{error:'hermes_bridge_not_enabled'})}
+ if(pathname.startsWith('/api/')){const s=session(req);if(!s)return json(res,401,{error:'unauthorized'});if(req.method!=='GET'&&(!validOrigin(req)||!csrfOk(req,s)))return json(res,403,{error:'csrf_rejected'});return bridge.proxy(req,res,pathname,new URL(req.url,'http://localhost'))}
  if(req.method!=='GET'&&req.method!=='HEAD')return json(res,405,{error:'method_not_allowed'});
  const f=files[pathname];if(!f)return json(res,404,{error:'not_found'});
  res.writeHead(200,{'Content-Type':types[path.extname(f)],...headers});if(req.method==='HEAD')return res.end();fs.createReadStream(path.join(publicDir,f)).pipe(res);
