@@ -42,7 +42,7 @@ def main():
     # ordinary native import used by CLI/Cron has the adapter too.
     sys.path.insert(0, '/opt/hermes')
     import hermes_bootstrap
-    from tools import browser_tool as browser, browser_tool_session as session
+    from tools import browser_tool, browser_tool_session as session, browser_tool_lifecycle as lifecycle
     assert session._ziwei_persistence_installed
     from hermes_constants import get_hermes_home
     home = Path(get_hermes_home())
@@ -76,15 +76,15 @@ def main():
         contender = session._run_browser_command('ziwei-fixture-contender', 'open', ['http://127.0.0.1:18649/check'])
         assert contender.get('code') == 'browser_profile_busy'
         assert not contender.get('success')
-        browser.cleanup_browser('ziwei-fixture-contender')
-        browser.cleanup_browser(task)
+        lifecycle.cleanup_browser('ziwei-fixture-contender')
+        lifecycle.cleanup_browser(task)
         # A new task gets a new daemon but the same persisted cookies/storage.
         command('ziwei-fixture-followup', 'open', ['http://127.0.0.1:18649/check'])
         assert read_state('ziwei-fixture-followup') == {'cookie': '1', 'storage': 'persisted'}
         info = session._get_session_info('ziwei-fixture-followup')
         env = session._agent_browser_command_env(session._prepare_session_socket_dir(info['session_name']))
         assert 'DEEPSEEK_API_KEY' not in env and 'API_SERVER_KEY' not in env
-        browser.cleanup_browser('ziwei-fixture-followup')
+        lifecycle.cleanup_browser('ziwei-fixture-followup')
         assert profile.is_dir() and stat.S_IMODE(profile.stat().st_mode) == 0o700
         assert stat.S_IMODE((profile.parent / 'lease.lock').stat().st_mode) == 0o600
         for name, original in before.items():
@@ -94,7 +94,7 @@ def main():
                           'credential_env_scrubbing': 'passed', 'core_files_unchanged': True,
                           'uid': os.geteuid(), 'model_requests': 0}))
     finally:
-        browser.cleanup_all_browsers()
+        lifecycle.cleanup_all_browsers()
         server.shutdown()
         server.server_close()
         thread.join(timeout=3)
