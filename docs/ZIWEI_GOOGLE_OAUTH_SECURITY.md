@@ -39,3 +39,9 @@ The current Railway service does not have the four ZIWEI_GOOGLE_* variables conf
 7. Review no secrets appear in logs, memory, tool outputs, GitHub or user-facing messages.
 
 Run python -m unittest discover -s hermes_native/tests -v after installing cryptography==46.0.4 in the test environment. The code is inert unless deliberately imported and configured.
+
+## Owner-facing UI implementation (code only)
+
+`hermes_native/google_owner_ui.py` now implements an isolated owner-key login, signed short-lived session cookie, CSRF-protected connect/disconnect POSTs, OAuth callback cookie binding, and no-store/no-referrer responses. It binds **only to 127.0.0.1** if launched explicitly; it is **not** registered with Hermes, not publicly routed, and not deployed. A reviewed HTTPS reverse proxy, rate limiting, callback origin checks, session/login hardening, Google Cloud OAuth client setup, Picker and container dependency are still needed before owner use. Additional private variables: `ZIWEI_GOOGLE_OWNER_KEY` and `ZIWEI_GOOGLE_SESSION_KEY` (independent 32+ character secrets). Do not reuse the Gateway API key or place any values in chat.
+
+A standalone HTML page is not evidence that Google authorization can be completed on Railway; no live Google connection has been attempted.
