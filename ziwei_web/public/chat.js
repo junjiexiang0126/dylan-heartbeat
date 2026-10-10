@@ -66,7 +66,11 @@ window.ZiweiChat=(()=>{
   catch(e){if([400,403,404,413].includes(e.status)||['queue_full','hermes_not_configured'].includes(e.code)){pending=null;$('#chatError').textContent=e.message;}else $('#chatError').textContent=e.message+' 发送状态尚未确认，请用同一编号核对；确认前请保持页面打开。';}
   finally{busy=false;controls();}
  }
- $('#chatForm').onsubmit=e=>{e.preventDefault();if(busy||pending)return;const message=$('#chatInput').value;if(!message.trim()&&!attachments.length)return;pending={requestId:crypto.randomUUID(),message,attachments:attachments.map(a=>a.id),...(quote?{replyTo:quote.id}:{})};void deliver();};
+ function submitMessage(){if(busy||pending)return;const message=$('#chatInput').value;if(!message.trim()&&!attachments.length)return;pending={requestId:crypto.randomUUID(),message,attachments:attachments.map(a=>a.id),...(quote?{replyTo:quote.id}:{})};void deliver();}
+ $('#chatForm').onsubmit=e=>{e.preventDefault();submitMessage();};
+ // Handle the send control directly as well: mobile WebKit may not dispatch a
+ // form submit when the compact composer is rearranged during keyboard focus.
+ $('#chatSend').onclick=e=>{e.preventDefault();submitMessage();};
  $('#chatRecover').onclick=()=>deliver();
  $('#chatFiles').onchange=async e=>{
   const epoch=version,selected=[...e.target.files];e.target.value='';if(selected.length+attachments.length>6){$('#chatError').textContent='每条消息最多 6 个附件。';return;}
