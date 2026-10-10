@@ -22,3 +22,44 @@ test('network interruption after acceptance recovers the saved reply and avoids 
  const accepted=page.waitForResponse(r=>r.url().endsWith('/api/chat/send')&&r.status()===202);await page.locator('#chatSend').click();await accepted;await context.setOffline(true);await expect(page.locator('#chatConnection')).toContainText('已离线');
  await new Promise(r=>setTimeout(r,900));await context.setOffline(false);await page.reload();await page.locator('[data-tab=chat]').click();await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(1);await expect(page.locator('#chatMessages')).toContainText('协议测试回复');
 });
+
+
+test('440px mobile glass, dark text and navigation safe-area regression',async({page})=>{
+ await page.setViewportSize({width:440,height:956});
+ await login(page);
+ await page.locator('[data-tab=home]').click();
+ const check=async()=>{
+   const layout=await page.evaluate(()=>{
+     const nav=document.querySelector('nav');
+     const panel=document.querySelector('#home');
+     const glass=document.querySelector('.together');
+     const style=getComputedStyle(glass,'::before');
+     const panelStyle=getComputedStyle(panel);
+     const navHeight=nav.getBoundingClientRect().height;
+     const bottomGap=parseFloat(panelStyle.paddingBottom);
+     return {scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth,
+       navHeight,bottomGap,blur:style.backdropFilter||style.webkitBackdropFilter,
+       layer:style.content,glassPosition:getComputedStyle(glass).position};
+   });
+   expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewport);
+   expect(layout.bottomGap).toBeGreaterThan(layout.navHeight+35);
+   expect(layout.glassPosition).toBe('relative');
+   expect(layout.layer).not.toBe('none');
+   expect(layout.blur).toContain('blur(');
+ };
+ await check();
+ await page.locator('#settingsButton').click();
+ await page.locator('#theme').selectOption('dark');
+ await page.locator('#saveProfile').click();
+ await page.locator('#closeSettings').click();
+ await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ const contrast=await page.locator('.today p').evaluate(el=>{
+   const c=getComputedStyle(el).color.match(/[\d.]+/g).map(Number);
+   const bg=[33,27,38];
+   const luminance=rgb=>{const v=rgb.map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4});return .2126*v[0]+.7152*v[1]+.0722*v[2]};
+   const a=luminance(c),b=luminance(bg);
+   return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+ });
+ expect(contrast).toBeGreaterThan(4.5);
+ await check();
+});
