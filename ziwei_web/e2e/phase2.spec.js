@@ -19,7 +19,16 @@ test('chat, attachments, quotations, favorites, searching, history, reload and l
 });
 test('network interruption after acceptance recovers the saved reply and avoids a second user message',async({page,context})=>{
  await login(page);const message='断线恢复界面测试 '+Date.now();await page.locator('#chatInput').fill(message);
- await page.locator('#chatSend').click();await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(1);await context.setOffline(true);await expect(page.locator('#chatConnection')).toContainText('已离线');
+ const sendResponses=[];const sendFailures=[];const pageErrors=[];
+ page.on('response',async response=>{if(new URL(response.url()).pathname==='/api/chat/send'){let body='';try{body=(await response.text()).slice(0,1200);}catch(e){body='unreadable: '+e.message;}sendResponses.push({status:response.status(),body});}});
+ page.on('requestfailed',request=>{if(new URL(request.url()).pathname.startsWith('/api/chat/'))sendFailures.push({url:new URL(request.url()).pathname,error:request.failure()?.errorText});});
+ page.on('pageerror',error=>pageErrors.push(error.message));
+ await page.locator('#chatSend').click();
+ try{await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(1);}catch(error){
+  const ui=await page.evaluate(()=>({chatError:document.querySelector('#chatError')?.textContent,chatWork:document.querySelector('#chatWork')?.textContent,connection:document.querySelector('#chatConnection')?.textContent,sendDisabled:document.querySelector('#chatSend')?.disabled,inputValue:document.querySelector('#chatInput')?.value,visibleMessages:document.querySelector('#chatMessages')?.textContent?.slice(0,800)}));
+  throw new Error('Send diagnostic: '+JSON.stringify({sendResponses,sendFailures,pageErrors,ui})+'; '+error.message);
+ }
+ await context.setOffline(true);await expect(page.locator('#chatConnection')).toContainText('已离线');
  await new Promise(r=>setTimeout(r,900));await context.setOffline(false);await page.reload();await page.locator('[data-tab=chat]').click();await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(1);await expect(page.locator('#chatMessages')).toContainText('协议测试回复');
 });
 
