@@ -1,0 +1,37 @@
+test_background_job_readback_component_only (test_contracts.HttpTests.test_background_job_readback_component_only) ... ok
+test_backup_admin_only_and_real_sqlite_download (test_contracts.HttpTests.test_backup_admin_only_and_real_sqlite_download) ... ok
+test_client_tools_and_multimodal_rejected (test_contracts.HttpTests.test_client_tools_and_multimodal_rejected) ... ok
+test_cross_http_request_memory (test_contracts.HttpTests.test_cross_http_request_memory) ... ok
+test_disabled_model_before_executor (test_contracts.HttpTests.test_disabled_model_before_executor) ... ok
+test_internal_capability_revocation_and_write_scope (test_contracts.HttpTests.test_internal_capability_revocation_and_write_scope) ... ok
+test_mcp_invalid_json_does_not_crash (test_contracts.HttpTests.test_mcp_invalid_json_does_not_crash) ... ok
+test_mcp_real_stdio_readonly_no_add (test_contracts.HttpTests.test_mcp_real_stdio_readonly_no_add) ... ok
+test_missing_dataset_actual_failure (test_contracts.HttpTests.test_missing_dataset_actual_failure) ... ok
+test_missing_revision_denied (test_contracts.HttpTests.test_missing_revision_denied) ... ok
+test_model_cap_blocks_before_upstream (test_contracts.HttpTests.test_model_cap_blocks_before_upstream) ... ok
+test_ordinary_chat_readonly_even_write_key (test_contracts.HttpTests.test_ordinary_chat_readonly_even_write_key) ... ok
+test_read_chat_cannot_remember (test_contracts.HttpTests.test_read_chat_cannot_remember) ... ok
+test_sse_framing (test_contracts.HttpTests.test_sse_framing) ... ok
+test_update_delete_scope_and_revision (test_contracts.HttpTests.test_update_delete_scope_and_revision) ... ok
+test_wrong_key_and_model_listing (test_contracts.HttpTests.test_wrong_key_and_model_listing) ... ok
+test_add_capability_cannot_update_or_delete (test_contracts.StoreTests.test_add_capability_cannot_update_or_delete) ... ok
+test_budget_concurrency (test_contracts.StoreTests.test_budget_concurrency) ... ok
+test_cas_and_retained_versions (test_contracts.StoreTests.test_cas_and_retained_versions) ... ok
+test_completed_job_claimed_once (test_contracts.StoreTests.test_completed_job_claimed_once) ... ok
+test_context_is_bounded_original_preserved (test_contracts.StoreTests.test_context_is_bounded_original_preserved) ... ok
+test_failed_call_retains_budget_after_restart (test_contracts.StoreTests.test_failed_call_retains_budget_after_restart) ... ok
+test_idempotency_and_duplicate_content (test_contracts.StoreTests.test_idempotency_and_duplicate_content) ... ok
+test_old_memory_retrieval (test_contracts.StoreTests.test_old_memory_retrieval) ... ok
+test_positive_service_budget_requires_prior_audit (test_contracts.StoreTests.test_positive_service_budget_requires_prior_audit) ... ok
+test_prior_audit_import_once (test_contracts.StoreTests.test_prior_audit_import_once) ... ok
+test_read_capability_cannot_add (test_contracts.StoreTests.test_read_capability_cannot_add) ... ok
+test_remember_after_delete (test_contracts.StoreTests.test_remember_after_delete) ... ok
+test_restore_denies_active_lock (test_contracts.StoreTests.test_restore_denies_active_lock) ... ok
+test_restore_preserves_higher_budget (test_contracts.StoreTests.test_restore_preserves_higher_budget) ... ok
+test_revoked_capability_cannot_write (test_contracts.StoreTests.test_revoked_capability_cannot_write) ... ok
+test_running_job_not_replayed_after_restart (test_contracts.StoreTests.test_running_job_not_replayed_after_restart) ... ok
+
+----------------------------------------------------------------------
+Ran 32 tests in 8.186s
+
+OK

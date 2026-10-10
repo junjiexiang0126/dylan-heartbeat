@@ -1,0 +1,90 @@
+{
+  "limit_cny": 20,
+  "reserved_cny": 20,
+  "real_calls": 10,
+  "input_tokens": 31082,
+  "output_tokens": 822,
+  "conservative_cost_bound_cny": 0.35192,
+  "calls": [
+    {
+      "id": 1,
+      "reserved_fen": 200,
+      "status": "success",
+      "input_tokens": 8,
+      "output_tokens": 1,
+      "created": 1791518898.534323
+    },
+    {
+      "id": 2,
+      "reserved_fen": 200,
+      "status": "success",
+      "input_tokens": 3168,
+      "output_tokens": 117,
+      "created": 1791519145.0204337
+    },
+    {
+      "id": 3,
+      "reserved_fen": 200,
+      "status": "success",
+      "input_tokens": 3363,
+      "output_tokens": 50,
+      "created": 1791519153.4370484
+    },
+    {
+      "id": 4,
+      "reserved_fen": 200,
+      "status": "success",
+      "input_tokens": 3226,
+      "output_tokens": 73,
+      "created": 1791519177.2606452
+    },
+    {
+      "id": 5,
+      "reserved_fen": 200,
+      "status": "success",
+      "input_tokens": 3373,
+      "output_tokens": 95,
+      "created": 1791519185.843648
+    },
+    {
+      "id": 6,
+      "reserved_fen": 200,
+      "status": "success",
+      "input_tokens": 3555,
+      "output_tokens": 105,
+      "created": 1791519194.9967363
+    },
+    {
+      "id": 7,
+      "reserved_fen": 200,
+      "status": "success",
+      "input_tokens": 4373,
+      "output_tokens": 62,
+      "created": 1791519296.3535314
+    },
+    {
+      "id": 8,
+      "reserved_fen": 200,
+      "status": "success",
+      "input_tokens": 4548,
+      "output_tokens": 112,
+      "created": 1791519304.4418755
+    },
+    {
+      "id": 9,
+      "reserved_fen": 200,
+      "status": "success",
+      "input_tokens": 4738,
+      "output_tokens": 132,
+      "created": 1791519312.8817554
+    },
+    {
+      "id": 10,
+      "reserved_fen": 200,
+      "status": "success",
+      "input_tokens": 730,
+      "output_tokens": 75,
+      "created": 1791519329.1619108
+    }
+  ]
+}

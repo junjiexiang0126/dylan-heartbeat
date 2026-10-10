@@ -1,0 +1,7 @@
+{
+  "kind": "real-service-process-restart",
+  "separate_service_processes": 2,
+  "memory_read_after_restart": "passed",
+  "real_model_calls": 0,
+  "not_claimed": "Model-driven recall, autonomous tasks, cloud or Kelivo device acceptance"
+}
