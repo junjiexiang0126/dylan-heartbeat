@@ -1,6 +1,6 @@
 'use strict';
 const {test,expect}=require('@playwright/test');
-async function login(page){await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.getByRole('button',{name:'进入知微之家'}).click();await expect(page.locator('#home')).toBeVisible();await page.locator('[data-tab=chat]').click();}
+async function login(page){await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.getByRole('button',{name:'进入知微之家'}).click();await expect(page.locator('#home')).toBeVisible();await page.locator('[data-tab=chat]').click();await expect(page.locator('#chat')).toBeVisible();await expect.poll(()=>page.evaluate(()=>!!window.ZiweiChat&&!!document.querySelector('#chatForm')?.onsubmit)).toBe(true);}
 test('chat, attachments, quotations, favorites, searching, history, reload and lock on mobile',async({page,context})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await login(page);
  const video=require('../test/helpers/video_fixture.json');
