@@ -1,13 +1,13 @@
 {
   "name": "ziwei-pwa-foundation",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check home_store.js && node --check public/app.js && node --check public/sw.js",
+    "check": "node --check server.js && node --check chat_store.js && node --check chat_service.js && node --check hermes_client.js && node --check attachments.js && node --check data_directory.js && node --check scripts/import_archive.js && node --check scripts/e2e_server.js && node --check home_store.js && node --check public/app.js && node --check public/chat.js && node --check public/sw.js",
     "test": "node --test test/*.test.js",
     "test:e2e": "playwright test"
   },

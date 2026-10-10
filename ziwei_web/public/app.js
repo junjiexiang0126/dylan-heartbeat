@@ -23,6 +23,7 @@ function tab(name) {
   document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== name);
   document.querySelectorAll('[data-tab]').forEach(b => { b.classList.toggle('active',b.dataset.tab===name);b.setAttribute('aria-current',b.dataset.tab===name?'page':'false'); });
   window.scrollTo({top:0});
+  if(name==='chat'&&csrf)window.ZiweiChat?.start(csrf);
 }
 function renderAvatar(el, profile) {
   el.replaceChildren();
@@ -40,6 +41,7 @@ function renderHome() {
   appearance();
 }
 function clearPrivateUI() {
+  window.ZiweiChat?.stop();
   refreshVersion++;csrf=null; homeData=null; sessionData=null; pendingAvatars={};
   if($('#settings').open)$('#settings').close();
   $('#app').hidden=true;$('#settingsButton').hidden=true;$('#login').hidden=false;
@@ -54,6 +56,7 @@ async function refresh() {
   if (!s.authenticated) { clearPrivateUI(); $('#unlockButton').hidden=!(s.passkeyAvailable && await passkeySupported()); return; }
   const h=await api('/api/home');if(version!==refreshVersion)return;homeData=h;renderHome();
   $('#login').hidden=true;$('#app').hidden=false;$('#settingsButton').hidden=false;
+  if(activeTab==='chat')window.ZiweiChat?.start(csrf);
 }
 $('#loginForm').addEventListener('submit', async e => {
   e.preventDefault(); const button=e.submitter;button.disabled=true;$('#loginError').textContent='';
@@ -132,5 +135,6 @@ $('#logout').onclick=()=>logout(false);$('#logoutAll').onclick=()=>logout(true);
 window.addEventListener('pagehide',clearPrivateUI);
 window.addEventListener('pageshow',()=>refresh().catch(()=>{clearPrivateUI();$('#loginError').textContent='无法连接服务，请稍后重试。';}));
 window.addEventListener('focus',()=>{if(homeData)refresh().catch(()=>{});});
+document.addEventListener('ziwei-session-expired',()=>{clearPrivateUI();refresh().catch(()=>{});});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 appearance();tab('home');

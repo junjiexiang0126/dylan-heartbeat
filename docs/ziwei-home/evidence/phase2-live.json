@@ -1,0 +1,114 @@
+{
+  "verifiedAt": "2026-10-10T15:55:31.907Z",
+  "kind": "live-existing-Hermes-isolated-validation",
+  "service": "d0a928bf-3db2-4085-9812-8a28be4d0b1b",
+  "deployment": "ce3565ad-547f-4136-be9a-e579ef67be46",
+  "nativeSession": "ziwei-home-phase2-validation-b4af929c",
+  "directSSEProbe": {
+    "runId": "run_dbb2d218f887425883be99e222946b4e",
+    "output": "通信验收完成",
+    "deltaFrames": 3,
+    "terminal": "run.completed",
+    "toolEvents": 0
+  },
+  "bffConcurrentDuplicate": {
+    "requestId": "e5535d87-ce0c-4f45-b48a-6839f3baa49b",
+    "httpStatuses": [
+      202,
+      200
+    ],
+    "beforeNativeCount": 2,
+    "afterNativeCount": 4,
+    "localUserCopies": 1
+  },
+  "bffRuns": [
+    {
+      "requestId": "e5535d87-ce0c-4f45-b48a-6839f3baa49b",
+      "runId": "run_a65b6295edb540c9a94be79562a66075",
+      "state": "completed",
+      "output": "ZW-PHASE2-4827",
+      "usage": {
+        "input_tokens": 31025,
+        "output_tokens": 9,
+        "total_tokens": 31034,
+        "cache_read_tokens": 30848,
+        "cache_write_tokens": 0
+      },
+      "runtime": {
+        "provider": "custom",
+        "model": "deepseek-flash",
+        "route_source": "global"
+      }
+    },
+    {
+      "requestId": "598efc44-c828-41a1-b7d2-44360a931001",
+      "runId": "run_b409f0789b044a7395498f7be8ae7c5f",
+      "state": "completed",
+      "output": "网页连接成功",
+      "usage": {
+        "input_tokens": 31064,
+        "output_tokens": 17,
+        "total_tokens": 31081,
+        "cache_read_tokens": 30848,
+        "cache_write_tokens": 0
+      },
+      "runtime": {
+        "provider": "custom",
+        "model": "deepseek-flash",
+        "route_source": "global"
+      }
+    },
+    {
+      "requestId": "d71b6452-ebc5-4d48-924a-635d0e9710a4",
+      "runId": "run_33087c917e0849fa989ed64d9eeaa58d",
+      "state": "completed",
+      "output": "GIF附件已收到",
+      "usage": {
+        "input_tokens": 31205,
+        "output_tokens": 24,
+        "total_tokens": 31229,
+        "cache_read_tokens": 30976,
+        "cache_write_tokens": 0
+      },
+      "runtime": {
+        "provider": "custom",
+        "model": "deepseek-flash",
+        "route_source": "global"
+      }
+    }
+  ],
+  "localCounts": {
+    "live": 6,
+    "archive": 2200
+  },
+  "afterRestart": {
+    "live": 6,
+    "archive": 2200,
+    "requests": [
+      {
+        "id": "e5535d87-ce0c-4f45-b48a-6839f3baa49b",
+        "state": "completed",
+        "run_id": "run_a65b6295edb540c9a94be79562a66075"
+      },
+      {
+        "id": "598efc44-c828-41a1-b7d2-44360a931001",
+        "state": "completed",
+        "run_id": "run_b409f0789b044a7395498f7be8ae7c5f"
+      },
+      {
+        "id": "d71b6452-ebc5-4d48-924a-635d0e9710a4",
+        "state": "completed",
+        "run_id": "run_33087c917e0849fa989ed64d9eeaa58d"
+      }
+    ],
+    "integrity": "ok",
+    "unchanged": true,
+    "nativeHistoryCount": 8
+  },
+  "limitations": [
+    "Synthetic tests in an isolated conversation on the existing Agent profile; not user-device acceptance.",
+    "GIF acceptance does not prove image understanding.",
+    "Video and non-text binary files are stored for authenticated viewing/downloading; Hermes receives metadata.",
+    "Native memory bytes were not audited; no memory API or tools were invoked by these tests."
+  ]
+}

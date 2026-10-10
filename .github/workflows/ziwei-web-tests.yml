@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/ziwei-pwa-phase1-foundation
+      - feature/ziwei-home-phase2-chat
   pull_request:
     paths:
       - 'ziwei_web/**'
