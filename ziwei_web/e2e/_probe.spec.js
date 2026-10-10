@@ -30,7 +30,8 @@ for (const [name, css] of Object.entries(VARIANTS)) {
     'html,body{background:transparent!important}',
     '#glass-test-backdrop{position:fixed;inset:0;background:linear-gradient(to right,#000 0 50%,#fff 50% 100%);z-index:1}',
    ];
-   for (const r of base.concat(rules.split('\n').map(s => s.trim()).filter(Boolean))) sheet.insertRule(r, sheet.cssRules.length);
+   for (const r of base) sheet.insertRule(r, sheet.cssRules.length);
+   const style = document.createElement('style'); style.textContent = rules; document.head.append(style);
    const bd = document.createElement('div'); bd.id = 'glass-test-backdrop'; document.body.append(bd);
    const g = document.createElement('div'); g.id = 'glass-pixel-fixture'; g.className = 'glass';
    g.innerHTML = '<span>X</span>'; document.body.append(g);
