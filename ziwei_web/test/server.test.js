@@ -16,7 +16,7 @@ test('auth, csrf, restart persistence and protected bridge',async t=>{
  assert.equal(good.status,200);const cookie=good.headers.get('set-cookie').split(';')[0];assert.match(good.headers.get('set-cookie'),/HttpOnly/);
  const info=await request('/api/session',{headers:{Cookie:cookie}}).then(r=>r.json());assert.equal(info.authenticated,true);assert.equal(info.chatReady,false);
  assert.equal((await request('/api/logout',{method:'POST',headers:{Cookie:cookie,Origin:origin}})).status,403);
- assert.equal((await request('/api/chat',{method:'POST',headers:{Cookie:cookie,Origin:origin,'X-Ziwei-CSRF':info.csrf}})).status,503);
+ assert.equal((await request('/api/chat/send',{method:'POST',headers:{Cookie:cookie,Origin:origin,'X-Ziwei-CSRF':info.csrf}})).status,503);
  child.kill();await new Promise(r=>child.once('exit',r));child=spawn(process.execPath,['server.js'],{cwd:path.join(__dirname,'..'),env,stdio:'ignore'});await wait();
  assert.equal((await request('/api/session',{headers:{Cookie:cookie}}).then(r=>r.json())).authenticated,true);
  assert.equal((await request('/api/logout',{method:'POST',headers:{Cookie:cookie,Origin:origin,'X-Ziwei-CSRF':info.csrf}})).status,200);

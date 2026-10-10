@@ -1,5 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),{SSEParser}=require('../sse_parser');
+test('CRLF separators split at every byte do not invent or lose events',()=>{const seen=[],parser=new SSEParser(e=>seen.push(e));for(const byte of Buffer.from('event: assistant.delta\r\ndata: {"delta":"知微"}\r\n\r\nevent: done\r\ndata: {}\r\n\r\n'))parser.feed(Buffer.from([byte]));parser.end();assert.equal(seen.length,2);assert.equal(seen[0].data.delta,'知微');assert.equal(seen[1].event,'done');});
 test('split UTF-8 codepoints and SSE frames',()=>{const events=[],p=new SSEParser(x=>events.push(x)),buf=Buffer.from('data: {"text":"知微"}\n\ndata: [DONE]\n\n');for(let i=0;i<buf.length;i++)p.feed(buf.subarray(i,i+1));p.end();assert.deepEqual(events,[{event:'message',data:{text:'知微'}},{event:'done',data:null}])});
 test('multiline and custom event',()=>{const e=[],p=new SSEParser(x=>e.push(x));p.feed(Buffer.from('event: tool\n'+'data: line1\n'+'data: line2\n\n'));p.end();assert.deepEqual(e,[{event:'tool',data:'line1\nline2'},{event:'disconnect',data:null}])});
 test('disconnect is not successful completion',()=>{const e=[],p=new SSEParser(x=>e.push(x));p.feed(Buffer.from('data: {"delta":"partial"}\n\n'));p.end();assert.equal(e.at(-1).event,'disconnect')});

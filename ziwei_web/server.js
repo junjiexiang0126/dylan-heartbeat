@@ -1,11 +1,12 @@
 'use strict';
 const http = require('node:http'), crypto = require('node:crypto'), fs = require('node:fs'), path = require('node:path');
 const webauthn = require('@simplewebauthn/server');
-const bridge = require('./bridge');
+const {createChatService} = require('./chat_service');
+const {checkedDirectory}=require('./data_directory');
 const { createHomeStore, atomicWrite, load } = require('./home_store');
 const PORT = Number(process.env.PORT || 3000), PASSWORD = process.env.ZIWEI_WEB_PASSWORD || '';
 const SECURE = process.env.NODE_ENV === 'production';
-const DATA_DIR = path.resolve(process.env.ZIWEI_WEB_DATA_DIR || path.join(__dirname, '.data'));
+const DATA_DIR = checkedDirectory(process.env.ZIWEI_WEB_DATA_DIR || path.join(__dirname, '.data'));
 // Never use the native Agent profile as this application's business storage.
 if (DATA_DIR === '/data' || DATA_DIR.startsWith('/data/hermes_native') || DATA_DIR === process.env.HERMES_HOME) throw Error('Use a dedicated Web data directory');
 if (SECURE && !process.env.ZIWEI_WEB_DATA_DIR) throw Error('Production requires dedicated persistent ZIWEI_WEB_DATA_DIR');
@@ -15,12 +16,43 @@ if (originURL && (originURL.origin !== ORIGIN || (originURL.protocol !== 'https:
 const SESSION_FILE = path.join(DATA_DIR, 'sessions.json'), AUTH_FILE = path.join(DATA_DIR, 'auth.json');
 const SESSION_DAYS = 30, MAX_BODY = 400000, COOKIE = 'ziwei_sid';
 const publicDir = path.join(__dirname, 'public');
-const files = {'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png'};
+const files = {'/':'index.html','/index.html':'index.html','/app.js':'app.js','/chat.js':'chat.js','/style.css':'style.css','/chat.css':'chat.css','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png'};
 const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'};
 const headers = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"};
 if (SECURE) headers['Strict-Transport-Security'] = 'max-age=31536000';
 if (PASSWORD && PASSWORD.length < 16) throw Error('ZIWEI_WEB_PASSWORD must be at least 16 characters');
 fs.mkdirSync(DATA_DIR, {recursive:true, mode:0o700});
+const LOCK_FILE=path.join(DATA_DIR,'server.lock');
+// Railway restarts reuse PID namespaces: a persisted numeric PID alone is not
+// proof that the old Web process is still alive. Record deployment identity too.
+const deploymentId = process.env.RAILWAY_DEPLOYMENT_ID || '';
+const lockToken = crypto.randomUUID();
+const lockRecord = JSON.stringify({pid:process.pid, deploymentId, token:lockToken});
+if(fs.existsSync(LOCK_FILE)){
+ const previous = fs.readFileSync(LOCK_FILE,'utf8');
+ let lock;
+ try {
+   lock = previous.trim().startsWith('{') ? JSON.parse(previous) : {pid:Number(previous)};
+ } catch { throw Error('invalid_server_lock'); }
+ if(!Number.isSafeInteger(lock.pid)||lock.pid<1)throw Error('invalid_server_lock');
+ // Never assume a PID from an older Railway deployment refers to this container.
+ // Deploy overlap is disabled for this single-replica, volume-backed service.
+ const sameDeployment = !deploymentId || !lock.deploymentId || lock.deploymentId===deploymentId;
+ if(sameDeployment && lock.pid!==process.pid){
+   try{process.kill(lock.pid,0);throw Error('Web data directory already in use');}
+   catch(e){if(e.code!=='ESRCH')throw e;}
+ }
+ // The previous lock is stale if it names this very PID before we acquired it,
+ // or belongs to a different Railway deployment.
+ if(fs.readFileSync(LOCK_FILE,'utf8')!==previous)throw Error('server_lock_changed');
+ fs.unlinkSync(LOCK_FILE);
+}
+fs.writeFileSync(LOCK_FILE,lockRecord,{flag:'wx',mode:0o600});
+process.on('exit',()=>{
+ try{if(fs.readFileSync(LOCK_FILE,'utf8')===lockRecord)fs.unlinkSync(LOCK_FILE);}
+ catch(e){if(e.code!=='ENOENT')console.error('web_lock_cleanup_failed',e.message);}
+});
+const bridge=createChatService(DATA_DIR,{authorized:req=>!!session(req)});
 const home = createHomeStore(DATA_DIR);
 const sessions = new Map(), attempts = new Map(), challenges = new Map();
 let authEpoch = 0;
@@ -124,7 +156,7 @@ const server=http.createServer(async(req,res)=>{try{
   }
   if(pathname.startsWith('/api/')) {
     const s=session(req); if(!s)return json(res,401,{error:'unauthorized'});
-    if(req.method!=='GET' && (!validOrigin(req) || !csrfOk(req,s)))return json(res,403,{error:'csrf_rejected'});
+    if(!['GET','HEAD'].includes(req.method) && (!validOrigin(req) || !csrfOk(req,s)))return json(res,403,{error:'csrf_rejected'});
     if(pathname==='/api/home') {
       if(req.method==='GET')return json(res,200,home.read());
       if(req.method==='PUT'){const body=await readBody(req);if(session(req)!==s)return json(res,401,{error:'unauthorized'});const updated=home.update(body);return json(res,updated?200:409,updated||{error:'revision_conflict'});}
@@ -165,4 +197,4 @@ const server=http.createServer(async(req,res)=>{try{
   res.writeHead(200,{'Content-Type':types[path.extname(f)],...headers});if(req.method==='HEAD')return res.end();fs.createReadStream(path.join(publicDir,f)).pipe(res);
 } catch(e) { if(!res.headersSent)json(res,e.message==='body_too_large'?413:400,{error:e.message==='body_too_large'?'body_too_large':'bad_request'}); }});
 server.requestTimeout=15000;server.headersTimeout=10000;
-server.listen(PORT,'0.0.0.0');
+server.listen(PORT,SECURE?'0.0.0.0':'127.0.0.1');

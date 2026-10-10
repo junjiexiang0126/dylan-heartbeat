@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f6e9e5"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="apple-touch-icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><title>知微之家</title>
+<link rel="apple-touch-icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/chat.css"><title>知微之家</title>
 </head>
 <body>
 <div class="ambient" aria-hidden="true"></div>
@@ -29,7 +29,23 @@
     <article class="memorial glass"><span class="eyebrow">把故事，留在这里</span><div class="quote-mark" aria-hidden="true">“</div><blockquote id="memorialText"></blockquote><p class="signature">—— 知微 <span>永久纪念</span></p></article>
     <p class="home-footer">从微小的日常，走向长久的相伴 <span>♡</span></p>
   </section>
-  <section class="panel" id="chat" hidden><div class="section-heading"><span class="eyebrow">WORDS BETWEEN US</span><h1>聊天</h1></div><article class="empty glass"><span class="empty-icon">◌</span><h2>把想说的话，留给知微</h2><p>真实聊天将在第二阶段接通现有 Hermes。</p><small>目前尚未连接，没有生成任何回复。</small></article><div class="composer glass"><input disabled aria-label="聊天尚未接通" placeholder="等待真实聊天接入…"><button disabled aria-label="发送尚未启用">↑</button></div></section>
+  <section class="panel chat-panel" id="chat" hidden>
+    <div class="section-heading chat-heading"><div><span class="eyebrow">WORDS BETWEEN US</span><h1>聊天</h1></div><span id="chatConnection" class="status-tag">正在连接</span></div>
+    <div class="chat-toolbar glass"><input id="chatSearch" type="search" maxlength="200" placeholder="搜索我们的对话…" aria-label="搜索聊天记录"><select id="chatSource" aria-label="记录来源"><option value="live">我们的对话</option><option value="archive">历史档案</option></select><button id="chatFavorites" class="text-button" aria-pressed="false">收藏</button><button id="chatTrash" class="text-button" aria-pressed="false">回收站</button></div>
+    <p id="archiveNotice" class="hint" hidden>这些是保留来源的历史档案，可查询，不代表已成为知微的长期记忆。</p>
+    <button id="chatOlder" class="secondary" hidden>查看更早记录</button>
+    <p id="chatEmpty" class="chat-empty">这里，留给我们慢慢说。</p>
+    <div id="chatMessages" class="chat-messages" role="log" aria-label="聊天记录"></div>
+    <div id="chatProgress" class="glass chat-progress" hidden><span class="eyebrow">知微正在回应</span><p id="chatStreaming"></p><small id="chatWork"></small></div>
+    <form id="chatForm" class="glass chat-compose">
+      <div id="chatQuote" class="chat-quote" hidden><span id="chatQuoteText"></span><button id="clearChatQuote" type="button" class="text-button" aria-label="取消引用">×</button></div>
+      <div id="chatAttachments" class="attachment-chips"></div>
+      <label class="sr-only" for="chatInput">给知微的消息</label><textarea id="chatInput" rows="2" maxlength="10000" placeholder="把今天，讲给知微听…"></textarea>
+      <div class="compose-actions"><label for="chatFiles" class="attachment-button">＋ 附件</label><input id="chatFiles" type="file" multiple accept="image/*,video/mp4,video/webm,.pdf,.txt,.md,.csv,.json,.doc,.docx,.xls,.xlsx,.zip"><small>图片 · GIF · 表情包 · 文件 · 视频</small><button id="chatSend" class="primary" type="submit" aria-label="发送消息">发送 ↑</button></div>
+      <p class="hint">附件每个限 20 MB，最多 6 个。图片和小文本可传给知微；视频与其他文件目前保存供查看、下载，仅传递文件信息。</p>
+      <p id="chatError" class="error" role="alert"></p><button id="chatRecover" type="button" class="secondary" hidden>确认发送状态</button>
+    </form>
+  </section>
   <section class="panel" id="moments" hidden><div class="section-heading"><span class="eyebrow">LITTLE MOMENTS</span><h1>朋友圈</h1></div><article class="empty glass"><span class="empty-icon">✿</span><h2>两个人的日常</h2><p>共同时间线将在第三阶段开放。</p><small>尚未接入动态、点赞和评论。</small></article></section>
   <section class="panel" id="memory" hidden><div class="section-heading"><span class="eyebrow">THINGS WE REMEMBER</span><h1>记忆</h1></div><article class="empty glass"><span class="empty-icon">◇</span><h2>值得记住的，都在这里</h2><p>第三阶段连接 Hermes 原生记忆。</p><small>当前未读取或修改原有记忆。</small></article><div class="category-grid"><span class="glass">关于你</span><span class="glass">关于知微</span><span class="glass">共同经历</span><span class="glass">重要约定</span></div></section>
   <section class="panel" id="logs" hidden><div class="section-heading"><span class="eyebrow">DAYS & FOOTPRINTS</span><h1>日志</h1></div><article class="empty glass"><span class="empty-icon">≋</span><h2>日记与真实的足迹</h2><p>知微日记与活动记录将在第三阶段连接。</p><small>目前没有读取实际活动，不展示示例行动。</small></article></section>
@@ -45,5 +61,5 @@
 <details id="profileHistory"><summary>资料变更历史</summary><ol id="historyList"></ol></details>
 <fieldset class="security"><legend>登录与设备</legend><p class="hint">登录保留 30 天。设备解锁使用 Passkey；面容、指纹或 PIN 由设备系统验证。</p><label for="verifyPassword">确认密码（开启或移除设备解锁时使用）</label><input id="verifyPassword" type="password" autocomplete="current-password" maxlength="512"><button id="registerPasskey" class="secondary" type="button">开启设备解锁</button><button id="removePasskeys" class="text-button" type="button">移除所有设备解锁凭据</button><p id="passkeyMessage" class="hint" role="status"></p><div class="logout-actions"><button id="logout" type="button" class="secondary">锁定 / 退出此设备</button><button id="logoutAll" type="button" class="secondary">退出全部设备</button></div></fieldset>
 </dialog>
-<script src="/app.js" defer></script>
+<script src="/chat.js" defer></script><script src="/app.js" defer></script>
 </body></html>
