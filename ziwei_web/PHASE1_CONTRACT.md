@@ -35,3 +35,10 @@
 - `bridge.incomplete` 仅表示无法确认完整交付，**不是证明 Hermes 没有完成执行**。恢复时应先读取 Hermes 历史核对，仍不能保证 exactly-once。
 - 仍缺：持久化消息幂等账本、跨进程锁、连接断开后的终态核对、断线恢复验收、长期会话创建格式的生产兼容确认。
 - 在以上项目验收前，`ZIWEI_BRIDGE_ENABLED` 必须保持 `false`，不部署为可用聊天网站。
+
+## 幂等键协议（开发态）
+- `POST /api/web/stream` 请求体必须包含 `{"message":"...","requestId":"UUID"}`，同一个逻辑发送只能使用同一个 UUID。
+- BFF 在调用 Hermes 前原子落盘 `chat-requests.json`，状态先记 `uncertain`，完整收到 `assistant.completed` + `done` 后标为 `completed`。
+- 重复 UUID 永不自动重新调用 Hermes；返回 `409 request_already_seen`；同 UUID 不同消息返回 `409 request_id_conflict`。
+- 此机制**仅限单进程、单副本、独立持久化卷**；不是分布式 exactly-once。服务器中断后应查询 Hermes 权威历史，再决定是否由用户发起新请求。
+- 账本只保存消息 SHA-256，不保存消息明文；需要安全备份并保证目录权限，30 天后过期。多实例部署前须改为事务性共享存储。
