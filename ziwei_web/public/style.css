@@ -16,3 +16,55 @@
 :root[data-theme=dark] .today p,
 :root[data-theme=dark] .status-tag,
 :root[data-theme=dark] .footnote{color:var(--muted);opacity:1}
+
+
+/* Glass material: derived from the user-provided reference
+   glass-material-recipe-for-work.md (2026-10-10).
+   Permission to borrow was relayed by the user; distribution scope unverified.
+   Keep interactive content on its own layer for iOS keyboard compositing. */
+:root{
+  --glass-blur:16px;
+  --glass-fill-top:rgba(255,255,255,.68);
+  --glass-fill-bottom:rgba(255,255,255,.48);
+  --glass-rim:rgba(255,255,255,.65);
+  --glass-inner-highlight:rgba(255,255,255,.72);
+  --glass-edge:rgba(255,255,255,.44);
+  --glass-material-shadow:rgba(120,76,95,.10);
+}
+:root[data-theme=dark]{
+  --glass-fill-top:rgba(63,51,67,.82);
+  --glass-fill-bottom:rgba(47,38,52,.74);
+  --glass-rim:rgba(255,255,255,.14);
+  --glass-inner-highlight:rgba(255,255,255,.20);
+  --glass-edge:rgba(255,255,255,.17);
+  --glass-material-shadow:rgba(0,0,0,.22);
+}
+.glass{
+  position:relative;
+  isolation:isolate;
+  background:transparent;
+  border-color:transparent;
+  box-shadow:none;
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+}
+.glass::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  border-radius:inherit;
+  background:linear-gradient(180deg,var(--glass-fill-top),var(--glass-fill-bottom));
+  border:1px solid var(--glass-edge);
+  box-shadow:0 0 0 1px var(--glass-rim),0 8px 28px var(--glass-material-shadow),inset 0 1px 0 var(--glass-inner-highlight);
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(132%);
+  backdrop-filter:blur(var(--glass-blur)) saturate(132%);
+}
+/* The settings dialog has its own opaque canvas; avoid a translucent modal. */
+dialog.glass{background:var(--bg)!important}
+dialog.glass::before{display:none}
+/* Browser fallback must retain readable opaque cards. */
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+  .glass::before{background:var(--bg)}
+}
