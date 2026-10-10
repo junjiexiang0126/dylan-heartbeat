@@ -1,5 +1,9 @@
 FROM nousresearch/hermes-agent@sha256:9774f4f39a9bb8c2f68ce728ed5e99ddbad282163be56764afacf88ed952b784
 COPY . /opt/ziwei-native
+# Direct CLI and Cron workers import the native facade without the Gateway
+# launcher. Keep the adapter immutable and reachable in every Hermes tree.
+RUN ln -s /opt/ziwei-native/browser_persistence.py /opt/hermes/browser_persistence.py \
+ && printf '\nfrom browser_persistence import install as _ziwei_browser_install\n_ziwei_browser_install()\n' >> /opt/hermes/tools/browser_tool.py
 # Official first-boot setup seeds this template only when config.yaml is absent.
 # Supply our deployment template there, before the official setup runs.
 COPY config.yaml /opt/hermes/cli-config.yaml.example

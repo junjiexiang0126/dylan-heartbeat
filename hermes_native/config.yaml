@@ -68,6 +68,8 @@ browser:
   headed: false
   inactivity_timeout: 60
   command_timeout: 30
+  persistence:
+    enabled: true
 code_execution:
   mode: project
   kernel_idle_timeout: 120

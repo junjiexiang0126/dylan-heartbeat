@@ -1,5 +1,8 @@
 # Ziwei on official Hermes
 
+Native headless Chromium persistence, task leases, compatibility limits and
+isolated acceptance checks are documented in [browser persistence](../docs/ZIWEI_NATIVE_BROWSER_PERSISTENCE.md).
+
 The existing Railway test service runs the pinned official Hermes image. The thin layer contains profile validation, first-boot seeding, startup checks and a cheap Cron preflight. It does not implement an Agent loop, scheduler or competing memory database.
 
 Build root: `/hermes_native`. Start command: `python /opt/ziwei-native/entrypoint.py python /opt/ziwei-native/bootstrap.py`. Persistent profile: `/data/hermes_native`. Keep one replica and the existing `/data` volume. Never modify the legacy production profile or clear the volume.
