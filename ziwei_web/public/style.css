@@ -81,3 +81,17 @@ nav.glass{position:fixed;z-index:5;bottom:calc(var(--nav-offset) + env(safe-area
 nav.glass{position:fixed;bottom:calc(var(--nav-offset) + env(safe-area-inset-bottom,0px))}
 body:has(#chatInput:focus) nav.glass{visibility:hidden;pointer-events:none}
 body:has(#chatInput:focus) #chat{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+
+/* Ziwei House fixed typography: refined, compact and readable on iPhone. */
+:root{--ziwei-font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Microsoft YaHei",sans-serif}
+body{font-family:var(--ziwei-font);font-size:14px;line-height:1.65;font-weight:400;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,input,select,textarea{font-family:var(--ziwei-font)}
+h1{font-size:20px;font-weight:550;letter-spacing:.025em;line-height:1.45}
+h2{font-size:16px;font-weight:550;letter-spacing:.015em}
+.section-heading h1{font-size:20px}
+.brand{font-size:17px;font-weight:550}
+.chat-name h1{font-size:21px}
+nav button{font-size:10px;font-weight:450}
+.status-tag,.eyebrow{font-weight:450}
+.chat-compose textarea{font-size:14px}
+@media(max-width:440px){body{font-size:14px}.section-heading h1{font-size:19px}}
