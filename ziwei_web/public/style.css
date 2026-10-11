@@ -123,3 +123,20 @@ nav.glass button.active svg{stroke:var(--accent)}
 
 /* iPhone follow-up: visually move the fixed capsule 12px lower; unlike the prior 6px offset adjustment this translates the rendered element directly. */
 @media(max-width:550px){nav.glass{transform:translate(-50%,12px)!important}}
+
+/* iPhone home compact pass: preserve the approved floating navigation position. */
+@media(max-width:550px){
+  .welcome{margin:8px 0 16px}
+  .together{padding:17px 18px 13px}
+  .pair{gap:14px;margin:20px 0 19px}
+  .avatar{width:62px;height:62px}
+  .person h2{margin:12px 0 1px}
+  .heartbeat{width:88px}
+  .heartbeat svg{height:35px}
+  .anniversaries{padding:17px 0 11px}
+  .anniversaries small{margin-bottom:5px}
+  .footnote{line-height:1.6}
+  .today{margin-top:14px}
+  .memorial{margin-top:14px}
+  #home.panel{padding-bottom:calc(var(--nav-h) + var(--nav-offset) + var(--nav-clear) + 24px + env(safe-area-inset-bottom,0px))}
+}
