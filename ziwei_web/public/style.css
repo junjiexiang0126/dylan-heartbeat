@@ -120,3 +120,6 @@ nav.glass button.active svg{stroke:var(--accent)}
 /* iPhone visual QA: lower the floating capsule by 6px without changing its fixed positioning. */
 :root{--nav-offset:10px}
 @media(max-width:550px){:root{--nav-offset:6px}}
+
+/* iPhone follow-up: visually move the fixed capsule 12px lower; unlike the prior 6px offset adjustment this translates the rendered element directly. */
+@media(max-width:550px){nav.glass{transform:translate(-50%,12px)!important}}
