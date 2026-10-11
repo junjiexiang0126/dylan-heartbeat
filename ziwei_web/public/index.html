@@ -71,7 +71,7 @@
 <script>
 /* Temporary, opt-in iPhone viewport diagnosis: ?ziwei_debug=1 */
 (function(){
- if(new URLSearchParams(location.search).get('ziwei_debug')!=='1')return;
+ /* Diagnostic enabled by default on this test branch. */
  const box=document.createElement('div');
  box.id='ziweiViewportDebug';
  box.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);left:6px;z-index:2147483647;background:rgba(255,255,255,.96);color:#111;border:2px solid #f03;padding:7px;border-radius:8px;font:11px/1.45 monospace;white-space:pre;max-width:94vw;pointer-events:auto;box-shadow:0 2px 8px #0005';
