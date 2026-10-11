@@ -6,7 +6,7 @@ function appearance() {
   const p = homeData?.preferences || { theme: 'system', background: 'rose' };
   document.documentElement.dataset.theme = p.theme === 'system' ? media.matches ? 'dark' : 'light' : p.theme;
   document.documentElement.dataset.background = p.background;
-  $('meta[name=theme-color]').content = document.documentElement.dataset.theme === 'dark' ? '#211b26' : '#f6e9e5';
+  $('meta[name=theme-color]').content = '#211b26'; // TEMP TEST 1: dark Safari browser tint
 }
 media.addEventListener('change', appearance);
 async function api(url, method = 'GET', body) {
