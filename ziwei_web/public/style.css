@@ -159,8 +159,3 @@ html,body{margin:0;min-height:100%;background:var(--bg)}
    receive top safe-area spacing, never an offset on the document itself. */
 .shell{min-height:100dvh}
 .topbar{margin-top:0}
-
-/* TEMP DEBUG: root viewport outlines; remove after iPhone screenshots. */
-html{outline:3px solid red!important;outline-offset:-3px}
-body{outline:3px solid lime!important;outline-offset:-3px}
-.shell{outline:3px solid blue!important;outline-offset:-3px}
