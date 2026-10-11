@@ -140,3 +140,10 @@ nav.glass button.active svg{stroke:var(--accent)}
   .memorial{margin-top:14px}
   #home.panel{padding-bottom:calc(var(--nav-h) + var(--nav-offset) + var(--nav-clear) + 24px + env(safe-area-inset-bottom,0px))}
 }
+
+/* Memorial quotation: smaller, tighter typography on iPhone only. */
+@media(max-width:550px){
+  .memorial blockquote{font-size:12px;line-height:1.7;letter-spacing:.01em;margin:12px 0 12px;overflow-wrap:anywhere}
+  .memorial{padding-top:18px;padding-bottom:18px}
+  .memorial .signature{font-size:11px}
+}
