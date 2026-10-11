@@ -147,10 +147,3 @@ nav.glass button.active svg{stroke:var(--accent)}
   .memorial{padding-top:18px;padding-bottom:18px}
   .memorial .signature{font-size:11px}
 }
-
-/* Blend the existing iOS status-bar tint into the page without altering scrolling or layout. */
-:root:not([data-theme=dark]) body{
-  background:linear-gradient(180deg,#f6e9e5 0px,#f4ece8 130px,var(--bg) 370px);
-  background-repeat:no-repeat;
-  background-color:var(--bg);
-}
