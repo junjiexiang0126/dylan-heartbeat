@@ -9,7 +9,7 @@
 
 /* One source of truth for the fixed navigation geometry and content clearance. */
 :root{--nav-h:76px;--nav-offset:16px;--nav-clear:44px}
-@media(max-width:550px){:root{--nav-offset:10px}}
+@media(max-width:550px){:root{--nav-offset:12px}}
 nav{bottom:calc(var(--nav-offset) + env(safe-area-inset-bottom,0px))}
 .panel{padding-bottom:calc(var(--nav-h) + var(--nav-offset) + var(--nav-clear) + env(safe-area-inset-bottom,0px))}
 /* Secondary status text needs to remain legible on the dark glass surface. */
@@ -73,7 +73,16 @@ dialog.glass::before{display:none}
 }
 
 /* Preserve floating navigation above panels after the glass stacking change. */
-nav.glass{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--nav-offset) + env(safe-area-inset-bottom,0px));z-index:5}
+/* 悬浮胶囊：钉在底部不动、浮在内容之上，但四周留空（不贴边、不贴底）。
+   bottom 同时受 :root[data-theme=dark] 的优先级影响会让它失效，这里用 !important 锁死。 */
+nav.glass{
+  position:fixed!important;left:50%!important;transform:translateX(-50%)!important;
+  bottom:calc(var(--nav-offset) + env(safe-area-inset-bottom,0px))!important;
+  width:min(calc(100% - 36px),690px)!important;z-index:20!important;
+  background:var(--glass)!important;border:1px solid var(--border)!important;
+  box-shadow:0 12px 34px rgba(70,45,60,.20)!important;backdrop-filter:blur(22px) saturate(140%)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(140%)!important;
+}
 
 
 /* 底部导航图标：统一的细腻线性风格 */
