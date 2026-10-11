@@ -1,6 +1,6 @@
 'use strict';
 window.ZiweiChat=(()=>{
- const $=s=>document.querySelector(s);let token=null,version=0,loadVersion=0,events=null,attachments=[],quote=null,pending=null,before=null,favorite=false,trash=false,busy=false,source='live',buffers=new Map(),active=new Set(),reloadTimer=null;
+ const $=s=>document.querySelector(s);let token=null,version=0,loadVersion=0,events=null,attachments=[],quote=null,pending=null,before=null,favorite=false,trash=false,busy=false,uploading=0,queuedSend=false,uploadFailed=false,source='live',buffers=new Map(),active=new Set(),reloadTimer=null;
  const states={queued:'等待发送',dispatching:'正在送出',running:'知微正在回应',recovering:'恢复连接中',uncertain:'等待核对，请勿重复发送',completed:'已回复',failed:'处理失败',cancelled:'已结束',interrupted:'处理被中断',archived:'历史档案'};
  const errors={hermes_not_configured:'聊天尚未配置连接。',request_conflict:'此发送编号的内容不一致，已阻止重复执行。',queue_full:'待处理消息较多，请稍后再发送。',attachment_too_large:'附件超过 20 MB。',attachment_quota:'附件空间已满，请联系维护者。',active_file_rejected:'此文件类型暂不接受，请选择图片、视频或普通文档。'};
  async function request(url,method='GET',data,extra={}){
@@ -50,7 +50,7 @@ window.ZiweiChat=(()=>{
  function chips(){
   $('#chatAttachments').replaceChildren();for(const a of attachments){const chip=element('span','attachment-chip',a.name+' ');chip.append(button('×',()=>{attachments=attachments.filter(x=>x.id!==a.id);chips();}));$('#chatAttachments').append(chip);}
  }
- function controls(){const archive=source==='archive';$('#chatForm').hidden=archive;$('#archiveNotice').hidden=!archive;$('#chatSend').disabled=busy||!!pending;$('#chatInput').disabled=busy||!!pending;$('#chatFiles').disabled=busy||!!pending;$('#chatRecover').hidden=!pending;}
+ function controls(){const archive=source==='archive';$('#chatForm').hidden=archive;$('#archiveNotice').hidden=!archive;$('#chatSend').disabled=!!pending;$('#chatInput').disabled=busy||!!pending;$('#chatFiles').disabled=busy||uploading>0||!!pending;$('#chatRecover').hidden=!pending;}
  async function connection(){const s=await request('/api/chat/status');$('#chatConnection').textContent=!navigator.onLine?'已离线':!s.configured?'待接通':s.connected?'Hermes 已连接':'等待连接验证';}
  function subscribe(){
   if(events)events.close();events=new EventSource('/api/chat/events');const epoch=version,guard=fn=>e=>{if(token&&epoch===version)fn(e);};
@@ -66,21 +66,39 @@ window.ZiweiChat=(()=>{
   catch(e){if([400,403,404,413].includes(e.status)||['queue_full','hermes_not_configured'].includes(e.code)){pending=null;$('#chatError').textContent=e.message;}else $('#chatError').textContent=e.message+' 发送状态尚未确认，请用同一编号核对；确认前请保持页面打开。';}
   finally{busy=false;controls();}
  }
- $('#chatForm').onsubmit=e=>{e.preventDefault();if(busy||pending)return;const message=$('#chatInput').value;if(!message.trim()&&!attachments.length)return;pending={requestId:crypto.randomUUID(),message,attachments:attachments.map(a=>a.id),...(quote?{replyTo:quote.id}:{})};void deliver();};
+ function submitMessage(){if(pending)return;if(uploading){queuedSend=true;$('#chatError').textContent='附件还在上传，完成后会自动发送。';return;}if(busy)return;const message=$('#chatInput').value;if(!message.trim()&&!attachments.length)return;pending={requestId:crypto.randomUUID(),message,attachments:attachments.map(a=>a.id),...(quote?{replyTo:quote.id}:{})};void deliver();}
+ $('#chatForm').onsubmit=e=>{e.preventDefault();submitMessage();};
+ // Handle the send control directly as well: mobile WebKit may not dispatch a
+ // form submit when the compact composer is rearranged during keyboard focus.
+ $('#chatSend').onclick=e=>{e.preventDefault();submitMessage();};
  $('#chatRecover').onclick=()=>deliver();
  $('#chatFiles').onchange=async e=>{
   const epoch=version,selected=[...e.target.files];e.target.value='';if(selected.length+attachments.length>6){$('#chatError').textContent='每条消息最多 6 个附件。';return;}
-  busy=true;controls();$('#chatError').textContent='';
+  uploading++;uploadFailed=false;controls();$('#chatError').textContent='';
   try{for(const file of selected){if(file.size>20*1024*1024)throw Error('附件超过 20 MB。');const a=await request('/api/chat/attachments','POST',null,{headers:{'X-Filename':encodeURIComponent(file.name),'Content-Type':'application/octet-stream'},body:file});if(epoch!==version)return;attachments.push(a);chips();}}
-  catch(e){if(epoch===version)$('#chatError').textContent=e.message;}finally{if(epoch===version){busy=false;controls();}}
+  catch(e){if(epoch===version){uploadFailed=true;$('#chatError').textContent=e.message;}}finally{if(epoch===version){uploading=Math.max(0,uploading-1);controls();if(!uploading&&queuedSend){queuedSend=false;if(uploadFailed)$('#chatError').textContent=($('#chatError').textContent||'附件上传失败。')+' 已取消自动发送，请检查附件后再发送。';else submitMessage();}}}
  };
  $('#clearChatQuote').onclick=()=>{quote=null;$('#chatQuote').hidden=true;};
  $('#chatSource').onchange=()=>{source=$('#chatSource').value;before=null;trash=false;$('#chatTrash').setAttribute('aria-pressed','false');controls();load().catch(e=>$('#chatError').textContent=e.message);};
  $('#chatTrash').onclick=()=>{trash=!trash;favorite=false;source='live';$('#chatSource').value=source;$('#chatFavorites').setAttribute('aria-pressed','false');$('#chatTrash').setAttribute('aria-pressed',String(trash));controls();load().catch(()=>{});};
  $('#chatFavorites').onclick=()=>{favorite=!favorite;$('#chatFavorites').setAttribute('aria-pressed',String(favorite));load().catch(()=>{});};
+ const searchPanel=$('#chatToolbar');
+ function toggleSearch(force){
+  const open=typeof force==='boolean'?force:searchPanel.hidden;
+  searchPanel.hidden=!open;
+  $('#chatSearchToggle').setAttribute('aria-expanded',String(open));
+  $('#chatMore').setAttribute('aria-expanded',String(open));
+  if(open)$('#chatSearch').focus();
+ }
+ $('#chatSearchToggle').onclick=()=>toggleSearch();
+ $('#chatMore').onclick=()=>toggleSearch();
+ $('#chatCall').onclick=()=>window.alert('语音通话正在开发中，尚未接入实时语音服务。');
+ $('#chatInput').addEventListener('input',()=>{
+  const el=$('#chatInput');el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';
+ });
  $('#chatSearch').oninput=()=>scheduleLoad();$('#chatOlder').onclick=()=>load(true).catch(()=>{});
  window.addEventListener('online',()=>{if(token){void connection().catch(()=>{});if(pending)void deliver();}});window.addEventListener('offline',()=>{$('#chatConnection').textContent='已离线';});
- function stop(){version++;token=null;events?.close();events=null;clearTimeout(reloadTimer);attachments=[];quote=null;pending=null;busy=false;active.clear();buffers.clear();$('#chatMessages').replaceChildren();$('#chatInput').value='';$('#chatSearch').value='';$('#chatQuote').hidden=true;$('#chatError').textContent='';$('#chatStreaming').textContent='';$('#chatProgress').hidden=true;chips();controls();}
+ function stop(){version++;token=null;events?.close();events=null;clearTimeout(reloadTimer);attachments=[];quote=null;pending=null;busy=false;uploading=0;queuedSend=false;uploadFailed=false;active.clear();buffers.clear();$('#chatMessages').replaceChildren();$('#chatInput').value='';$('#chatSearch').value='';$('#chatQuote').hidden=true;$('#chatError').textContent='';$('#chatStreaming').textContent='';$('#chatProgress').hidden=true;chips();controls();}
  async function start(csrf){if(token===csrf)return;stop();token=csrf;const epoch=version;try{await load();const r=await request('/api/chat/requests');if(epoch!==version)return;r.data.forEach(x=>active.add(x.id));progress();await connection();if(epoch===version)subscribe();}catch(e){if(epoch===version)$('#chatError').textContent=e.message;}}
  return {start,stop};
 })();
