@@ -73,4 +73,10 @@ dialog.glass::before{display:none}
 }
 
 /* Preserve floating navigation above panels after the glass stacking change. */
-nav.glass{z-index:5}
+nav.glass{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--nav-offset) + env(safe-area-inset-bottom,0px));z-index:5}
+
+
+/* 底部导航图标：统一的细腻线性风格 */
+nav button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+nav .home-nav svg{width:25px;height:25px;stroke-width:1.6}
+nav button.active svg{stroke:var(--accent)}

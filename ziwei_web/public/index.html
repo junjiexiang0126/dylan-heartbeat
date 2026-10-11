@@ -30,8 +30,14 @@
     <p class="home-footer">从微小的日常，走向长久的相伴 <span>♡</span></p>
   </section>
   <section class="panel chat-panel" id="chat" hidden>
-    <div class="section-heading chat-heading"><div><span class="eyebrow">WORDS BETWEEN US</span><h1>聊天</h1></div><span id="chatConnection" class="status-tag">正在连接</span></div>
-    <div class="chat-toolbar glass"><input id="chatSearch" type="search" maxlength="200" placeholder="搜索我们的对话…" aria-label="搜索聊天记录"><select id="chatSource" aria-label="记录来源"><option value="live">我们的对话</option><option value="archive">历史档案</option></select><button id="chatFavorites" class="text-button" aria-pressed="false">收藏</button><button id="chatTrash" class="text-button" aria-pressed="false">回收站</button></div>
+    <div class="section-heading chat-heading">
+      <svg class="ecg" viewBox="0 0 120 40" aria-hidden="true"><path d="M120 20H88L80 12L72 28L60 4L48 34L38 20H0"/></svg>
+      <div class="chat-identity"><strong id="chatPeer">知微</strong><span id="chatConnection" class="status-tag">正在连接</span></div>
+      <svg class="ecg ecg-flip" viewBox="0 0 120 40" aria-hidden="true"><path d="M120 20H88L80 12L72 28L60 4L48 34L38 20H0"/></svg>
+      <button type="button" id="chatSearchToggle" class="chat-icon-button" aria-label="搜索聊天记录" aria-expanded="false">⌕</button>
+      <button type="button" id="chatCall" class="chat-icon-button" aria-label="语音通话（开发中）">✆</button>
+    </div>
+    <div class="chat-toolbar glass" id="chatToolbar" hidden><input id="chatSearch" type="search" maxlength="200" placeholder="搜索我们的对话…" aria-label="搜索聊天记录"><select id="chatSource" aria-label="记录来源"><option value="live">我们的对话</option><option value="archive">历史档案</option></select><button id="chatFavorites" class="text-button" aria-pressed="false">收藏</button><button id="chatTrash" class="text-button" aria-pressed="false">回收站</button></div>
     <p id="archiveNotice" class="hint" hidden>这些是保留来源的历史档案，可查询，不代表已成为知微的长期记忆。</p>
     <button id="chatOlder" class="secondary" hidden>查看更早记录</button>
     <p id="chatEmpty" class="chat-empty">这里，留给我们慢慢说。</p>
@@ -49,7 +55,7 @@
   <section class="panel" id="moments" hidden><div class="section-heading"><span class="eyebrow">LITTLE MOMENTS</span><h1>朋友圈</h1></div><article class="empty glass"><span class="empty-icon">✿</span><h2>两个人的日常</h2><p>共同时间线将在第三阶段开放。</p><small>尚未接入动态、点赞和评论。</small></article></section>
   <section class="panel" id="memory" hidden><div class="section-heading"><span class="eyebrow">THINGS WE REMEMBER</span><h1>记忆</h1></div><article class="empty glass"><span class="empty-icon">◇</span><h2>值得记住的，都在这里</h2><p>第三阶段连接 Hermes 原生记忆。</p><small>当前未读取或修改原有记忆。</small></article><div class="category-grid"><span class="glass">关于你</span><span class="glass">关于知微</span><span class="glass">共同经历</span><span class="glass">重要约定</span></div></section>
   <section class="panel" id="logs" hidden><div class="section-heading"><span class="eyebrow">DAYS & FOOTPRINTS</span><h1>日志</h1></div><article class="empty glass"><span class="empty-icon">≋</span><h2>日记与真实的足迹</h2><p>知微日记与活动记录将在第三阶段连接。</p><small>目前没有读取实际活动，不展示示例行动。</small></article></section>
-  <nav class="glass" aria-label="底部导航"><button data-tab="chat" aria-current="false"><span>◌</span>聊天</button><button data-tab="moments" aria-current="false"><span>✿</span>朋友圈</button><button data-tab="home" class="active home-nav" aria-current="page"><span>⌂</span>首页</button><button data-tab="memory" aria-current="false"><span>◇</span>记忆</button><button data-tab="logs" aria-current="false"><span>≋</span>日志</button></nav>
+  <nav class="glass" aria-label="底部导航"><button data-tab="chat" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.2A2.2 2.2 0 0 1 6.2 5h11.6A2.2 2.2 0 0 1 20 7.2v6.6A2.2 2.2 0 0 1 17.8 16H9.4L5 19.6V16h-.8A2.2 2.2 0 0 1 4 13.8z"/></svg>聊天</button><button data-tab="moments" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6c1.7 0 2.7 1.2 3 2.5 1.4-.6 2.9-.2 3.6 1.2.7 1.3.2 2.9-1.1 3.6 1.3.7 1.8 2.3 1.1 3.6-.7 1.4-2.2 1.8-3.6 1.2-.3 1.3-1.3 2.5-3 2.5s-2.7-1.2-3-2.5c-1.4.6-2.9.2-3.6-1.2-.7-1.3-.2-2.9 1.1-3.6-1.3-.7-1.8-2.3-1.1-3.6.7-1.4 2.2-1.8 3.6-1.2.3-1.3 1.3-2.5 3-2.5z"/><circle cx="12" cy="12" r="1.5"/></svg>朋友圈</button><button data-tab="home" class="active home-nav" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.2 11.4 12 4.6l7.8 6.8"/><path d="M6.6 10.8v8.6h10.8v-8.6"/></svg>首页</button><button data-tab="memory" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.2 4.4h9.3A1.9 1.9 0 0 1 17.4 6.3v13.3H8.1a1.9 1.9 0 0 1-1.9-1.9z"/><path d="M8.1 4.4v15.2"/></svg>记忆</button><button data-tab="logs" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.6h14M5 12h14M5 17.4h8.5"/></svg>日志</button></nav>
 </section>
 </main>
 <dialog id="settings" class="glass"><div class="dialog-heading"><div><span class="eyebrow">MAKE IT YOURS</span><h2>设置与资料</h2></div><button id="closeSettings" class="icon-button" aria-label="关闭设置">×</button></div>

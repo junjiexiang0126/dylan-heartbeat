@@ -5,3 +5,30 @@
 /* 输入区钉在底部：消息列表再长，输入框与发送键也始终留在视口内、始终可点。
    偏移 = 悬浮导航高度(76) + 导航底距(10) + 余量(4)，再加设备安全区。 */
 .chat-compose{position:sticky;bottom:calc(90px + env(safe-area-inset-bottom,0px));z-index:2}
+
+
+/* ===== iPhone 端整改（据用户三张设计图） ===== */
+/* 1) 聊天页头部：去掉大号标题，知微居中、下方真实连接状态，两侧对称静态心电装饰 */
+.chat-heading{position:relative;justify-content:center;gap:10px;margin:2px 0 10px;padding:0 84px}
+.chat-heading > div:not(.chat-identity){display:none}
+.chat-identity{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.chat-identity strong{font-size:15px;letter-spacing:.08em}
+.chat-identity .status-tag{margin:0;font-size:9px}
+.ecg{width:84px;height:24px;flex:0 0 auto;fill:none;stroke:var(--accent);stroke-width:1.4;opacity:.5;overflow:visible}
+.ecg-flip{transform:scaleX(-1)}
+.chat-icon-button{position:absolute;top:0;width:34px;height:34px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--border);background:var(--glass);color:var(--ink);font-size:16px;line-height:1}
+#chatSearchToggle{right:0}
+#chatCall{right:40px}
+/* 2) 列表独立滚动：聊天页高度固定，只有消息区滚，输入框小巧地固定在底部导航上方 */
+.chat-panel{display:flex;flex-direction:column;
+  height:calc(100dvh - 110px - env(safe-area-inset-top,0px) - var(--nav-h) - var(--nav-offset) - env(safe-area-inset-bottom,0px));
+  min-height:300px}
+.chat-heading,.chat-toolbar{flex:0 0 auto}
+.chat-messages{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:10px 0;padding-right:4px}
+.chat-compose{position:static;flex:0 0 auto;margin:0 0 6px;padding:10px}
+.chat-compose textarea{min-height:38px;max-height:110px;font-size:15px;padding:8px}
+.chat-compose .hint,.chat-compose details{display:none}
+.compose-actions small{display:none}
+.chat-compose .primary{padding:9px 14px;margin:0}
+/* 3) 底部导航固定后，各页内容都不被遮住 */
+.panel{padding-bottom:calc(var(--nav-h) + var(--nav-offset) + 26px + env(safe-area-inset-bottom,0px))}
