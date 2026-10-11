@@ -147,3 +147,27 @@ nav.glass button.active svg{stroke:var(--accent)}
   .memorial{padding-top:18px;padding-bottom:18px}
   .memorial .signature{font-size:11px}
 }
+
+/* iPhone Safari: keep the brand fully legible when scrolling; soften the top color transition. */
+@media(max-width:550px){
+  .topbar{
+    position:sticky;
+    top:0;
+    z-index:16;
+    isolation:isolate;
+  }
+  .topbar::before{
+    content:"";
+    position:absolute;
+    z-index:-1;
+    inset:0 -18px -8px;
+    pointer-events:none;
+    background:linear-gradient(180deg,rgba(240,233,234,.97) 0%,rgba(242,238,233,.88) 62%,rgba(245,242,237,0) 100%);
+    -webkit-backdrop-filter:blur(8px);
+    backdrop-filter:blur(8px);
+  }
+  .ambient{
+    background:radial-gradient(ellipse 95% 65% at 0% 0%,var(--orb),transparent 78%),radial-gradient(ellipse 95% 75% at 100% 85%,var(--accent-soft),transparent 85%);
+    opacity:.34;
+  }
+}
