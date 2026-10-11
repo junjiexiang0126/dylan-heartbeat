@@ -89,3 +89,30 @@ nav.glass{
 nav button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 nav .home-nav svg{width:25px;height:25px;stroke-width:1.6}
 nav button.active svg{stroke:var(--accent)}
+
+
+/* Mobile design system: warm rose, cream paper, legible Chinese typography. */
+:root{
+  --ui-sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --ui-serif:"Songti SC","STSong","Noto Serif SC",serif;
+  --nav-clear:68px; /* 44px legacy + 24px safety margin; >= 18px shortfall */
+}
+body,button,input,select,textarea{font-family:var(--ui-sans)}
+body{font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased}
+h1,h2,.brand{letter-spacing:.045em}
+h1{font-weight:600}h2{font-weight:600}
+:root:not([data-theme=dark]){--bg:#fff9f7;--ink:#503f48;--muted:#816f78;--accent:#c97d9d;--accent-soft:#f9e5ed;--border:rgba(195,139,161,.26);--input:#fff9fb}
+:root[data-theme=dark]{--ink:#f9edf2;--accent:#e8a9c5;--accent-soft:#493343;--border:rgba(235,190,212,.20)}
+.panel:not(.chat-panel){padding-bottom:calc(var(--nav-h) + var(--nav-offset) + var(--nav-clear) + env(safe-area-inset-bottom,0px))}
+.panel .section-heading{margin-bottom:22px}
+.panel .section-heading .eyebrow{font-size:10px;letter-spacing:.19em}
+.panel .section-heading h1{font-family:var(--ui-serif);font-size:clamp(24px,6vw,30px);font-weight:600}
+.empty.glass{min-height:min(42dvh,350px);padding:28px 24px}
+.empty-icon{font-family:var(--ui-serif);font-size:40px}
+.category-grid .glass{font-size:13px;border-radius:20px}
+nav.glass{isolation:isolate;border-radius:30px!important}
+nav.glass button{min-width:0;min-height:60px;gap:4px;font-size:10px;letter-spacing:.025em}
+nav.glass button svg{width:24px;height:24px;stroke-width:1.55;filter:drop-shadow(0 2px 2px rgba(172,96,128,.12))}
+nav.glass button.active{background:var(--accent-soft);color:var(--ink)}
+nav.glass button.active svg{stroke:var(--accent)}
+@media(max-width:550px){.shell{padding-inline:18px}.panel:not(.chat-panel){padding-bottom:calc(var(--nav-h) + var(--nav-offset) + var(--nav-clear) + env(safe-area-inset-bottom,0px))}}
