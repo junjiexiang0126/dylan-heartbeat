@@ -39,9 +39,9 @@
     <div id="chatProgress" class="glass chat-progress" hidden><span class="eyebrow">知微正在回应</span><p id="chatStreaming"></p><small id="chatWork"></small></div>
     <form id="chatForm" class="glass chat-compose">
       <div id="chatQuote" class="chat-quote" hidden><span id="chatQuoteText"></span><button id="clearChatQuote" type="button" class="text-button" aria-label="取消引用">×</button></div>
-      <div id="chatAttachments" class="attachment-chips"></div>
       <label class="sr-only" for="chatInput">给知微的消息</label><textarea id="chatInput" rows="2" maxlength="10000" placeholder="把今天，讲给知微听…"></textarea>
       <div class="compose-actions"><label for="chatFiles" class="attachment-button">＋ 附件</label><input id="chatFiles" type="file" multiple accept="image/*,video/mp4,video/webm,.pdf,.txt,.md,.csv,.json,.doc,.docx,.xls,.xlsx,.zip"><small>图片 · GIF · 表情包 · 文件 · 视频</small><button id="chatSend" class="primary" type="submit" aria-label="发送消息">发送 ↑</button></div>
+      <div id="chatAttachments" class="attachment-chips"></div>
       <p class="hint">附件每个限 20 MB，最多 6 个。图片和小文本可传给知微；视频与其他文件目前保存供查看、下载，仅传递文件信息。</p>
       <p id="chatError" class="error" role="alert"></p><button id="chatRecover" type="button" class="secondary" hidden>确认发送状态</button>
     </form>

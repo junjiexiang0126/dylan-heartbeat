@@ -183,3 +183,83 @@ test('glass fallback remains opaque when blur is disabled',async({page})=>{
  expect(info.blur).toBe('none');
  expect(info.background).not.toBe('rgba(0, 0, 0, 0)');
 });
+
+// —— 三条上传竞态回归 ——
+// 用 page.evaluate 改写 window.fetch 来"挂住"上传：不依赖 page.route 的网络拦截，
+// Chromium 与 WebKit 行为一致，而且不可能因为拦截没命中而无声挂到超时。
+// 每个阶段都有 STAGE 日志，失败时能直接看出卡在哪一步。
+const UPLOAD_GATE = () => {
+  const orig = window.fetch.bind(window);
+  window.__up = { count: 0, release: null, mode: 'ok' };
+  const gate = new Promise(r => { window.__up.release = r; });
+  window.fetch = (u, o) => {
+    const url = String(u && u.url ? u.url : u);
+    if (url.includes('/api/chat/attachments')) {
+      window.__up.count++;
+      return gate.then(() => window.__up.mode === 'fail'
+        ? new Response(JSON.stringify({ error: 'upload_failed' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+        : orig(u, o));
+    }
+    return orig(u, o);
+  };
+};
+
+test('queued send waits for the upload and sends exactly one message with the attachment', async ({page,browserName})=>{
+ const message='上传排队发送 '+Date.now();
+ await login(page);
+ console.log('STAGE '+browserName+' queued: logged in');
+ await page.locator('#chatInput').fill(message);
+ await page.evaluate(UPLOAD_GATE);
+ await page.locator('#chatFiles').setInputFiles({name:'queue.txt',mimeType:'text/plain',buffer:Buffer.from('queued attachment')});
+ await page.waitForFunction(()=>window.__up.count>0,{timeout:10000});
+ console.log('STAGE '+browserName+' queued: upload held (count='+await page.evaluate(()=>window.__up.count)+')');
+ await page.locator('#chatSend').click();
+ await expect(page.locator('#chatError')).toContainText('完成后会自动发送');
+ console.log('STAGE '+browserName+' queued: click registered, releasing upload');
+ await page.evaluate(()=>window.__up.release());
+ await expect(page.locator('#chatMessages')).toContainText('协议测试回复',{timeout:20000});
+ await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(1);
+ console.log('STAGE '+browserName+' queued: exactly one message sent');
+});
+
+test('a failed upload cancels the queued send instead of sending partial attachments', async ({page,browserName})=>{
+ const message='上传失败排队 '+Date.now();
+ await login(page);
+ await page.locator('#chatInput').fill(message);
+ await page.evaluate(UPLOAD_GATE);
+ await page.evaluate(()=>{ window.__up.mode='fail'; });
+ await page.locator('#chatFiles').setInputFiles({name:'fail.txt',mimeType:'text/plain',buffer:Buffer.from('x')});
+ await page.waitForFunction(()=>window.__up.count>0,{timeout:10000});
+ console.log('STAGE '+browserName+' failed-upload: upload held, about to click send');
+ await page.locator('#chatSend').click();
+ await expect(page.locator('#chatError')).toContainText('完成后会自动发送');
+ await page.evaluate(()=>window.__up.release());
+ await expect(page.locator('#chatError')).toContainText('已取消自动发送',{timeout:15000});
+ await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(0);
+ console.log('STAGE '+browserName+' failed-upload: auto-send cancelled as expected');
+ await page.locator('#chatSend').click();
+ await expect(page.locator('#chatMessages')).toContainText('协议测试回复',{timeout:20000});
+ await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(1);
+ console.log('STAGE '+browserName+' failed-upload: manual send of text only succeeded');
+});
+
+test('a queued send must not survive logout and re-login', async ({page,browserName})=>{
+ const message='登出排队 '+Date.now();
+ await login(page);
+ await page.locator('#chatInput').fill(message);
+ await page.evaluate(UPLOAD_GATE);
+ await page.locator('#chatFiles').setInputFiles({name:'logout.txt',mimeType:'text/plain',buffer:Buffer.from('x')});
+ await page.waitForFunction(()=>window.__up.count>0,{timeout:10000});
+ await page.locator('#chatSend').click();
+ await expect(page.locator('#chatError')).toContainText('完成后会自动发送');
+ console.log('STAGE '+browserName+' logout: queued, logging out');
+ await page.locator('#settingsButton').click();
+ await page.locator('#logout').click();
+ await page.locator('#password').fill('isolated-e2e-password-123456');
+ await page.getByRole('button',{name:'进入知微之家'}).click();
+ await page.locator('[data-tab=chat]').click();
+ await page.waitForTimeout(2000);
+ await expect(page.locator('.message.user').filter({hasText:message})).toHaveCount(0);
+ console.log('STAGE '+browserName+' logout: queued send did not survive re-login');
+ await page.evaluate(()=>{ if(window.__up && window.__up.release) window.__up.release(); });
+});
