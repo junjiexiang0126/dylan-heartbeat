@@ -68,30 +68,5 @@
 <fieldset class="security"><legend>登录与设备</legend><p class="hint">登录保留 30 天。设备解锁使用 Passkey；面容、指纹或 PIN 由设备系统验证。</p><label for="verifyPassword">确认密码（开启或移除设备解锁时使用）</label><input id="verifyPassword" type="password" autocomplete="current-password" maxlength="512"><button id="registerPasskey" class="secondary" type="button">开启设备解锁</button><button id="removePasskeys" class="text-button" type="button">移除所有设备解锁凭据</button><p id="passkeyMessage" class="hint" role="status"></p><div class="logout-actions"><button id="logout" type="button" class="secondary">锁定 / 退出此设备</button><button id="logoutAll" type="button" class="secondary">退出全部设备</button></div></fieldset>
 </dialog>
 <script src="/chat.js" defer></script><script src="/app.js" defer></script>
-<script>
-/* Temporary, opt-in iPhone viewport diagnosis: ?ziwei_debug=1 */
-(function(){
- /* Diagnostic enabled by default on this test branch. */
- const box=document.createElement('div');
- box.id='ziweiViewportDebug';
- box.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);left:6px;z-index:2147483647;background:rgba(255,255,255,.96);color:#111;border:2px solid #f03;padding:7px;border-radius:8px;font:11px/1.45 monospace;white-space:pre;max-width:94vw;pointer-events:auto;box-shadow:0 2px 8px #0005';
- const label=document.createElement('div');
- const toggle=document.createElement('button');
- toggle.type='button';toggle.textContent='顶部层透明度：正常';
- toggle.style.cssText='font:12px sans-serif;padding:4px;margin-top:4px;color:#111;background:#eee;border:1px solid #666;border-radius:4px';
- let transparent=false;
- toggle.addEventListener('click',function(){
-   transparent=!transparent;
-   document.querySelectorAll('.topbar,.ambient').forEach(function(el){el.style.opacity=transparent?'.3':''});
-   toggle.textContent=transparent?'顶部层透明度：30%':'顶部层透明度：正常';
- });
- box.append(label,toggle);document.body.appendChild(box);
- function fmt(el){if(!el)return 'missing';const r=el.getBoundingClientRect();const cs=getComputedStyle(el);return 'top '+r.top.toFixed(0)+' bottom '+r.bottom.toFixed(0)+' h '+r.height.toFixed(0)+' '+cs.position+' z='+cs.zIndex}
- function tick(){
-   const vv=window.visualViewport;
-   label.textContent='iH '+innerHeight+' vvH '+(vv?vv.height.toFixed(0):'-')+' clientH '+document.documentElement.clientHeight+'\nscrollY '+scrollY.toFixed(0)+' vvTop '+(vv?vv.offsetTop.toFixed(0):'-')+'\nshell '+fmt(document.querySelector('.shell'))+'\ntopbar '+fmt(document.querySelector('.topbar'))+'\nambient '+fmt(document.querySelector('.ambient'))+'\nchat '+fmt(document.querySelector('.chat-panel'));
- }
- tick();setInterval(tick,500);
-})();
-</script>
+<script src="/viewport-debug.js?v=2" defer></script>
 </body></html>
