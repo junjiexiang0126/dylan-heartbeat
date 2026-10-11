@@ -183,3 +183,38 @@ test('glass fallback remains opaque when blur is disabled',async({page})=>{
  expect(info.blur).toBe('none');
  expect(info.background).not.toBe('rgba(0, 0, 0, 0)');
 });
+
+test('queued send waits for upload and sends one message with attachment',async({page})=>{
+ await login(page);const message='上传排队发送 '+Date.now();await page.locator('#chatInput').fill(message);
+ let release;const held=new Promise(resolve=>release=resolve);let arrived;const seen=new Promise(resolve=>arrived=resolve);
+ await page.route('**/api/chat/attachments',async route=>{arrived();await held;await route.continue();});
+ await page.locator('#chatFiles').setInputFiles({name:'queue.txt',mimeType:'text/plain',buffer:Buffer.from('queued attachment')});await seen;
+ await expect(page.locator('#chatSend')).toBeEnabled();await page.locator('#chatSend').click();
+ await expect(page.locator('#chatError')).toContainText('完成后会自动发送');
+ release();await expect(page.locator('.message.user').filter({has:page.locator('.message-content').getByText(message,{exact:true})})).toHaveCount(1,{timeout:30000});
+ await expect(page.locator('.message.user').filter({has:page.locator('.message-content').getByText(message,{exact:true})}).locator('a').filter({hasText:'queue.txt'})).toBeVisible();
+});
+
+test('failed upload cancels queued send',async({page})=>{
+ await login(page);const message='上传失败排队 '+Date.now();await page.locator('#chatInput').fill(message);
+ let release;const held=new Promise(resolve=>release=resolve);let arrived;const seen=new Promise(resolve=>arrived=resolve);
+ await page.route('**/api/chat/attachments',async route=>{arrived();await held;await route.fulfill({status:500,contentType:'application/json',body:JSON.stringify({error:'upload_failed'})});});
+ await page.locator('#chatFiles').setInputFiles({name:'bad.txt',mimeType:'text/plain',buffer:Buffer.from('fail')});await seen;
+ await page.locator('#chatSend').click();release();await expect(page.locator('#chatError')).toContainText('已取消自动发送');
+ await expect(page.locator('.message.user').filter({has:page.locator('.message-content').getByText(message,{exact:true})})).toHaveCount(0);
+ await expect(page.locator('#chatInput')).toHaveValue(message);
+});
+
+test('queued send must not survive logout and re-login',async({page})=>{
+ await login(page);const message='登出排队 '+Date.now();await page.locator('#chatInput').fill(message);
+ let release;const held=new Promise(r=>release=r);let arrived;const seen=new Promise(r=>arrived=r);
+ await page.route('**/api/chat/attachments',async route=>{arrived();await held;await route.continue();});
+ await page.locator('#chatFiles').setInputFiles({name:'a.txt',mimeType:'text/plain',buffer:Buffer.from('logout queue')});await seen;
+ await page.locator('#chatSend').click();
+ await expect(page.locator('#chatError')).toContainText('完成后会自动发送');
+ await page.locator('#settingsButton').click();await page.locator('#logout').click();
+ await page.locator('#password').fill('isolated-e2e-password-123456');await page.getByRole('button',{name:'进入知微之家'}).click();
+ await page.locator('[data-tab=chat]').click();
+ await expect(page.locator('#chatMessages')).not.toContainText(message);
+ release&&release();
+});
