@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#121016">
+<title>知微之家 · 视口诊断页</title>
+<style>
+  /* 本页完全自包含，不引用 style.css / app.js，避免被主站样式影响 */
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#121016;color:#eae6ee;
+    font:13px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
+  .wrap{padding:calc(12px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom))}
+  h1{font-size:15px;margin:0 0 10px;letter-spacing:.05em}
+  h2{font-size:13px;margin:18px 0 8px;color:#f0b8cf;letter-spacing:.08em}
+  .card{background:#1d1a22;border:1px solid #342f3d;border-radius:14px;padding:12px;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  td{padding:3px 0;vertical-align:top}
+  td:first-child{color:#a99fb4;width:52%}
+  td:last-child{color:#8ef0b0;text-align:right;font-weight:600}
+  .warn{color:#ffd28a}
+  .bad{color:#ff8f9b}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  button{flex:1;min-width:96px;padding:11px 8px;border-radius:11px;border:1px solid #4a4356;
+    background:#241f2b;color:#eae6ee;font-size:12px}
+  button.on{background:#e6a6be;color:#241f2b;border-color:#e6a6be;font-weight:700}
+  .probe{position:absolute;left:-9999px;top:0;width:10px}
+  .demo{display:none}
+  .demo.on{display:block}
+  .longtext{background:#17141c;border:1px solid #2e2937;border-radius:12px;padding:14px;
+    font-size:14px;line-height:1.9}
+  .longtext p{margin:0 0 14px}
+  /* 变体 1：文档滚动 + min-height:100dvh */
+  #v1 .selftest{position:relative;min-height:100dvh;padding:0 2px}
+  /* 变体 2：文档滚动 + min-height:100vh */
+  #v2 .selftest{position:relative;min-height:100vh;padding:0 2px}
+  /* 变体 3：100vh 外壳 + 内部滚动 */
+  #v3 .shell3{height:100vh;overflow:hidden;display:flex;flex-direction:column}
+  #v3 .scroller{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    padding:10px 8px}
+  .hist{font-family:ui-monospace,Menlo,monospace;font-size:11px;white-space:pre-wrap;color:#cfc6d8}
+  .note{font-size:11px;color:#a99fb4;margin:6px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>知微之家 · 视口诊断页（只读测量）</h1>
+  <p class="note">这一页只做测量与对照，不修改主站任何文件。看完了、结论出来后，删掉本文件即可完全回退。</p>
+
+  <div class="probe" id="probeTop"></div>
+  <div class="probe" id="probeDvh"></div>
+  <div class="probe" id="probeVh"></div>
+
+  <h2>A 区 · 当前环境数值</h2>
+  <div class="card">
+    <table id="env"></table>
+  </div>
+
+  <h2>C 区 · 刷新历史（最近 6 次）</h2>
+  <div class="card">
+    <div class="hist" id="hist">（本区在每次打开/刷新本页时自动记录一条）</div>
+    <p class="note">请在 Safari 里刷新 5 次（其中 2 次先把地址栏点开成全屏状态），然后截这一张图；再用主屏幕 PWA 打开刷新 5 次，再截一张。</p>
+    <button onclick="localStorage.removeItem('ziwei_diag_hist');sessionStorage.removeItem('ziwei_diag_hist');location.reload()" style="margin-top:10px">清空历史</button>
+  </div>
+
+  <h2>B 区 · 滚动对照（三段同样长度的文字）</h2>
+  <div class="card">
+    <div class="row">
+      <button id="b1" onclick="pick(1)">变体1 dvh+文档滚动</button>
+      <button id="b2" onclick="pick(2)">变体2 vh+文档滚动</button>
+      <button id="b3" onclick="pick(3)">变体3 vh+内部滚动</button>
+    </div>
+    <p class="note">选一个变体，往下滚，看文字会不会在屏幕里某条线"凭空消失"。哪个变体出现，就截哪一张。</p>
+  </div>
+
+  <div class="demo" id="v1"><div class="selftest"><div class="longtext" id="t1"></div></div></div>
+  <div class="demo" id="v2"><div class="selftest"><div class="longtext" id="t2"></div></div></div>
+  <div class="demo" id="v3"><div class="shell3"><div class="scroller"><div class="longtext" id="t3"></div></div></div></div>
+</div>
+
+<script>
+/* ---------- 工具 ---------- */
+const px = v => Math.round(v * 100) / 100;
+const cs = el => getComputedStyle(el);
+
+function envSafeTop(){
+  const p = document.getElementById('probeTop');
+  p.style.paddingTop = 'env(safe-area-inset-top, 0px)';
+  return px(parseFloat(cs(p).paddingTop) || 0);
+}
+function probeHeights(){
+  const d = document.getElementById('probeDvh'), v = document.getElementById('probeVh');
+  d.style.height = '100dvh'; v.style.height = '100vh';
+  return {dvh: px(parseFloat(cs(d).height) || 0), vh: px(parseFloat(cs(v).height) || 0)};
+}
+
+/* ---------- A 区 ---------- */
+function snapshot(){
+  const vv = window.visualViewport;
+  const ph = probeHeights();
+  return {
+    t: new Date().toLocaleTimeString('zh-CN', {hour12:false}),
+    innerH: innerHeight,
+    vvH: vv ? px(vv.height) : null,
+    vvOffsetTop: vv ? px(vv.offsetTop) : null,
+    vvPageTop: vv ? px(vv.pageTop) : null,
+    clientH: document.documentElement.clientHeight,
+    scrollY: px(scrollY),
+    scrollRestoration: (history.scrollRestoration || 'n/a'),
+    standalone: (window.navigator.standalone === true) ? '是(PWA)' : '否(Safari标签)',
+    displayMode: matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser',
+    safeTop: envSafeTop(),
+    hDvh: ph.dvh,
+    hVh: ph.vh,
+    dvh差: px(ph.vh - ph.dvh)
+  };
+}
+function render(){
+  const s = snapshot();
+  const rows = [
+    ['时间', s.t],
+    ['运行模式', s.standalone + ' / ' + s.displayMode],
+    ['innerHeight', s.innerH],
+    ['visualViewport.height', s.vvH],
+    ['visualViewport.offsetTop', s.vvOffsetTop],
+    ['visualViewport.pageTop', s.vvPageTop],
+    ['documentElement.clientHeight', s.clientH],
+    ['scrollY', s.scrollY],
+    ['scrollRestoration', s.scrollRestoration],
+    ['实测 safe-area-inset-top', s.safeTop + 'px'],
+    ['实测 100dvh 高度', s.hDvh + 'px'],
+    ['实测 100vh 高度', s.hVh + 'px'],
+    ['两者差值(隐藏的像素)', s.dvh差 + 'px']
+  ];
+  document.getElementById('env').innerHTML = rows.map(([k,v])=>
+    `<tr><td>${k}</td><td class="${k.indexOf('差值')>=0 ? 'warn':''}">${v}</td></tr>`).join('');
+  return s;
+}
+
+/* ---------- C 区：刷新历史 ---------- */
+function logHistory(s){
+  const KEY = 'ziwei_diag_hist';
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e){ arr = []; }
+  arr.push({n: arr.length + 1, t: s.t, mode: s.standalone, innerH: s.innerH, vvH: s.vvH,
+            vvTop: s.vvOffsetTop, clientH: s.clientH, safeTop: s.safeTop,
+            dvh: s.hDvh, vh: s.hVh, scrollY: s.scrollY, sr: s.scrollRestoration});
+  arr = arr.slice(-6);
+  try { localStorage.setItem(KEY, JSON.stringify(arr)); } catch(e){}
+  const show = arr.map(a =>
+    `#${a.n} ${a.t}  ${a.mode}\n   innerH=${a.innerH} vvH=${a.vvH} vvTop=${a.vvTop} clientH=${a.clientH}\n   safeTop=${a.safeTop} 100dvh=${a.dvh} 100vh=${a.vh} 差=${(a.vh-a.dvh).toFixed(1)} scrollY=${a.scrollY} sr=${a.sr}`
+  ).join('\n');
+  document.getElementById('hist').textContent = show || '（还没有记录）';
+}
+
+/* ---------- B 区 ---------- */
+function fillText(){
+  const one = '这是用于对照的一段测试文字，长度接近真实卡片内容。滚动它，观察它是在屏幕最上边缘消失，还是在屏幕中间某条线就消失。';
+  const block = Array.from({length:14}, (_, i) => `<p>第 ${i+1} 段 · ${one}</p>`).join('');
+  ['t1','t2','t3'].forEach(id => { document.getElementById(id).innerHTML = block; });
+}
+let cur = 0;
+function pick(n){
+  cur = n;
+  [1,2,3].forEach(i => {
+    document.getElementById('v'+i).classList.toggle('on', i === n);
+    document.getElementById('b'+i).classList.toggle('on', i === n);
+  });
+  window.scrollTo(0, 0);
+}
+
+/* ---------- 启动 ---------- */
+fillText();
+const s0 = render();
+logHistory(s0);
+pick(1);
+setInterval(() => { if (cur === 1 || cur === 2) render(); }, 500);
+if (window.visualViewport) {
+  const refresh = () => render();
+  window.visualViewport.addEventListener('resize', refresh);
+  window.visualViewport.addEventListener('scroll', refresh);
+}
+window.addEventListener('orientationchange', () => setTimeout(render, 300));
+</script>
+</body>
+</html>
