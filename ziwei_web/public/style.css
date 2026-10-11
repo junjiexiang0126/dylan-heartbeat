@@ -116,3 +116,7 @@ nav.glass button svg{width:24px;height:24px;stroke-width:1.55;filter:drop-shadow
 nav.glass button.active{background:var(--accent-soft);color:var(--ink)}
 nav.glass button.active svg{stroke:var(--accent)}
 @media(max-width:550px){.shell{padding-inline:18px}.panel:not(.chat-panel){padding-bottom:calc(var(--nav-h) + var(--nav-offset) + var(--nav-clear) + env(safe-area-inset-bottom,0px))}}
+
+/* iPhone visual QA: lower the floating capsule by 6px without changing its fixed positioning. */
+:root{--nav-offset:10px}
+@media(max-width:550px){:root{--nav-offset:6px}}
