@@ -15,6 +15,27 @@ async function sendAndConfirm(page,message){
   catch(e){const state=await page.evaluate(()=>({events:window.__clickAudit,active:document.activeElement?.id,buttonDisabled:document.querySelector('#chatSend').disabled,formHidden:document.querySelector('#chatForm').hidden,input:document.querySelector('#chatInput').value,error:document.querySelector('#chatError').textContent,search:document.querySelector('#chatSearch').value,favorite:document.querySelector('#chatFavorites').getAttribute('aria-pressed'),messages:document.querySelector('#chatMessages').textContent.slice(0,500)}));throw Error('send audit '+JSON.stringify({message,target,responses,failures,state})+'; '+e.message);}
  }finally{page.off('response',onResponse);page.off('requestfailed',onFailure);}
 }
+
+test('queued send waits for upload and sends one message with attachment',async({page})=>{
+ await login(page);const message='上传排队发送 '+Date.now();await page.locator('#chatInput').fill(message);
+ let release;const held=new Promise(resolve=>release=resolve);let arrived;const seen=new Promise(resolve=>arrived=resolve);
+ await page.route('**/api/chat/attachments',async route=>{arrived();await held;await route.continue();});
+ await page.locator('#chatFiles').setInputFiles({name:'queue.txt',mimeType:'text/plain',buffer:Buffer.from('queued attachment')});await seen;
+ await expect(page.locator('#chatSend')).toBeEnabled();await page.locator('#chatSend').click();
+ await expect(page.locator('#chatError')).toContainText('完成后会自动发送');
+ release();await expect(page.locator('.message.user').filter({has:page.locator('.message-content').getByText(message,{exact:true})})).toHaveCount(1,{timeout:30000});
+ await expect(page.locator('.message.user').filter({has:page.locator('.message-content').getByText(message,{exact:true})}).locator('a').filter({hasText:'queue.txt'})).toBeVisible();
+});
+test('failed upload cancels queued send',async({page})=>{
+ await login(page);const message='上传失败排队 '+Date.now();await page.locator('#chatInput').fill(message);
+ let release;const held=new Promise(resolve=>release=resolve);let arrived;const seen=new Promise(resolve=>arrived=resolve);
+ await page.route('**/api/chat/attachments',async route=>{arrived();await held;await route.fulfill({status:500,contentType:'application/json',body:JSON.stringify({error:'upload_failed'})});});
+ await page.locator('#chatFiles').setInputFiles({name:'bad.txt',mimeType:'text/plain',buffer:Buffer.from('fail')});await seen;
+ await page.locator('#chatSend').click();release();await expect(page.locator('#chatError')).toContainText('已取消自动发送');
+ await expect(page.locator('.message.user').filter({has:page.locator('.message-content').getByText(message,{exact:true})})).toHaveCount(0);
+ await expect(page.locator('#chatInput')).toHaveValue(message);
+});
+
 test('chat, attachments, quotations, favorites, searching, history, reload and lock on mobile',async({page,context})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await login(page);
  const video=require('../test/helpers/video_fixture.json');
