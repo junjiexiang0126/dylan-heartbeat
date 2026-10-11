@@ -147,3 +147,8 @@ nav.glass button.active svg{stroke:var(--accent)}
   .memorial{padding-top:18px;padding-bottom:18px}
   .memorial .signature{font-size:11px}
 }
+
+/* Root canvas: keep the document's own background continuous across iOS viewport changes.
+   Does not change status-bar metadata, scrolling, safe-area padding, or navigation. */
+html{min-height:100%;background:var(--bg)}
+body{min-height:100%;background-color:var(--bg)}
