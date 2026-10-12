@@ -6,7 +6,8 @@ function appearance() {
   const p = homeData?.preferences || { theme: 'system', background: 'rose' };
   document.documentElement.dataset.theme = p.theme === 'system' ? media.matches ? 'dark' : 'light' : p.theme;
   document.documentElement.dataset.background = p.background;
-  $('meta[name=theme-color]').content = '#211b26'; // TEMP TEST 1: dark Safari browser tint
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  if (bg) document.querySelectorAll('meta[name=theme-color]').forEach(m => { m.removeAttribute('media'); m.content = bg; });
 }
 media.addEventListener('change', appearance);
 async function api(url, method = 'GET', body) {
