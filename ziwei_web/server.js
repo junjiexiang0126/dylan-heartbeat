@@ -17,7 +17,7 @@ const SESSION_FILE = path.join(DATA_DIR, 'sessions.json'), AUTH_FILE = path.join
 const SESSION_DAYS = 30, MAX_BODY = 400000, COOKIE = 'ziwei_sid';
 const publicDir = path.join(__dirname, 'public');
 const files = {'/':'index.html','/index.html':'index.html','/app.js':'app.js','/chat.js':'chat.js','/style.css':'style.css','/chat.css':'chat.css','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png'};
-const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'};
+const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json','.mp3':'audio/mpeg'};
 const headers = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"};
 if (SECURE) headers['Strict-Transport-Security'] = 'max-age=31536000';
 if (PASSWORD && PASSWORD.length < 16) throw Error('ZIWEI_WEB_PASSWORD must be at least 16 characters');
@@ -193,6 +193,19 @@ const server=http.createServer(async(req,res)=>{try{
     return bridge.proxy(req,res,pathname,url);
   }
   if(req.method!=='GET' && req.method!=='HEAD')return json(res,405,{error:'method_not_allowed'});
+  // 课堂游戏站（知微做的，静态目录 /game/）
+  if(pathname==='/game' || pathname.startsWith('/game/')){
+    let rel = pathname.slice(6).replace(/^\/+/,'');
+    if(rel==='') rel='index.html';
+    const ext = path.extname(rel).toLowerCase();
+    const allowed = ['.html','.js','.css','.png','.mp3','.svg','.json','.webmanifest'];
+    if(rel.includes('..') || !allowed.includes(ext)) return json(res,404,{error:'not_found'});
+    const abs = path.join(publicDir,'game',rel);
+    if(!fs.existsSync(abs)) return json(res,404,{error:'not_found'});
+    res.writeHead(200,{'Content-Type':types[ext]||'application/octet-stream',...headers});
+    if(req.method==='HEAD') return res.end();
+    return fs.createReadStream(abs).pipe(res);
+  }
   const f=files[pathname];if(!f)return json(res,404,{error:'not_found'});
   res.writeHead(200,{'Content-Type':types[path.extname(f)],...headers});if(req.method==='HEAD')return res.end();fs.createReadStream(path.join(publicDir,f)).pipe(res);
 } catch(e) { if(!res.headersSent)json(res,e.message==='body_too_large'?413:400,{error:e.message==='body_too_large'?'body_too_large':'bad_request'}); }});
