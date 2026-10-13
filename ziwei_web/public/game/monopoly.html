@@ -351,6 +351,7 @@ textarea:focus{border-color:#ffb347;box-shadow:0 0 0 3px rgba(255,150,40,.18);ba
         <div class="qr-frame" id="lobbyQr"></div>
         <div class="room-code" id="lobbyRoomCode">----</div>
         <div class="room-hint">学生用 iPad 扫描二维码<br>输入名字即可加入游戏</div>
+        <div id="peerState" style="font-size:11px;color:#ffcf7a;margin-top:6px"></div>
       </div>
       <h3 style="margin-top:14px"><span class="dot"></span>已加入玩家</h3>
       <div class="players-list" id="playersList">
@@ -1646,21 +1647,27 @@ function initTeacherApp(){
 
   /* ---------- 房间 ---------- */
   function generateRoomId(){return String(Math.floor(1000+Math.random()*9000));}
+  function paintLobbyQr(){
+    try{
+      lobbyQr.innerHTML='';
+      const url=location.origin+location.pathname+'?room='+state.roomId;
+      new QRCode(lobbyQr,{text:url,width:160,height:160,colorDark:'#3a1560',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+    }catch(e){ lobbyQr.innerHTML='<div style="font-size:12px;color:#bbb">二维码生成失败</div>'; }
+  }
   function initRoom(){
     if(state.peer)return;
     state.roomId=generateRoomId();
     chipRoom.textContent='房间：'+state.roomId;
     lobbyRoomCode.textContent=state.roomId;
+    paintLobbyQr();                      /* 先出码，不等联机 */
     const peer=new Peer(PEER_PREFIX+state.roomId,{debug:0});
     state.peer=peer;
+    setTimeout(()=>{ const st=document.getElementById('peerState');
+      if(st && !peer.open) st.textContent='⚠️ 联机服务没连上：学生可能加不进来。老师端照样能掷骰子、出题、计分。'; },8000);
     peer.on('open',()=>{
       logMessage('📡 房间已开启：<b>'+state.roomId+'</b>');
-      // 大厅二维码
-      lobbyQr.innerHTML='';
-      const url=location.origin+location.pathname+'?room='+state.roomId;
-      try{
-        new QRCode(lobbyQr,{text:url,width:160,height:160,colorDark:'#3a1560',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
-      }catch(e){}
+      paintLobbyQr();
+      const st=document.getElementById('peerState'); if(st) st.textContent='✅ 联机已开启，学生可以扫码加入了。';
     });
     peer.on('connection',(conn)=>{
       conn.on('data',(data)=>{
