@@ -202,7 +202,8 @@ const server=http.createServer(async(req,res)=>{try{
     if(rel.includes('..') || !allowed.includes(ext)) return json(res,404,{error:'not_found'});
     const abs = path.join(publicDir,'game',rel);
     if(!fs.existsSync(abs)) return json(res,404,{error:'not_found'});
-    res.writeHead(200,{'Content-Type':types[ext]||'application/octet-stream',...headers});
+    const gameHeaders = { ...headers, 'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'" };
+    res.writeHead(200,{'Content-Type':types[ext]||'application/octet-stream',...gameHeaders});
     if(req.method==='HEAD') return res.end();
     return fs.createReadStream(abs).pipe(res);
   }
