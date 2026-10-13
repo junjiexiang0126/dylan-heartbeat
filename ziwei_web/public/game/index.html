@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>万圣节中文小游戏 · 知微做的</title>
+<style>
+:root{
+  --bg:#1d1526; --card:#2a1f38; --ink:#f6ecff; --muted:#b9a6c9;
+  --pur:#b07de0; --org:#ff9f43; --grn:#57d39b; --red:#ff6b81;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  padding:calc(14px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom));
+  min-height:100vh}
+h1{font-size:22px;margin:4px 0 2px;letter-spacing:.02em}
+.sub{color:var(--muted);font-size:12px;margin-bottom:14px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.tabs button{background:var(--card);color:var(--muted);border:1px solid #3d2c50;border-radius:14px;
+  padding:12px 6px;font-size:15px;font-weight:600}
+.tabs button.on{background:var(--pur);color:#fff;border-color:var(--pur)}
+.panel{display:none}
+.panel.on{display:block}
+.card{background:var(--card);border:1px solid #3d2c50;border-radius:20px;padding:18px;margin-bottom:14px}
+.big{font-size:76px;font-weight:700;text-align:center;line-height:1.15}
+.pinyin{font-size:24px;color:var(--org);text-align:center;margin-top:6px}
+.en{font-size:15px;color:var(--muted);text-align:center;margin-top:4px}
+img.icon{display:block;margin:6px auto 2px;width:min(46vw,220px);height:auto}
+button.primary{width:100%;background:var(--org);color:#2a1500;border:0;border-radius:16px;
+  padding:16px;font-size:19px;font-weight:700}
+button.ghost{background:#3a2a4d;color:var(--ink);border:0;border-radius:14px;padding:12px;font-size:15px;width:100%}
+.opts{display:grid;gap:10px;margin-top:12px}
+.opts button{text-align:left;background:#362748;color:var(--ink);border:1px solid #4a3563;
+  border-radius:14px;padding:15px;font-size:17px}
+.opts button.ok{background:var(--grn);color:#08301f;border-color:var(--grn)}
+.opts button.no{background:var(--red);color:#3a0009;border-color:var(--red)}
+.qtext{font-size:20px;font-weight:600;margin-bottom:6px}
+.score{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-top:10px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{background:#362748;border:1px solid #4a3563;border-radius:14px;padding:8px;text-align:center;
+  color:var(--ink);font-size:15px}
+.tile img{width:100%;height:auto;max-height:62px;object-fit:contain}
+.tile.sel{border-color:var(--org);background:#4a3563}
+.tile.done{opacity:.35;border-color:var(--grn)}
+.hint{color:var(--muted);font-size:12px;text-align:center;margin-top:10px}
+</style>
+</head>
+<body>
+<h1>万圣节中文小游戏 🎃</h1>
+<div class="sub">鬼 · 鬼屋 · 女巫 · 吸血鬼 · 蜘蛛 · 蜘蛛网　｜　知微做的</div>
+
+<div class="tabs">
+  <button id="t1" class="on" onclick="tab(1)">🎡 转盘</button>
+  <button id="t2" onclick="tab(2)">⚡ 抢答</button>
+  <button id="t3" onclick="tab(3)">🧩 配对</button>
+</div>
+
+<!-- 转盘 -->
+<div class="panel on" id="p1">
+  <div class="card" id="wheelCard">
+    <img class="icon" id="wImg" src="img/gui.png" alt="">
+    <div class="big" id="wHan">鬼</div>
+    <div class="pinyin" id="wPin">guǐ</div>
+    <div class="en" id="wEn">ghost</div>
+  </div>
+  <button class="primary" onclick="spin()">转一个！</button>
+  <div class="hint">转到的词，请学生：① 读一遍 ② 用它说一句话</div>
+</div>
+
+<!-- 抢答 -->
+<div class="panel" id="p2">
+  <div class="card">
+    <div class="qtext" id="qText">准备好了吗？</div>
+    <div class="opts" id="qOpts"></div>
+    <div class="score"><span id="qScore">得分：0</span><span id="qProg"></span></div>
+  </div>
+  <button class="ghost" onclick="startQuiz()">重新开始</button>
+</div>
+
+<!-- 配对 -->
+<div class="panel" id="p3">
+  <div class="card">
+    <div class="grid" id="grid1"></div>
+  </div>
+  <div class="card">
+    <div class="grid" id="grid2"></div>
+  </div>
+  <div class="score"><span id="mScore">已配对：0 / 6</span><span id="mTime"></span></div>
+  <div class="hint">先点图，再点汉字 —— 配对成功会变淡</div>
+</div>
+
+<script>
+const WORDS=[
+  {h:"鬼",p:"guǐ",e:"ghost",img:"img/gui.png"},
+  {h:"鬼屋",p:"guǐ wū",e:"haunted house",img:"img/guiwu.png"},
+  {h:"女巫",p:"nǚ wū",e:"witch",img:"img/nvwu.png"},
+  {h:"吸血鬼",p:"xī xuè guǐ",e:"vampire",img:"img/xixuegui.png"},
+  {h:"蜘蛛",p:"zhī zhū",e:"spider",img:"img/zhizhu.png"},
+  {h:"蜘蛛网",p:"zhī zhū wǎng",e:"spider web",img:"img/zhizhuwang.png"}
+];
+function tab(n){
+  for(let i=1;i<=3;i++){
+    document.getElementById("p"+i).classList.toggle("on",i===n);
+    document.getElementById("t"+i).classList.toggle("on",i===n);
+  }
+  if(n===2 && !quizStarted) startQuiz();
+  if(n===3 && !matchStarted) startMatch();
+}
+// —— 转盘 ——
+let last=-1;
+function spin(){
+  let i; do{ i=Math.floor(Math.random()*WORDS.length); }while(i===last && WORDS.length>1);
+  last=i; const w=WORDS[i];
+  document.getElementById("wImg").src=w.img;
+  document.getElementById("wHan").textContent=w.h;
+  document.getElementById("wPin").textContent=w.p;
+  document.getElementById("wEn").textContent=w.e;
+}
+
+// —— 抢答 ——
+const QUIZ=[
+  {q:"它住在空空的房子里，会飘，很可怕。这是什么？",o:["鬼屋","蜘蛛网","女巫","蜘蛛"],a:0},
+  {q:"她有尖尖的帽子，会骑着扫把飞。她是谁？",o:["鬼","女巫","吸血鬼","蜘蛛"],a:1},
+  {q:"他穿黑色披风，有两颗尖牙。他是谁？",o:["怪物","鬼屋","吸血鬼","蜘蛛"],a:2},
+  {q:"它八条腿，会吐丝。它是什么？",o:["蝙蝠","黑猫","女巫","蜘蛛"],a:3},
+  {q:"蜘蛛住在哪里？",o:["蜘蛛网上","鬼屋里","帽子里","树上"],a:0},
+  {q:"「witch」用中文怎么说？",o:["鬼","女巫","吸血鬼","南瓜"],a:1},
+  {q:"「spider web」用中文怎么说？",o:["蜘蛛","蜘蛛网","扫把","披风"],a:1},
+  {q:"万圣节的时候，你想装扮成什么？",o:["我想装扮成女巫","我想吃月饼","我要睡觉","我不喜欢"],a:0},
+  {q:"鬼屋 guǐ wū 是什么意思？",o:["蜘蛛住的地方","有鬼的房子","女巫的帽子","糖果"],a:1}
+];
+let qi=0, qs=0, quizStarted=false;
+function startQuiz(){ qi=0; qs=0; quizStarted=true; drawQ(); }
+function drawQ(){
+  const box=document.getElementById("qOpts");
+  document.getElementById("qScore").textContent="得分："+qs;
+  if(qi>=QUIZ.length){
+    document.getElementById("qText").textContent="全部答完！得分："+qs+" / "+QUIZ.length+"　🎉";
+    box.innerHTML=""; document.getElementById("qProg").textContent=""; return;
+  }
+  const q=QUIZ[qi];
+  document.getElementById("qText").textContent=q.q;
+  document.getElementById("qProg").textContent=(qi+1)+" / "+QUIZ.length;
+  box.innerHTML="";
+  q.o.forEach((txt,idx)=>{
+    const b=document.createElement("button");
+    b.textContent=txt;
+    b.onclick=()=>{
+      [...box.children].forEach(x=>x.disabled=true);
+      if(idx===q.a){ b.classList.add("ok"); qs++; }
+      else { b.classList.add("no"); box.children[q.a].classList.add("ok"); }
+      document.getElementById("qScore").textContent="得分："+qs;
+      setTimeout(()=>{ qi++; drawQ(); }, 900);
+    };
+    box.appendChild(b);
+  });
+}
+
+// —— 配对 ——
+let sel=null, matched=0, matchStarted=false, t0=0;
+function startMatch(){
+  matchStarted=true; matched=0; sel=null; t0=Date.now();
+  const g1=document.getElementById("grid1"), g2=document.getElementById("grid2");
+  g1.innerHTML=""; g2.innerHTML="";
+  shuffle([...WORDS]).forEach((w,i)=>{
+    const d=document.createElement("button");
+    d.className="tile"; d.dataset.key=w.img;
+    d.innerHTML='<img src="'+w.img+'" alt=""><div>'+ '&nbsp;' +'</div>';
+    d.onclick=()=>pick(d); g1.appendChild(d);
+  });
+  shuffle([...WORDS]).forEach(w=>{
+    const d=document.createElement("button");
+    d.className="tile"; d.dataset.key=w.img;
+    d.innerHTML='<div style="font-size:26px;padding:10px 0">'+w.h+'</div>';
+    d.onclick=()=>pick(d); g2.appendChild(d);
+  });
+  updMatch();
+}
+function pick(el){
+  if(el.classList.contains("done")) return;
+  if(!sel){ sel=el; el.classList.add("sel"); return; }
+  if(sel===el){ el.classList.remove("sel"); sel=null; return; }
+  if(sel.dataset.key===el.dataset.key){
+    sel.classList.remove("sel"); sel.classList.add("done"); el.classList.add("done");
+    matched++; sel=null; updMatch();
+  } else {
+    el.classList.add("no");
+    const a=sel; sel=null; a.classList.remove("sel");
+    setTimeout(()=>el.classList.remove("no"), 500);
+  }
+}
+function updMatch(){
+  document.getElementById("mScore").textContent="已配对："+matched+" / 6";
+  if(matched===6){
+    const s=Math.round((Date.now()-t0)/1000);
+    document.getElementById("mTime").textContent="用时 "+s+" 秒 🎉";
+  }
+}
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+</script>
+</body>
+</html>
