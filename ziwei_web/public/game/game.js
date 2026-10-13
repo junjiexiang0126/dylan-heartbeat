@@ -56,6 +56,7 @@ const GAMES=[
   {id:'mole',   name:'🔨 打地鼠'},
   {id:'mole2',  name:'🎃 打地鼠 · 加强版'},
   {id:'sentence',name:'✨ 造句魔法屋'},
+  {id:'monopoly',name:'🎮 课堂大富翁'},
   {id:'listen', name:'🔊 听声找词'}
 ];
 /* ---------- 网站名字（她自己可改，存在这台设备上） ---------- */
@@ -72,7 +73,7 @@ function editName(){
 }
 
 const DESCS={wheel:'随机跳一个词，读 + 造句',quiz:'看图 / 听音选答案，自动计分',
-  match:'图配汉字，比谁快',number:'随机出数，说汉字',mole:'打举对词卡的地鼠',listen:'听录音，点对应的图或字',mole2:'可改词表 / 难度 / 时长，连击计分',sentence:'抽一张词卡，用它造一个句子'};
+  match:'图配汉字，比谁快',number:'随机出数，说汉字',mole:'打举对词卡的地鼠',listen:'听录音，点对应的图或字',mole2:'可改词表 / 难度 / 时长，连击计分',sentence:'抽一张词卡，用它造一个句子',monopoly:'3D 棋盘 · 扫码加入 · 可换题库'};
 function home(){
   const m=$('#menu'); m.innerHTML='';
   GAMES.forEach(g=>{const b=el('button','btn',g.name+'<small>'+DESCS[g.id]+'</small>');b.onclick=()=>open(g.id);m.appendChild(b);});
@@ -90,6 +91,7 @@ function open(id){
   $('#homeBtn').hidden=false;
   if(id==='mole2'){ location.href='mole-plus.html'; return; }
   if(id==='sentence'){ location.href='sentence.html'; return; }
+  if(id==='monopoly'){ location.href='monopoly.html'; return; }
   ({wheel:gWheel,quiz:gQuiz,match:gMatch,number:gNumber,mole:gMole,listen:gListen}[id])();
 }
 $('#homeBtn').onclick=home;

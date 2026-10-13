@@ -198,7 +198,7 @@ const server=http.createServer(async(req,res)=>{try{
     let rel = pathname.slice(6).replace(/^\/+/,'');
     if(rel==='') rel='index.html';
     const ext = path.extname(rel).toLowerCase();
-    const allowed = ['.html','.js','.css','.png','.mp3','.svg','.json','.webmanifest'];
+    const allowed = ['.html','.js','.css','.png','.mp3','.svg','.json','.webmanifest','.map','.woff','.woff2'];
     if(rel.includes('..') || !allowed.includes(ext)) return json(res,404,{error:'not_found'});
     const abs = path.join(publicDir,'game',rel);
     if(!fs.existsSync(abs)) return json(res,404,{error:'not_found'});
