@@ -56,16 +56,31 @@ const GAMES=[
   {id:'mole',   name:'🔨 打地鼠'},
   {id:'listen', name:'🔊 听声找词'}
 ];
+/* ---------- 网站名字（她自己可改，存在这台设备上） ---------- */
+const NAME_KEY='xbs_site_name';
+function applyName(){const n=localStorage.getItem(NAME_KEY);if(n)$('#siteName').textContent=n;}
+function editName(){
+  const cur=$('#siteName').textContent;
+  const n=prompt('改成什么名字？（留空＝恢复默认）', cur);
+  if(n===null)return;
+  const v=n.trim();
+  if(!v){localStorage.removeItem(NAME_KEY);$('#siteName').textContent='向博士小课堂';}
+  else{localStorage.setItem(NAME_KEY,v);$('#siteName').textContent=v;}
+  document.title=$('#siteName').textContent;
+}
+
+const DESCS={wheel:'随机跳一个词，读 + 造句',quiz:'看图 / 听音选答案，自动计分',
+  match:'图配汉字，比谁快',number:'随机出数，说汉字',mole:'打举对词卡的地鼠',listen:'听录音，点对应的图或字'};
 function home(){
   const m=$('#menu'); m.innerHTML='';
-  GAMES.forEach(g=>{const b=el('button',null,g.name);b.onclick=()=>open(g.id);m.appendChild(b);});
+  GAMES.forEach(g=>{const b=el('button','btn',g.name+'<small>'+DESCS[g.id]+'</small>');b.onclick=()=>open(g.id);m.appendChild(b);});
   $('#stage').innerHTML='<div class="card"><div class="qtext">选一个游戏开始 👆</div><div class="hint">先用上面的主题按钮选词库；数字主题只影响「数字练习」和「抢答」里的数字题</div></div>';
   $('#homeBtn').hidden=true;
 }
 function topicsUI(){
   const t=$('#topics'); t.innerHTML='';
   Object.keys(TOPICS).forEach(k=>{
-    const b=el('button',topic===k?'on':null,TOPICS[k].name);
+    const b=el('button','topic'+(topic===k?' on':''),TOPICS[k].name);
     b.onclick=()=>{topic=k;topicsUI();home();};t.appendChild(b);
   });
 }
@@ -240,4 +255,6 @@ function gListen(){
 }
 
 /* ---------- 起 ---------- */
+applyName();
+$('#gear').onclick=editName;
 topicsUI();home();
