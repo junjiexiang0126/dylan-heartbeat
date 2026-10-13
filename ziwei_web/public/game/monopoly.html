@@ -1800,7 +1800,8 @@ function initTeacherApp(){
 
   function updateStartBtn(){
     const qs=questionsInput.value.split('\n').map(s=>s.trim()).filter(Boolean);
-    startGameBtn.disabled = state.connections.length < 2 || qs.length === 0;
+    /* 课堂投屏模式：只要有题目就能开，不强制先有 2 名学生连上 */
+    startGameBtn.disabled = qs.length === 0;
   }
 
   function updateQCount(){
@@ -1842,7 +1843,12 @@ function initTeacherApp(){
 
   /* ---------- 开始游戏 ---------- */
   startGameBtn.addEventListener('click',()=>{
-    if(state.teams.length<2 && state.connections.length<2){alert('至少需要 2 名玩家');return;}
+    if(state.teams.length<2 && state.connections.length<2){
+      /* 没有学生连进来时：自动建两组，老师端直接开局（投屏模式） */
+      state.teams = createDefaultTeams().slice(0,2);
+      try{ renderTeamsGrid(); }catch(e){}
+      try{ if(typeof updateTeamsUI==='function') updateTeamsUI(); }catch(e){}
+    }
     const qs=questionsInput.value.split('\n').map(s=>s.trim()).filter(Boolean);
     if(qs.length===0){alert('请至少输入一道题目');return;}
     state.questions=qs;
