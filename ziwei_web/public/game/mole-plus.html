@@ -143,6 +143,12 @@ body::before{
   font-size:clamp(13px,2.8vmin,26px);
   animation:popOut .8s ease-out forwards;
 }
+.mole.bomb .card{background:linear-gradient(#5b1b1b,#2a0c0c);border-color:#ff6b6b;color:#ffd9d9;font-size:clamp(18px,4.2vmin,40px);box-shadow:0 0 20px rgba(255,80,80,.6)}
+.mole.boom{animation:boomAnim .3s forwards}
+@keyframes boomAnim{0%{transform:translate(-50%,0) scale(1)}45%{transform:translate(-50%,-6%) scale(1.18)}100%{transform:translate(-50%,0) scale(.85);opacity:.35}}
+.boom-fx{position:absolute;left:50%;top:30%;font-size:clamp(14px,3vmin,28px);font-weight:800;color:#ff7a45;text-shadow:0 0 12px rgba(255,90,40,.8);animation:boomFx .6s ease-out forwards;pointer-events:none}
+@keyframes boomFx{0%{opacity:1;transform:translate(-50%,0) scale(.8)}100%{opacity:0;transform:translate(-50%,-58px) scale(1.5)}}
+
 @keyframes popOut{
   0%{transform:translate(-50%,-50%) scale(.35);opacity:1}
   100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.25);opacity:0}
@@ -227,7 +233,9 @@ textarea:focus,select:focus{border-color:#ffb347;box-shadow:0 0 0 3px rgba(255,1
   <div class="topbar">
     <div class="title">🎃 万圣节打地鼠</div>
     <div class="stats">
-      <div class="chip">得分 <b id="scoreEl">0</b></div>
+      <div class="chip">得分 <b id="scoreEl">0</b>
+        </div>
+        <div class="chip">💣 砸中 <b id="bombEl">0</b></div>
       <div class="chip">连击 <b id="comboEl">0</b></div>
       <div class="chip">⏱ <b id="timeEl">60</b></div>
     </div>
@@ -251,7 +259,7 @@ textarea:focus,select:focus{border-color:#ffb347;box-shadow:0 0 0 3px rgba(255,1
 <div class="overlay" id="setupOverlay">
   <div class="panel">
     <h1>🎃 万圣节打地鼠 🎃</h1>
-    <p class="hint">地鼠们会举着单词卡冒出来，敲中与顶部目标单词相同的那只！</p>
+    <p class="hint">地鼠们会举着单词卡冒出来，敲中与顶部目标单词相同的那只！<br>💣 敲到炸弹扣 15 分、连击清零 —— 越难，炸弹越多。</p>
 
     <label for="wordInput">📝 单词列表（每行一个，也可用逗号 / 空格分隔）</label>
     <textarea id="wordInput" spellcheck="false">pumpkin
@@ -451,12 +459,14 @@ const diffSel    = document.getElementById('difficulty');
 const durSel     = document.getElementById('durationSel');
 
 const DIFF = {
-  easy:   { spawn: 1150, stay: 2500, maxActive: 3 },
-  normal: { spawn: 820,  stay: 1800, maxActive: 4 },
-  hard:   { spawn: 580,  stay: 1250, maxActive: 5 }
+  easy:   { spawn: 1150, stay: 2500, maxActive: 3, bomb: 0.10 },
+  normal: { spawn: 820,  stay: 1800, maxActive: 4, bomb: 0.16 },
+  hard:   { spawn: 580,  stay: 1250, maxActive: 5, bomb: 0.22 }
 };
 
 let words = [];
+const BOMB = '__BOMB__';   // 炸弹标记
+let bombHits = 0;
 let target = '';
 let score = 0, combo = 0, bestCombo = 0, hits = 0, misses = 0;
 let timeLeft = 60, totalTime = 60;
@@ -564,8 +574,11 @@ function trySpawn() {
       const i = free[Math.floor(Math.random() * free.length)];
       const targetOnBoard = holes.some(h => h.word === target);
       let w;
-      if (!targetOnBoard && Math.random() < 0.62) {
-        w = target;                       // 保证目标词能出现
+      const bombsOnBoard = holes.filter(h => h.word === BOMB).length;
+      if (bombsOnBoard === 0 && Math.random() < (cfg.bomb || 0.15)) {
+        w = BOMB;                          // 💣 炸弹
+      } else if (!targetOnBoard && Math.random() < 0.62) {
+        w = target;                        // 保证目标词能出现
       } else {
         w = words[Math.floor(Math.random() * words.length)];
       }
@@ -580,9 +593,11 @@ function show(i, word) {
   clearTimeout(h.timer);
   h.word = word;
   h.busy = false;
-  h.card.textContent = word;
-  h.card.classList.toggle('long', word.length > 7);
-  h.el.classList.remove('hit', 'wrong');
+  const isBomb = (word === BOMB);
+  h.card.textContent = isBomb ? '💣' : word;
+  h.card.classList.toggle('long', !isBomb && word.length > 7);
+  h.el.classList.toggle('bomb', isBomb);
+  h.el.classList.remove('hit', 'wrong', 'boom');
   h.el.classList.add('up');
   sfxPop();
   h.timer = setTimeout(() => hide(i), cfg.stay);
@@ -592,7 +607,7 @@ function hide(i, instant) {
   const h = holes[i];
   clearTimeout(h.timer);
   h.timer = null;
-  h.el.classList.remove('up', 'hit', 'wrong');
+  h.el.classList.remove('up', 'hit', 'wrong', 'boom', 'bomb');
   h.word = null;
   h.busy = false;
   if (instant) {
@@ -607,6 +622,21 @@ function whack(i) {
   if (!running) return;
   const h = holes[i];
   if (!h.word || h.busy) return;
+
+  if (h.word === BOMB) {
+    h.busy = true;
+    combo = 0; misses++; bombHits++;
+    score = Math.max(0, score - 15);
+    sfxWrong();
+    h.el.classList.add('boom');
+    const fx = document.createElement('div');
+    fx.className = 'boom-fx'; fx.textContent = '-15 💥';
+    h.holeEl.appendChild(fx);
+    setTimeout(() => fx.remove(), 620);
+    updateHUD();
+    setTimeout(() => { h.el.classList.remove('boom'); hide(i); }, 300);
+    return;
+  }
 
   if (h.word === target) {
     h.busy = true;
@@ -650,6 +680,7 @@ function spawnCandy(parent) {
 function updateHUD() {
   scoreEl.textContent = score;
   comboEl.textContent = combo;
+  const be = document.getElementById('bombEl'); if (be) be.textContent = bombHits;
   timeEl.textContent = Math.max(0, timeLeft);
 }
 
