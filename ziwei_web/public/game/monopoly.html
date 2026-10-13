@@ -361,16 +361,19 @@ html,body{background-color:transparent !important; background-image:none !import
 
   <div class="lobby-main">
     <div class="panel">
-      <h3><span class="dot"></span>扫码加入 <span id="playerCount" style="margin-left:auto;color:#7fffb0;font-size:.9em">(0)</span></h3>
-      <div class="qr-wrap">
-        <div class="qr-frame" id="lobbyQr"></div>
-        <div class="room-code" id="lobbyRoomCode">----</div>
-        <div class="room-hint">学生用 iPad 扫描二维码<br>输入名字即可加入游戏</div>
-        <div id="peerState" style="font-size:11px;color:#ffcf7a;margin-top:6px"></div>
+      <h3><span class="dot"></span>学生名单 <span id="playerCount" style="margin-left:auto;color:#7fffb0;font-size:.9em">(0)</span></h3>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input id="stuName" placeholder="输入学生名字，回车添加" maxlength="12"
+               style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.28);color:#fff;font-size:15px">
+        <button id="stuAdd" class="import-btn" style="white-space:nowrap">＋ 添加</button>
       </div>
-      <h3 style="margin-top:14px"><span class="dot"></span>已加入玩家</h3>
+      <div id="stuAvatars" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
       <div class="players-list" id="playersList">
-        <div class="empty-players"><span class="big">🎃</span>等待学生扫码加入…</div>
+        <div class="empty-players"><span class="big">🎃</span>还没有学生，先在上面输入名字</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button id="stuDemo" class="template-btn" style="flex:1">一键添加 4 个示例</button>
+        <button id="stuClear" class="template-btn" style="flex:1">清空名单</button>
       </div>
     </div>
 
@@ -2173,5 +2176,70 @@ function initTeacherApp(){
   }
 }
 </script>
+
+<script>
+/* ===== 知微加：离线学生名单（老师手动输入，不用扫码） ===== */
+(function(){
+  const AV=['🎃','👻','🦇','🕷️','🧛','🧟','🧙','🧚','🐈','🦉','🐺','💀','🍬','🌙','⭐','🕸️'];
+  const KEY='zw_monopoly_students';
+  let list=[];
+  try{ list = JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ list=[]; }
+  const $=s=>document.querySelector(s);
+  const nameEl=()=>document.getElementById('stuName');
+  const listEl=()=>document.getElementById('playersList');
+  const avEl=()=>document.getElementById('stuAvatars');
+  let pendingAvatar=AV[0];
+
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(list)); }catch(e){} }
+  function syncGame(){
+    if(typeof state!=='undefined' && state && Array.isArray(state.connections)) { /* 不用联机 */ }
+    if(typeof state!=='undefined' && state){
+      state.teams = list.map((s,i)=>({ name:s.name, members:'', avatar:s.av, score:0, pos:0, laps:0, taken:false }));
+    }
+    try{ if(typeof renderPlayersList==='function') renderPlayersList(); }catch(e){}
+    try{ if(typeof updateQCount==='function') updateQCount(); }catch(e){}
+    try{ if(typeof updateStartBtn==='function') updateStartBtn(); }catch(e){}
+  }
+  function render(){
+    const n=list.length;
+    const c=$('#playerCount'); if(c) c.textContent='('+n+')';
+    const box=listEl(); if(!box) return;
+    if(n===0){ box.innerHTML='<div class="empty-players"><span class="big">🎃</span>还没有学生，先在上面输入名字</div>'; }
+    else{
+      box.innerHTML = list.map((s,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 9px;margin-bottom:6px;border-radius:10px;background:rgba(255,255,255,.07)">
+          <span style="font-size:22px">${s.av}</span>
+          <span style="flex:1">${s.name}</span>
+          <button data-i="${i}" class="del" style="background:none;border:0;color:#ff9a9a;font-size:17px">✕</button>
+        </div>`).join('');
+      box.querySelectorAll('button.del').forEach(b=>b.onclick=()=>{ list.splice(+b.dataset.i,1); save(); render(); syncGame(); });
+    }
+    const av=avEl();
+    if(av && !av.dataset.done){
+      av.dataset.done='1';
+      av.innerHTML = AV.map((a,i)=>`<span data-a="${a}" style="cursor:pointer;font-size:24px;padding:3px 6px;border-radius:9px;background:${i===0?'rgba(255,255,255,.22)':'transparent'}">${a}</span>`).join('');
+      av.querySelectorAll('span').forEach(s=>s.onclick=()=>{
+        pendingAvatar=s.dataset.a;
+        av.querySelectorAll('span').forEach(x=>x.style.background='transparent');
+        s.style.background='rgba(255,255,255,.22)';
+      });
+    }
+  }
+  function add(name){
+    name=(name||'').trim(); if(!name) return;
+    list.push({name:name.slice(0,12), av:pendingAvatar});
+    save(); render(); syncGame();
+  }
+  const b=$('#stuAdd'); if(b) b.onclick=()=>{ add(nameEl().value); nameEl().value=''; nameEl().focus(); };
+  const n=nameEl(); if(n) n.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); add(n.value); n.value=''; }});
+  const d=$('#stuDemo'); if(d) d.onclick=()=>{ ['小明','小红','小刚','小美'].forEach((x,i)=>list.push({name:x,av:AV[i]})); save(); render(); syncGame(); };
+  const c=$('#stuClear'); if(c) c.onclick=()=>{ if(confirm('清空学生名单？')){ list=[]; save(); render(); syncGame(); } };
+  document.addEventListener('click',e=>{
+    if(e.target && /开始游戏|重开|再来一局/.test(e.target.innerText||'')) setTimeout(syncGame,80);
+  });
+  render(); setTimeout(syncGame,600);
+})();
+</script>
+
 </body>
 </html>
