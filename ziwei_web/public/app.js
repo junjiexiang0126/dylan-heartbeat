@@ -8,6 +8,13 @@ function appearance() {
   document.documentElement.dataset.background = p.background;
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
   if (bg) document.querySelectorAll('meta[name=theme-color]').forEach(m => { m.removeAttribute('media'); m.content = bg; });
+  // 记住解析后的主题与背景色：下次启动时，index.html 头部的内联脚本要在 iOS 取色之前写进 theme-color
+  try {
+    localStorage.setItem('zw_pref_theme', p.theme);
+    localStorage.setItem('zw_resolved_theme', document.documentElement.dataset.theme || 'light');
+    localStorage.setItem('zw_background', p.background);
+    if (bg) localStorage.setItem('zw_bg', bg);
+  } catch (e) {}
 }
 media.addEventListener('change', appearance);
 async function api(url, method = 'GET', body) {
