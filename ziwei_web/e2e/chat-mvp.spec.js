@@ -14,6 +14,16 @@ async function layout(page){return page.evaluate(()=>{
   composeBottom:box('chatForm').bottom,navTop:document.querySelector('nav').getBoundingClientRect().top,
   width:document.documentElement.scrollWidth,viewport:innerWidth};
 });}
+test('composer glass stays inside its own box and cannot cover the chat header',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await noEvents(page);await history(page);await login(page);
+ await page.emulateMedia({colorScheme:'dark'});
+ const metrics=await page.locator('#chatForm').evaluate(form=>({height:form.getBoundingClientRect().height,
+  glassHeight:parseFloat(getComputedStyle(form,'::before').height),position:getComputedStyle(form).position}));
+ if(process.env.CHAT_VISUAL_OUTPUT)await page.screenshot({path:process.env.CHAT_VISUAL_OUTPUT});
+ expect(metrics.glassHeight).toBeLessThanOrEqual(metrics.height+1);
+ expect(metrics.position).toBe('relative');
+ await expect(page.locator('#chatPeer')).toBeInViewport();await expect(page.locator('#chatEmpty')).toBeInViewport();
+});
 test('empty state and history occupy visible space on compact mobile and landscape',async({page})=>{
  await noEvents(page);await history(page);await login(page);
  await expect(page.locator('#chatEmpty')).toHaveText('这里，留给我们慢慢说。');

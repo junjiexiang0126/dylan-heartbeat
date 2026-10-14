@@ -49,7 +49,7 @@
 #chat .chat-empty{padding:24px 12px}
 #chat .chat-progress{margin:12px 2px}
 #chat .message-content{color:var(--ink)}
-#chat .chat-compose{flex-shrink:0}
+#chat .chat-compose{position:relative;bottom:auto;flex-shrink:0}
 #chat .chat-compose textarea{display:block;height:44px}
 #chat .attachment-button{margin:0}
 #chatSendStatus{display:block;font-size:11px;margin-top:6px}
