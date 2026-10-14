@@ -40,14 +40,22 @@
 .chat-panel{min-height:0}
 @media(max-height:580px){.chat-panel{height:calc(100dvh - 78px - var(--nav-h) - var(--nav-offset) - env(safe-area-inset-bottom,0px))}.chat-heading{margin-bottom:4px}}
 
-/* Navigation space is already excluded from the chat panel's height. */
-#chat.chat-panel{padding-bottom:0;min-height:280px}
-.chat-timeline{flex:1 1 auto;min-height:80px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-#chatMessages{overflow:visible;flex:none}
-#chatEmpty{padding:24px 12px}
+/* The panel already excludes the navigation height. Reserve its remaining
+   space for one scrollable timeline rather than a second navigation padding. */
+#chat.chat-panel{padding-bottom:0;height:calc(100dvh - 110px - env(safe-area-inset-top,0px) - var(--nav-h) - var(--nav-offset) - env(safe-area-inset-bottom,0px))}
+#chat .chat-heading{margin:2px 0 10px}
+#chat .chat-timeline{flex:1 1 0;min-height:80px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:2px 4px 12px 0}
+#chat .chat-messages{flex:none;overflow:visible;min-height:0;margin:10px 0}
+#chat .chat-empty{padding:24px 12px}
+#chat .chat-progress{margin:12px 2px}
+#chat .message-content{color:var(--ink)}
+#chat .chat-compose{flex-shrink:0}
+#chat .chat-compose textarea{display:block;height:44px}
+#chat .attachment-button{margin:0}
 #chatSendStatus{display:block;font-size:11px;margin-top:6px}
 #chatSendStatus:empty,#chatError:empty{display:none}
-@media(max-height:480px){
+/* A very short landscape viewport needs document scrolling as well. */
+@media(max-height:420px){
  #chat.chat-panel{height:auto;min-height:0;padding-bottom:calc(var(--nav-h) + var(--nav-offset) + var(--nav-clear) + env(safe-area-inset-bottom,0px))}
- #chatTimeline{flex:none;height:120px}
+ #chat .chat-timeline{flex:none;height:120px}
 }

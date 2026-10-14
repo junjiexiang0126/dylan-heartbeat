@@ -39,11 +39,13 @@
     </div>
     <div class="chat-toolbar glass" id="chatToolbar" hidden><input id="chatSearch" type="search" maxlength="200" placeholder="搜索我们的对话…" aria-label="搜索聊天记录"><select id="chatSource" aria-label="记录来源"><option value="live">我们的对话</option><option value="archive">历史档案</option></select><button id="chatFavorites" class="text-button" aria-pressed="false">收藏</button><button id="chatTrash" class="text-button" aria-pressed="false">回收站</button></div>
     <p id="archiveNotice" class="hint" hidden>这些是保留来源的历史档案，可查询，不代表已成为知微的长期记忆。</p>
-    <div id="chatTimeline" class="chat-timeline">
+    <div id="chatTimeline" class="chat-timeline" aria-busy="false">
     <button id="chatOlder" class="secondary" hidden>查看更早记录</button>
     <p id="chatEmpty" class="chat-empty">这里，留给我们慢慢说。</p>
+    <button id="chatRetry" class="secondary" type="button" hidden>重新加载聊天记录</button>
     <div id="chatMessages" class="chat-messages" role="log" aria-label="聊天记录"></div>
-    <div id="chatProgress" class="glass chat-progress" hidden><span class="eyebrow">知微正在回应</span><p id="chatStreaming"></p><small id="chatWork"></small></div>
+    <div id="chatProgress" class="glass chat-progress" role="status" hidden><span class="eyebrow" id="chatProgressLabel">知微正在回应</span><p id="chatStreaming"></p><small id="chatWork"></small></div>
+    <p id="chatError" class="error" role="alert"></p>
     </div>
     <form id="chatForm" class="glass chat-compose">
       <div id="chatQuote" class="chat-quote" hidden><span id="chatQuoteText"></span><button id="clearChatQuote" type="button" class="text-button" aria-label="取消引用">×</button></div>
@@ -52,7 +54,7 @@
       <div id="chatAttachments" class="attachment-chips"></div>
       <p class="hint">附件每个限 20 MB，最多 6 个。图片和小文本可传给知微；视频与其他文件目前保存供查看、下载，仅传递文件信息。</p>
       <p id="chatSendStatus" class="hint" role="status" aria-live="polite"></p>
-      <p id="chatError" class="error" role="alert"></p><button id="chatRecover" type="button" class="secondary" hidden>确认发送状态</button>
+      <button id="chatRecover" type="button" class="secondary" hidden>确认发送状态</button>
     </form>
   </section>
   <section class="panel" id="moments" hidden><div class="section-heading"><span class="eyebrow">LITTLE MOMENTS</span><h1>朋友圈</h1></div><article class="empty glass"><span class="empty-icon">✿</span><h2>两个人的日常</h2><p>共同时间线将在第三阶段开放。</p><small>尚未接入动态、点赞和评论。</small></article></section>
