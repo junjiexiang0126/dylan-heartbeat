@@ -152,7 +152,7 @@ window.ZiweiChat=(()=>{
  function stopVoice(){
   voiceEpoch++;const old=recorder;recorder=null;listening=false;clearInterval(voiceTimer);voiceTimer=null;
   if(old&&old.state!=='inactive'){try{old.stop();}catch{}}
-  recordStream?.getTracks().forEach(t=>t.stop());recordStream=null;clearVoice();stopAudio();voiceUploading=false;controls();
+  recordStream?.getTracks().forEach(t=>t.stop());recordStream=null;clearVoice();stopAudio();voiceUploading=false;$('#chatVoiceHint').textContent='';controls();
  }
  $('#chatInput').addEventListener('focus',compose);$('#chatInput').addEventListener('blur',compose);$('#chatInput').addEventListener('input',compose);
  window.addEventListener('resize',layout);window.visualViewport?.addEventListener('resize',layout);window.visualViewport?.addEventListener('scroll',layout);

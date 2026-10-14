@@ -64,5 +64,5 @@ test('late upload after leaving chat never sends a cancelled voice draft',async(
  await recorderMock(page);await open(page);await page.locator('#chatVoice').click();await page.locator('#chatVoice').click();
  let release;const held=new Promise(r=>release=r);await page.route('**/api/chat/attachments',async r=>{await held;await r.continue();});let sends=0;page.on('request',r=>{if(r.url().endsWith('/api/chat/send'))sends++;});
  await page.locator('#chatSend').click();await expect(page.locator('#chatVoiceHint')).toContainText('正在上传');await page.locator('[data-tab=home]').click();release();await page.locator('[data-tab=chat]').click();
- await expect(page.locator('#chatVoiceDraft')).toBeHidden();await expect(page.locator('#chatSend')).toBeEnabled();expect(sends).toBe(0);
+ await expect(page.locator('#chatVoiceDraft')).toBeHidden();await expect(page.locator('#chatVoiceHint')).toBeEmpty();await expect(page.locator('#chatSend')).toBeEnabled();expect(sends).toBe(0);
 });
