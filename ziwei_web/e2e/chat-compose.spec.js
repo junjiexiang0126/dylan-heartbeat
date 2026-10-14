@@ -48,12 +48,12 @@ test('recording sends original audio with empty text and supports playback after
  await page.locator('[data-tab=home]').click();expect(await page.locator('#chatMessages audio').evaluate(a=>a.paused)).toBe(true);
 });
 test('cancel and leave discard recordings; delayed permission cannot restart microphone',async({page})=>{
- await recorderMock(page);await open(page);await page.locator('#chatVoice').click();await page.locator('#chatVoiceCancel').click();await expect(page.locator('#chatVoiceDraft')).toBeHidden();
+ await recorderMock(page);await open(page);await expect(page.locator('#chatTimeline')).toHaveAttribute('aria-busy','false');const oldRows=await page.locator('#chatMessages .message').count();let sends=0;page.on('request',r=>{if(r.url().endsWith('/api/chat/send'))sends++;});await page.locator('#chatVoice').click();await page.locator('#chatVoiceCancel').click();await expect(page.locator('#chatVoiceDraft')).toBeHidden();
  await page.evaluate(()=>{navigator.mediaDevices.getUserMedia=()=>new Promise(r=>window.__grant=r);});
  await page.locator('#chatVoice').click();await page.locator('[data-tab=home]').click();
  await page.evaluate(()=>window.__grant({getTracks:()=>[{stop:()=>window.__tracksStopped++}]}));await page.locator('[data-tab=chat]').click();
  await expect(page.locator('#chatVoice')).toHaveAttribute('aria-pressed','false');await expect(page.locator('#chatVoiceDraft')).toBeHidden();
- await expect(page.locator('#chatMessages .voice-message')).toHaveCount(0);
+ await expect(page.locator('#chatMessages .message')).toHaveCount(oldRows);expect(sends).toBe(0);
 });
 test('unsupported recorder and permission denial show accurate feedback',async({page})=>{
  await recorderMock(page);await open(page);await page.evaluate(()=>window.MediaRecorder=undefined);await page.locator('#chatVoice').click();await expect(page.locator('#chatVoiceHint')).toContainText('暂不支持');

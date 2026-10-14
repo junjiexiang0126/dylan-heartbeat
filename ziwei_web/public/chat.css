@@ -82,7 +82,10 @@ body.chat-view .brand small{font-size:7px;letter-spacing:.12em}
 
 body.chat-view .shell{z-index:1}
 
-/* One compact row at rest; grow only while editing or dictating. The panel's
+body.chat-view{overflow:hidden}
+body.chat-view .shell{height:100dvh;min-height:0;overflow:hidden}
+
+/* One compact row at rest; grow only while editing. The panel's
    remaining height is measured against the rendered nav and visual viewport. */
 body.chat-view #chat.chat-panel{padding-bottom:0}
 #chat .chat-timeline{flex:1 1 0;height:auto}
