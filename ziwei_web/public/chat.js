@@ -1,4 +1,64 @@
 'use strict';
+window.ZiweiChatAppearance=(()=>{
+ const layer=document.querySelector('#chatWallpaper'),image=document.querySelector('#chatWallpaperImage');
+ const actions=document.querySelector('#chatTopActions'),message=document.querySelector('#chatBackgroundMessage');
+ let visible=false,wallpaper=null,loaded=false,revision=0,loading=null,changing=false;
+ function paint(){
+  document.body.classList.toggle('chat-view',visible);
+  document.body.classList.toggle('chat-has-wallpaper',visible&&!!wallpaper);
+  actions.hidden=!visible;layer.hidden=!visible||!wallpaper;
+  image.src=visible&&wallpaper?wallpaper:'';
+ }
+ function storage(write,value){return new Promise((resolve,reject)=>{
+  const open=indexedDB.open('ziwei-chat-appearance',1);
+  open.onupgradeneeded=()=>open.result.createObjectStore('preferences');
+  open.onerror=()=>reject(open.error);open.onblocked=()=>reject(Error('storage_unavailable'));
+  open.onsuccess=()=>{
+   const db=open.result,tx=db.transaction('preferences',write?'readwrite':'readonly'),store=tx.objectStore('preferences');
+   const request=write?(value?store.put(value,'wallpaper'):store.delete('wallpaper')):store.get('wallpaper');
+   tx.oncomplete=()=>{db.close();resolve(request.result);};
+   tx.onerror=tx.onabort=()=>{db.close();reject(tx.error||Error('storage_unavailable'));};
+  };
+ });}
+ function setVisible(value){
+  visible=!!value;paint();
+  if(!visible||loaded||loading)return;
+  const epoch=revision;
+  loading=storage(false).then(value=>{
+   if(epoch===revision){wallpaper=typeof value==='string'&&value.startsWith('data:image/jpeg;base64,')?value:null;loaded=true;paint();}
+  }).catch(()=>{loaded=true;}).finally(()=>{loading=null;});
+ }
+ async function prepare(file){
+  if(!file||!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>12*1024*1024)throw Error('请选择 12 MB 以内的 JPEG、PNG 或 WebP 图片。');
+  const url=URL.createObjectURL(file),img=new Image();
+  try{
+   img.src=url;try{await img.decode();}catch{throw Error('invalid_image');}if(!img.naturalWidth||!img.naturalHeight)throw Error('invalid_image');
+   const scale=Math.min(1,1600/Math.max(img.naturalWidth,img.naturalHeight)),canvas=document.createElement('canvas');
+   canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+   const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
+   return canvas.toDataURL('image/jpeg',.85);
+  }finally{URL.revokeObjectURL(url);}
+ }
+ function controls(value){changing=value;document.querySelector('#chooseChatBackground').disabled=value;document.querySelector('#resetChatBackground').disabled=value;}
+ document.querySelector('#chooseChatBackground').onclick=()=>document.querySelector('#chatBackgroundFile').click();
+ document.querySelector('#chatBackgroundFile').onchange=async e=>{
+  const file=e.target.files[0];e.target.value='';if(!file||changing)return;controls(true);const epoch=++revision;
+  try{
+   const value=await prepare(file);if(epoch!==revision)return;wallpaper=value;loaded=true;paint();
+   try{await storage(true,value);message.textContent='聊天背景已保存到当前设备。';}catch{message.textContent='背景已应用，但此设备暂时无法保存。';}
+  }catch(e){message.textContent=e.message==='invalid_image'?'图片无法读取，请选择其他图片。':e.message;}
+  finally{controls(false);}
+ };
+ document.querySelector('#resetChatBackground').onclick=async()=>{
+  if(changing)return;controls(true);revision++;wallpaper=null;loaded=true;paint();
+  try{await storage(true,null);message.textContent='聊天背景已恢复跟随整体主题。';}
+  catch{message.textContent='已恢复主题背景，但此设备暂时无法保存。';}
+  finally{controls(false);}
+ };
+ return {setVisible};
+})();
+
+'use strict';
 window.ZiweiChat=(()=>{
  const $=s=>document.querySelector(s);let token=null,version=0,loadVersion=0,events=null,attachments=[],quote=null,pending=null,before=null,favorite=false,trash=false,busy=false,uploading=0,queuedSend=false,uploadFailed=false,source='live',buffers=new Map(),active=new Map(),reloadTimer=null,startPromise=null,loadError='',lastRequest=null;
  const states={queued:'等待发送',dispatching:'正在送出',running:'知微正在回应',recovering:'恢复连接中',uncertain:'等待核对，请勿重复发送',completed:'已回复',failed:'处理失败',cancelled:'已结束',interrupted:'处理被中断',archived:'历史档案'};
@@ -101,9 +161,9 @@ window.ZiweiChat=(()=>{
  $('#chatFavorites').onclick=()=>{favorite=!favorite;$('#chatFavorites').setAttribute('aria-pressed',String(favorite));load().catch(()=>{});};
  $('#chatSearch').oninput=()=>scheduleLoad();$('#chatOlder').onclick=()=>load(true).catch(()=>{});
  window.addEventListener('online',()=>{if(token){void start(token);if(pending)void deliver();}});window.addEventListener('offline',()=>{$('#chatConnection').textContent='已离线';});
- function stop(){version++;loadVersion++;token=null;startPromise=null;loadError='';lastRequest=null;$('#chatSendStatus').textContent='';events?.close();events=null;clearTimeout(reloadTimer);attachments=[];quote=null;pending=null;before=null;favorite=false;trash=false;source='live';busy=false;uploading=0;queuedSend=false;uploadFailed=false;active.clear();buffers.clear();$('#chatMessages').replaceChildren();$('#chatInput').value='';$('#chatSearch').value='';$('#chatSource').value='live';$('#chatFavorites').setAttribute('aria-pressed','false');$('#chatTrash').setAttribute('aria-pressed','false');$('#chatQuote').hidden=true;$('#chatError').textContent='';$('#chatStreaming').textContent='';$('#chatProgress').hidden=true;$('#chatEmpty').hidden=false;$('#chatEmpty').textContent='这里，留给我们慢慢说。';$('#chatRetry').hidden=true;$('#chatOlder').hidden=true;$('#chatTimeline').setAttribute('aria-busy','false');chips();controls();}
+ function stop(){window.ZiweiChatAppearance?.setVisible(false);version++;loadVersion++;token=null;startPromise=null;loadError='';lastRequest=null;$('#chatSendStatus').textContent='';events?.close();events=null;clearTimeout(reloadTimer);attachments=[];quote=null;pending=null;before=null;favorite=false;trash=false;source='live';busy=false;uploading=0;queuedSend=false;uploadFailed=false;active.clear();buffers.clear();$('#chatMessages').replaceChildren();$('#chatInput').value='';$('#chatSearch').value='';$('#chatSource').value='live';$('#chatFavorites').setAttribute('aria-pressed','false');$('#chatTrash').setAttribute('aria-pressed','false');$('#chatQuote').hidden=true;$('#chatError').textContent='';$('#chatStreaming').textContent='';$('#chatProgress').hidden=true;$('#chatEmpty').hidden=false;$('#chatEmpty').textContent='这里，留给我们慢慢说。';$('#chatRetry').hidden=true;$('#chatOlder').hidden=true;$('#chatTimeline').setAttribute('aria-busy','false');chips();controls();}
  async function start(csrf){
-  if(!csrf)return;if(token!==csrf){stop();token=csrf;}syncPeer();if(startPromise)return startPromise;
+  if(!csrf)return;if(token!==csrf){stop();token=csrf;}window.ZiweiChatAppearance?.setVisible(true);syncPeer();if(startPromise)return startPromise;
   const epoch=version;
   // History must remain usable even when status checking or SSE is unavailable.
   const job=(async()=>{

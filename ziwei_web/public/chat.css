@@ -59,3 +59,25 @@
  #chat.chat-panel{height:auto;min-height:0;padding-bottom:calc(var(--nav-h) + var(--nav-offset) + var(--nav-clear) + env(safe-area-inset-bottom,0px))}
  #chat .chat-timeline{flex:none;height:120px}
 }
+
+/* Wallpaper is a direct image, with no glass, blur or backdrop filter. */
+.chat-wallpaper{position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--bg)}
+.chat-wallpaper img{width:100%;height:100%;object-fit:cover;display:block}
+body.chat-view .ambient{display:none}
+body.chat-view .topbar{position:relative;z-index:3}
+.topbar-controls,.chat-top-actions{display:flex;align-items:center;gap:6px}
+.chat-top-actions .chat-icon-button{position:relative;top:auto;right:auto;width:43px;height:43px;flex:none;border-radius:50%}
+.chat-top-actions #chatCall,.chat-top-actions #chatSearchToggle{right:auto}
+.chat-icon-button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+body.chat-view .brand{font-size:14px;gap:6px}
+body.chat-view .brand small{font-size:7px;letter-spacing:.12em}
+#chat .chat-heading{padding:0;gap:12px;margin-bottom:6px}
+#chat .ecg{width:60px;max-width:18%;flex:none}
+#chat .chat-identity{min-width:0;max-width:58%}
+#chatConnection{padding:4px 10px;border-radius:99px;white-space:normal;text-align:center}
+#chat{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}
+#chat::before{content:none}
+.chat-background-controls{display:flex;gap:8px}
+.chat-background-controls .secondary{margin-top:0;padding:10px 8px}
+
+body.chat-view .shell{z-index:1}
