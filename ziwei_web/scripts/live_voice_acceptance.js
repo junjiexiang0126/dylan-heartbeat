@@ -9,11 +9,11 @@ async function run(){
  let state=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):{requestId:crypto.randomUUID()};
  const save=()=>{const temp=file+'.tmp';fs.writeFileSync(temp,JSON.stringify(state),{mode:0o600});fs.renameSync(temp,file);};
  if(state.done){console.log('VOICE_ACCEPTANCE '+JSON.stringify(state.result));return;}save();
- const base='http://127.0.0.1:'+process.env.PORT,origin=process.env.ZIWEI_WEB_ORIGIN,host=new URL(origin).host;
- const login=await fetch(base+'/api/login',{method:'POST',headers:{Host:host,Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({password:process.env.ZIWEI_WEB_PASSWORD})});
+ const origin=process.env.ZIWEI_WEB_ORIGIN,base=origin;
+ const login=await fetch(base+'/api/login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({password:process.env.ZIWEI_WEB_PASSWORD})});
  if(!login.ok)throw Error('acceptance_login_failed');
  const cookie=login.headers.getSetCookie().map(v=>v.split(';')[0]).filter(v=>!v.endsWith('=')).join('; '),csrf=(await login.json()).csrf;
- const headers={Host:host,Cookie:cookie,Origin:origin,'X-Ziwei-CSRF':csrf};
+ const headers={Cookie:cookie,Origin:origin,'X-Ziwei-CSRF':csrf};
  const api=async(route,body,extra={})=>{const r=await fetch(base+route,{headers:{...headers,...(body?{'Content-Type':'application/json'}:{}),...extra.headers},...(body?{method:'POST',body:JSON.stringify(body)}:{}),...extra});if(!r.ok)throw Error('acceptance_http_'+r.status);return r;};
  try{
   const status=await (await api('/api/chat/status')).json();if(!status.connected||!status.voiceConfigured)throw Error('acceptance_not_connected');
