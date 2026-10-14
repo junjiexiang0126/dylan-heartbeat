@@ -8,6 +8,7 @@ test('call and search align with settings and stay exclusive to chat',async({pag
   await page.setViewportSize(size);
   const m=await page.evaluate(()=>['chatCall','chatSearchToggle','settingsButton'].map(id=>{const r=document.getElementById(id).getBoundingClientRect();return {y:r.top+r.height/2,left:r.left,right:r.right};}));
   expect(Math.max(...m.map(x=>x.y))-Math.min(...m.map(x=>x.y))).toBeLessThan(1);
+  const title=await page.locator('#chatPeer').boundingBox();expect(Math.abs(title.y+title.height/2-m[0].y)).toBeLessThan(1);expect(Math.abs(title.x+title.width/2-size.width/2)).toBeLessThan(2);await expect(page.locator('.brand')).toBeHidden();await expect(page.locator('#chatAvatar')).toBeVisible();
   expect(m[0].right).toBeLessThanOrEqual(m[1].left);expect(m[1].right).toBeLessThanOrEqual(m[2].left);
   expect(Math.abs((m[1].left-m[0].right)-(m[2].left-m[1].right))).toBeLessThan(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(size.width);

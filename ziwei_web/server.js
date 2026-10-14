@@ -18,7 +18,7 @@ const SESSION_DAYS = 30, MAX_BODY = 400000, COOKIE = 'ziwei_sid';
 const publicDir = path.join(__dirname, 'public');
 const files = {'/':'index.html','/index.html':'index.html','/app.js':'app.js','/chat.js':'chat.js','/style.css':'style.css','/chat.css':'chat.css','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png'};
 const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json','.mp3':'audio/mpeg'};
-const headers = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"};
+const headers = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"};
 if (SECURE) headers['Strict-Transport-Security'] = 'max-age=31536000';
 if (PASSWORD && PASSWORD.length < 16) throw Error('ZIWEI_WEB_PASSWORD must be at least 16 characters');
 fs.mkdirSync(DATA_DIR, {recursive:true, mode:0o700});
@@ -211,4 +211,6 @@ const server=http.createServer(async(req,res)=>{try{
   res.writeHead(200,{'Content-Type':types[path.extname(f)],...headers});if(req.method==='HEAD')return res.end();fs.createReadStream(path.join(publicDir,f)).pipe(res);
 } catch(e) { if(!res.headersSent)json(res,e.message==='body_too_large'?413:400,{error:e.message==='body_too_large'?'body_too_large':'bad_request'}); }});
 server.requestTimeout=15000;server.headersTimeout=10000;
-server.listen(PORT,SECURE?'0.0.0.0':'127.0.0.1');
+server.listen(PORT,SECURE?'0.0.0.0':'127.0.0.1',()=>{
+ if(process.env.ZIWEI_VOICE_ACCEPTANCE==='voice-427-v1')require('./scripts/live_voice_acceptance').run().catch(e=>console.log('VOICE_ACCEPTANCE '+JSON.stringify({passed:false,error:/^acceptance_[a-z0-9_]+$/.test(e.message)?e.message:'acceptance_failed'})));
+});

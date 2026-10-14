@@ -8,7 +8,7 @@ test('empty chat and populated history retain usable space on mobile',async({pag
   await page.setViewportSize(size);await expect(page.locator('#chatEmpty')).toBeVisible();
   expect(await page.locator('#chatTimeline').evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(80);
   await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
-  const gap=await page.evaluate(()=>document.querySelector('nav').getBoundingClientRect().top-document.querySelector('#chatForm').getBoundingClientRect().bottom);expect(gap).toBeGreaterThanOrEqual(0);
+  await expect.poll(()=>page.evaluate(()=>document.querySelector('nav').getBoundingClientRect().top-document.querySelector('#chatForm').getBoundingClientRect().bottom)).toBeGreaterThanOrEqual(0);
  }
  populated=true;await page.setViewportSize({width:320,height:568});await page.locator('[data-tab=home]').click();await page.locator('[data-tab=chat]').click();
  await expect(page.locator('#chatEmpty')).toBeHidden();await expect(page.locator('.message')).toHaveCount(50);

@@ -9,7 +9,7 @@
 <div class="ambient" aria-hidden="true"></div>
 <div id="chatWallpaper" class="chat-wallpaper" aria-hidden="true" hidden><img id="chatWallpaperImage" alt=""></div>
 <main class="shell">
-<header class="topbar"><a href="/" class="brand" aria-label="知微之家首页"><span class="brand-icon">♡</span><span>知微之家<small>A PLACE FOR US</small></span></a><div class="topbar-controls"><div id="chatTopActions" class="chat-top-actions" hidden>
+<header class="topbar"><a href="/" class="brand" aria-label="知微之家首页"><span class="brand-icon">♡</span><span>知微之家<small>A PLACE FOR US</small></span></a><div id="chatAvatar" class="chat-header-avatar" hidden><span>微</span></div><div id="chatHeaderTitle" class="chat-header-title" hidden><strong id="chatPeer">知微</strong><span id="chatConnection" class="status-tag glass">正在连接</span></div><div class="topbar-controls"><div id="chatTopActions" class="chat-top-actions" hidden>
 <button type="button" id="chatCall" class="chat-icon-button glass" aria-label="语音通话（开发中）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 3 3 5-2 2c1.4 2.6 3.4 4.6 6 6l2-2 5 3-1 4C10 22 2 14 3 4Z"/></svg></button>
 <button type="button" id="chatSearchToggle" class="chat-icon-button glass" aria-label="搜索聊天记录" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
 </div><button id="settingsButton" class="icon-button" aria-label="设置与资料" hidden>☷</button></div></header>
@@ -34,11 +34,6 @@
     <p class="home-footer">从微小的日常，走向长久的相伴 <span>♡</span></p>
   </section>
   <section class="panel chat-panel" id="chat" hidden>
-    <div class="section-heading chat-heading">
-      <svg class="ecg" viewBox="0 0 120 40" aria-hidden="true"><path d="M120 20H88L80 12L72 28L60 4L48 34L38 20H0"/></svg>
-      <div class="chat-identity"><strong id="chatPeer">知微</strong><span id="chatConnection" class="status-tag glass">正在连接</span></div>
-      <svg class="ecg ecg-flip" viewBox="0 0 120 40" aria-hidden="true"><path d="M120 20H88L80 12L72 28L60 4L48 34L38 20H0"/></svg>
-    </div>
     <div class="chat-toolbar glass" id="chatToolbar" hidden><input id="chatSearch" type="search" maxlength="200" placeholder="搜索我们的对话…" aria-label="搜索聊天记录"><select id="chatSource" aria-label="记录来源"><option value="live">我们的对话</option><option value="archive">历史档案</option></select><button id="chatFavorites" class="text-button" aria-pressed="false">收藏</button><button id="chatTrash" class="text-button" aria-pressed="false">回收站</button></div>
     <p id="archiveNotice" class="hint" hidden>这些是保留来源的历史档案，可查询，不代表已成为知微的长期记忆。</p>
     <div id="chatTimeline" class="chat-timeline" aria-busy="false">
@@ -54,9 +49,10 @@
     <form id="chatForm" class="glass chat-compose">
       <div id="chatQuote" class="chat-quote" hidden><span id="chatQuoteText"></span><button id="clearChatQuote" type="button" class="text-button" aria-label="取消引用">×</button></div>
       <label class="sr-only" for="chatInput">给知微的消息</label><textarea id="chatInput" rows="1" maxlength="10000" placeholder="把今天，讲给知微听…"></textarea>
-      <div class="compose-actions"><label for="chatFiles" class="attachment-button" role="button" tabindex="0" aria-label="添加附件"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></label><input id="chatFiles" type="file" multiple accept="image/*,video/mp4,video/webm,.pdf,.txt,.md,.csv,.json,.doc,.docx,.xls,.xlsx,.zip"><button id="chatVoice" class="compose-icon" type="button" aria-label="语音转文字" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v3M9 21h6"/></svg></button><button id="chatSend" class="primary compose-icon" type="submit" aria-label="发送消息" data-state="ready"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 18-7-7 18-3-8-8-3Z"/><path d="m11 13 10-10"/></svg></button></div>
+      <div class="compose-actions"><label for="chatFiles" class="attachment-button" role="button" tabindex="0" aria-label="添加附件"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></label><input id="chatFiles" type="file" multiple accept="image/*,.pdf,.txt,.md,.csv,.json,.doc,.docx,.xls,.xlsx,.zip"><button id="chatVoice" class="compose-icon" type="button" aria-label="录制语音消息" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v3M9 21h6"/></svg></button><button id="chatSend" class="primary compose-icon" type="submit" aria-label="发送消息" data-state="ready"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 18-7-7 18-3-8-8-3Z"/><path d="m11 13 10-10"/></svg></button></div>
       <div id="chatAttachments" class="attachment-chips"></div>
-      <p class="hint">附件每个限 20 MB，最多 6 个。图片和小文本可传给知微；视频与其他文件目前保存供查看、下载，仅传递文件信息。</p>
+      <div id="chatVoiceDraft" class="voice-draft" hidden><span id="chatVoiceDuration"></span><audio id="chatVoicePreview" controls preload="metadata" hidden></audio><button id="chatVoiceCancel" class="text-button" type="button">取消语音</button></div>
+      <p class="hint">附件每个限 20 MB，最多 6 个。图片、小文本和录音可传给知微；其他文件保存供查看和下载。</p>
       <button id="chatRecover" type="button" class="secondary" hidden>确认发送状态</button>
     </form>
   </section>

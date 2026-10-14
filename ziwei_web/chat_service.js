@@ -2,8 +2,9 @@
 const path=require('node:path');
 const {ChatStore,uuid,hash}=require('./chat_store'),{HermesClient}=require('./hermes_client'),{Attachments}=require('./attachments'),{SSEParser}=require('./sse_parser');
 const TERMINAL=['completed','failed','cancelled','interrupted'];
+const {VoiceTranscriber}=require('./voice_transcriber');
 function createChatService(dir,{authorized=()=>true}={}){
- const client=new HermesClient(),store=new ChatStore(dir,hash(client.base+'|'+client.session+'|'+client.key)),files=new Attachments(dir,store);
+ const client=new HermesClient(),store=new ChatStore(dir,hash(client.base+'|'+client.session+'|'+client.key)),files=new Attachments(dir,store),voice=new VoiceTranscriber();
  let working=false,closing=false,connected=false,lastError=null,lastCheck=0,checking=null;
  const timers=new Set();
  function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data));}
@@ -37,7 +38,7 @@ function createChatService(dir,{authorized=()=>true}={}){
      await client.init();connected=true;lastError=null;
      if(r.state==='queued'){
       // Persist the exact transport before admission; a lost response reuses identical bytes.
-      const payload=JSON.parse(r.payload);payload.transport=files.input(payload);
+      const payload=JSON.parse(r.payload);payload.transport=files.input(payload,await files.transcripts(payload,voice));
       store.db.prepare('UPDATE requests SET payload=? WHERE id=?').run(JSON.stringify(payload),r.id);
       store.dispatched(r.id);r=store.request(r.id);
      }
@@ -46,7 +47,7 @@ function createChatService(dir,{authorized=()=>true}={}){
       const runId=await client.submit(r.id,JSON.parse(r.payload).transport);store.admitted(r.id,runId);r=store.request(r.id);
      }
      if(!await consume(r))throw Error('run_still_pending');
-    }catch(e){lastError=/^[a-z0-9_]+$/.test(e.message)?e.message:'hermes_connection_failed';connected=false;store.state(r.id,!r.run_id&&/^hermes_(auth_rejected|busy|http_40[0349])$/.test(lastError)?'failed':'uncertain',lastError);break;}
+    }catch(e){lastError=/^[a-z0-9_]+$/.test(e.message)?e.message:'hermes_connection_failed';connected=false;const voiceFailure=!r.run_id&&/^voice_/.test(lastError);store.state(r.id,voiceFailure||!r.run_id&&/^hermes_(auth_rejected|busy|http_40[0349])$/.test(lastError)?'failed':'uncertain',lastError);if(voiceFailure){r=store.next();continue;}break;}
     r=store.next();
    }
   }finally{working=false;}
@@ -58,7 +59,7 @@ function createChatService(dir,{authorized=()=>true}={}){
   try{
    if(pathname==='/api/chat/status'&&req.method==='GET'){
     if(client.configured()&&Date.now()-lastCheck>30000){if(!checking)checking=client.check().then(()=>{connected=true;lastError=null;}).catch(()=>{connected=false;lastError='hermes_connection_failed';}).finally(()=>{lastCheck=Date.now();checking=null;});await checking;}
-    return json(res,200,{configured:client.configured(),connected,lastError,session:client.configured()?client.session:null,attachmentLimit:20*1024*1024});
+    return json(res,200,{configured:client.configured(),connected,lastError,voiceConfigured:voice.available(),session:client.configured()?client.session:null,attachmentLimit:20*1024*1024});
    }
    if(pathname==='/api/chat/messages'&&req.method==='GET'){
     const limit=Number(url.searchParams.get('limit')||50),before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER),q=url.searchParams.get('q')||'',source=url.searchParams.get('source')||'live';
