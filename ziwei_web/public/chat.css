@@ -81,3 +81,24 @@ body.chat-view .brand small{font-size:7px;letter-spacing:.12em}
 .chat-background-controls .secondary{margin-top:0;padding:10px 8px}
 
 body.chat-view .shell{z-index:1}
+
+/* One compact row at rest; grow only while editing or dictating. The panel's
+   remaining height is measured against the rendered nav and visual viewport. */
+body.chat-view #chat.chat-panel{padding-bottom:0}
+#chat .chat-timeline{flex:1 1 0;height:auto}
+#chat:has(.chat-compose.is-editing) .chat-timeline{min-height:0}
+#chat .chat-compose{display:grid;grid-template-columns:36px minmax(0,1fr) 36px 36px;column-gap:6px;row-gap:0;padding:8px 10px;margin:0;border-radius:26px}
+#chat .compose-actions{display:contents}
+#chat .chat-compose textarea{grid-column:2;grid-row:var(--compose-row,1);height:36px;min-height:36px;max-height:112px;padding:7px 0;resize:none;overflow-y:auto;font-size:16px;line-height:22px}
+#chat .chat-compose.is-editing textarea{grid-column:1/-1;margin-bottom:6px}
+#chat .attachment-button{grid-column:1;grid-row:var(--actions-row,1);width:36px;height:36px;display:grid;place-items:center;margin:0;border-radius:50%;background:var(--accent-soft);cursor:pointer}
+#chatVoice{grid-column:3;grid-row:var(--actions-row,1)}
+#chatSend{grid-column:4;grid-row:var(--actions-row,1)}
+#chat .compose-icon{display:grid;place-items:center;width:36px;height:36px;padding:0;margin:0;border:0;border-radius:50%;background:var(--accent-soft);color:var(--accent)}
+#chat .compose-icon svg,#chat .attachment-button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+#chatVoice[aria-pressed=true]{background:var(--accent);color:var(--bg)}
+#chatSend[data-state=sending] svg{opacity:.45}
+#chat .chat-quote{grid-column:1/-1;grid-row:1}
+#chatAttachments,#chatRecover{grid-column:1/-1}
+#chatAttachments:empty,#chatVoiceHint:empty{display:none}
+#chat .attachment-button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}

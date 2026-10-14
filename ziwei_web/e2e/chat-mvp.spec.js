@@ -28,7 +28,7 @@ test('empty state and history occupy visible space on compact mobile and landsca
  await noEvents(page);await history(page);await login(page);
  await expect(page.locator('#chatEmpty')).toHaveText('这里，留给我们慢慢说。');
  for(const size of [{width:320,height:568},{width:390,height:844},{width:440,height:956},{width:956,height:440}]){
-  await page.setViewportSize(size);const m=await layout(page);
+  await page.setViewportSize(size);await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));const m=await layout(page);
   expect(m.timeline).toBeGreaterThanOrEqual(80);expect(m.composeBottom).toBeLessThanOrEqual(m.navTop);
   expect(m.width).toBeLessThanOrEqual(m.viewport);await expect(page.locator('#chatEmpty')).toBeInViewport();
  }
@@ -52,7 +52,7 @@ test('POST status is visible without SSE and rapid submissions send once',async(
  await noEvents(page);await history(page);let release,count=0;const gate=new Promise(r=>{release=r;});
  await page.route('**/api/chat/send',async r=>{count++;await gate;await r.fulfill({status:202,json:{requestId:r.request().postDataJSON().requestId,state:'queued'}});});
  await login(page);await page.locator('#chatInput').fill('发送状态验收');await page.locator('#chatSend').click();
- await expect(page.locator('#chatSend')).toHaveText('发送中…');await expect(page.locator('#chatWork')).toHaveText('正在发送…');
+ await expect(page.locator('#chatSend')).toHaveAttribute('data-state','sending');await expect(page.locator('#chatWork')).toHaveText('正在发送…');
  await page.evaluate(()=>{for(let i=0;i<3;i++)document.querySelector('#chatForm').dispatchEvent(new Event('submit',{cancelable:true}));});
  release();await expect(page.locator('#chatWork')).toHaveText('等待发送');expect(count).toBe(1);
  await expect(page.locator('#chatInput')).toHaveValue('');await expect(page.locator('#chatSend')).toBeEnabled();
@@ -61,7 +61,7 @@ test('uncertain send retries with the same request ID and retains the draft',asy
  await noEvents(page);await history(page);const ids=[];
  await page.route('**/api/chat/send',r=>{ids.push(r.request().postDataJSON().requestId);return r.fulfill(ids.length===1?{status:500,json:{error:'test_failure'}}:{status:202,json:{state:'queued'}});});
  await login(page);await page.locator('#chatInput').fill('网络错误草稿');await page.locator('#chatSend').click();
- await expect(page.locator('#chatSend')).toHaveText('待确认');await expect(page.locator('#chatRecover')).toBeVisible();
+ await expect(page.locator('#chatSend')).toHaveAttribute('data-state','uncertain');await expect(page.locator('#chatRecover')).toBeVisible();
  await expect(page.locator('#chatInput')).toHaveValue('网络错误草稿');await expect(page.locator('#chatWork')).toContainText('请勿重复发送');
  await page.locator('#chatRecover').click();await expect(page.locator('#chatInput')).toHaveValue('');expect(ids).toHaveLength(2);expect(ids[1]).toBe(ids[0]);
 });

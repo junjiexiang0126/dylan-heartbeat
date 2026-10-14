@@ -28,6 +28,7 @@ async function api(url, method = 'GET', body) {
 }
 function tab(name) {
   activeTab = name;
+  if(name!=='chat')window.ZiweiChat?.leave();
   window.ZiweiChatAppearance?.setVisible(name==='chat'&&!!csrf);
   document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== name);
   document.querySelectorAll('[data-tab]').forEach(b => { b.classList.toggle('active',b.dataset.tab===name);b.setAttribute('aria-current',b.dataset.tab===name?'page':'false'); });
