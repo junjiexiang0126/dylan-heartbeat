@@ -7,7 +7,7 @@ class VoiceTranscriber {
   if(!this.available())return Promise.reject(Error('voice_transcription_unavailable'));
   return new Promise((resolve,reject)=>{
    const child=spawn(this.python,[this.runner,file,this.model],{stdio:['ignore','pipe','pipe'],env:{...process.env,HF_HUB_OFFLINE:'1',OMP_NUM_THREADS:'1'}});
-   let output='',ended=false;const timer=setTimeout(()=>{child.kill('SIGKILL');finish(Error('voice_transcription_timeout'));},120000);
+   child.stdout.setEncoding('utf8');let output='',ended=false;const timer=setTimeout(()=>{child.kill('SIGKILL');finish(Error('voice_transcription_timeout'));},120000);
    function finish(error,value){if(ended)return;ended=true;clearTimeout(timer);error?reject(error):resolve(value);}
    child.stdout.on('data',c=>{output+=c;if(Buffer.byteLength(output)>65536){child.kill('SIGKILL');finish(Error('voice_transcription_limit'));}});
    // Consume diagnostic output without logging recordings, transcripts or secrets.

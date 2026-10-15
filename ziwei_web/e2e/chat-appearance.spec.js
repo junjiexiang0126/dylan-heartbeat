@@ -39,7 +39,7 @@ test('background has no glass while bubbles, status and composer retain glass',a
    const css=(el,pseudo)=>getComputedStyle(el,pseudo);
    const blur=style=>style.backdropFilter||style.webkitBackdropFilter;
    return {backgroundBlur:blur(css(document.querySelector('#chat'))),backgroundLayer:css(document.querySelector('#chat'),'::before').content,
-    surfaces:['#chatForm','#chatConnection','.message-bubble'].map(s=>{const e=document.querySelector(s),g=css(e,'::before');return {blur:blur(g),glassHeight:parseFloat(g.height),height:e.getBoundingClientRect().height};})};
+    surfaces:['#chatForm','#chatPresence','.message-bubble'].map(s=>{const e=document.querySelector(s),g=css(e,'::before');return {blur:blur(g),glassHeight:parseFloat(g.height),height:e.getBoundingClientRect().height};})};
   });
   expect(m.backgroundBlur).toBe('none');expect(m.backgroundLayer).toBe('none');
   for(const s of m.surfaces){expect(s.blur).toContain('blur(');expect(s.glassHeight).toBeLessThanOrEqual(s.height+1);}

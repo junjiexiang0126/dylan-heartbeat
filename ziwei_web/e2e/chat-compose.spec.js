@@ -66,3 +66,9 @@ test('late upload after leaving chat never sends a cancelled voice draft',async(
  await page.locator('#chatSend').click();await expect(page.locator('#chatVoiceHint')).toContainText('正在上传');await page.locator('[data-tab=home]').click();release();await page.locator('[data-tab=chat]').click();
  await expect(page.locator('#chatVoiceDraft')).toBeHidden();await expect(page.locator('#chatVoiceHint')).toBeEmpty();await expect(page.locator('#chatSend')).toBeEnabled();expect(sends).toBe(0);
 });
+test('holding records until release and sliding up discards the original audio',async({page})=>{
+ await recorderMock(page);await open(page);const mic=await page.locator('#chatVoice').boundingBox(),x=mic.x+mic.width/2,y=mic.y+mic.height/2;
+ await page.mouse.move(x,y);await page.mouse.down();await expect(page.locator('#chatVoice')).toHaveAttribute('aria-pressed','true');await page.mouse.move(x,y-85);await page.mouse.up();await expect(page.locator('#chatVoiceHint')).toContainText('上滑取消');await expect(page.locator('#chatVoiceDraft')).toBeHidden();
+ await page.mouse.move(x,y);await page.mouse.down();await expect(page.locator('#chatVoice')).toHaveAttribute('aria-pressed','true');await page.mouse.up();await expect(page.locator('#chatVoicePreview')).toBeVisible();await expect(page.locator('#chatVoice')).toHaveAttribute('aria-pressed','false');
+ await page.locator('#chatVoiceCancel').click();
+});

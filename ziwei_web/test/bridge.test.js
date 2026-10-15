@@ -6,7 +6,7 @@ async function listen(s){await new Promise(r=>s.listen(0,'127.0.0.1',r));return 
 async function until(fn,timeout=8000){const end=Date.now()+timeout;while(Date.now()<end){const v=await fn();if(v)return v;await new Promise(r=>setTimeout(r,70));}throw Error('timeout');}
 async function setup(t,options={}){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ziwei-chat-')),fake=fakeHermes(options),up=await listen(fake.server);const probe=http.createServer();const port=await listen(probe);await new Promise(r=>probe.close(r));const origin='http://127.0.0.1:'+port;
- const env={...process.env,PORT:String(port),NODE_ENV:'test',ZIWEI_WEB_PASSWORD:'testing-password-123456',ZIWEI_WEB_DATA_DIR:dir,ZIWEI_WEB_ORIGIN:origin,ZIWEI_BRIDGE_ENABLED:'true',ZIWEI_BRIDGE_ALLOW_HTTP_FOR_TESTS:'true',ZIWEI_HERMES_URL:'http://127.0.0.1:'+up,ZIWEI_HERMES_API_KEY:'protocol-fixture-key',ZIWEI_HERMES_WEB_SESSION_ID:'isolated-test-session',...(options.voice?{ZIWEI_VOICE_PYTHON:process.execPath,ZIWEI_VOICE_MODEL_PATH:__dirname,ZIWEI_VOICE_TEST_RUNNER:path.join(__dirname,'helpers/voice_fixture.js')}:{})};let child;
+ const env={...process.env,PORT:String(port),NODE_ENV:'test',ZIWEI_WEB_PASSWORD:'testing-password-123456',ZIWEI_WEB_DATA_DIR:dir,ZIWEI_WEB_ORIGIN:origin,ZIWEI_BRIDGE_ENABLED:'true',ZIWEI_BRIDGE_ALLOW_HTTP_FOR_TESTS:'true',ZIWEI_HERMES_URL:'http://127.0.0.1:'+up,ZIWEI_HERMES_API_KEY:'protocol-fixture-key',ZIWEI_HERMES_WEB_SESSION_ID:'isolated-test-session',...(options.speech?{ZIWEI_VOICE_PYTHON:process.execPath,ZIWEI_SPEECH_TEST_RUNNER:path.join(__dirname,'helpers/speech_fixture.js')}:{ }),...(options.voice?{ZIWEI_VOICE_PYTHON:process.execPath,ZIWEI_VOICE_MODEL_PATH:__dirname,ZIWEI_VOICE_TEST_RUNNER:path.join(__dirname,'helpers/voice_fixture.js')}:{})};let child;
  const start=async()=>{child=spawn(process.execPath,['server.js'],{cwd:path.join(__dirname,'..'),env,stdio:'ignore'});await until(async()=>{try{return (await fetch(origin+'/health')).ok;}catch{return false;}});};await start();
  const stop=async()=>{const p=child;if(p&&p.exitCode===null){p.kill();await new Promise(r=>p.once('exit',r));}};
  t.after(async()=>{await stop();fake.server.closeAllConnections();await new Promise(r=>fake.server.close(r));fs.rmSync(dir,{recursive:true,force:true});});
@@ -72,4 +72,32 @@ test('voice bytes stay private, transcript reaches Hermes once, failed audio doe
  const textId=crypto.randomUUID();await s.api('/api/chat/send',{requestId:textId,message:'after invalid voice',attachments:[]});
  await until(async()=> (await s.rows()).some(m=>m.id==='reply-'+textId));assert.equal(s.fake.executions,2);
  await s.stop();await s.start();assert.equal((await s.rows()).find(m=>m.id==='user-'+id).attachments[0],a.id);assert.equal((await s.api('/api/chat/attachments/'+a.id)).status,200);
+});
+
+test('approval cards resolve one exact owned native request and expired choices never execute',async t=>{
+ const s=await setup(t,{approval:true,delay:500}),id=crypto.randomUUID();await s.api('/api/chat/send',{requestId:id,message:'approval fixture',attachments:[]});
+ const list=await until(async()=>{const a=await (await s.api('/api/chat/approvals')).json();return a.data.length&&a.data;});const a=list[0];assert.deepEqual(a.choices,['once','deny']);
+ assert.equal((await s.api('/api/chat/approval',{requestId:id,approvalId:'wrong',choice:'once'})).status,409);
+ assert.equal((await s.api('/api/chat/approval',{requestId:id,approvalId:a.approvalId,choice:'always'})).status,400);
+ assert.equal((await s.api('/api/chat/approval',{requestId:id,approvalId:a.approvalId,choice:'once'})).status,200);
+ await until(async()=> (await s.rows()).some(m=>m.id==='reply-'+id));assert.equal(s.fake.executions,1);assert.equal([...s.fake.runs.values()][0].decision,'once');
+ assert.equal((await s.api('/api/chat/approval',{requestId:id,approvalId:a.approvalId,choice:'once'})).status,409);
+});
+
+test('native history imports incrementally without duplicate rows or writes to Hermes',async t=>{
+ const history=[{id:'real-history-fixture',messages:[{id:1,role:'user',content:'older user',timestamp:1700000000},{id:2,role:'assistant',content:'older reply',timestamp:1700000001}]}],s=await setup(t,{history});
+ assert.equal((await s.api('/api/chat/history/sync',{})).status,202);await until(async()=> (await (await s.api('/api/chat/history')).json()).state==='completed');
+ let archive=await (await s.api('/api/chat/messages?source=archive')).json();assert.equal(archive.data.length,2);assert.ok(archive.data[0].source_ref.startsWith('native:'));
+ history[0].messages.push({id:3,role:'user',content:'new increment',timestamp:1700000002});await s.api('/api/chat/history/sync',{});await until(async()=> (await (await s.api('/api/chat/history')).json()).messages===3);
+ archive=await (await s.api('/api/chat/messages?source=archive')).json();assert.equal(archive.data.length,3);assert.equal(s.fake.executions,0);assert.equal(s.fake.seen.some(r=>r.method!=='GET'),false);
+ await s.stop();await s.start();assert.equal((await (await s.api('/api/chat/history')).json()).messages,3);
+});
+
+test('native media is copied privately, verified and linked once; reply reading is cached',async t=>{
+ const bytes=Buffer.from('ID3private-fixture-audio'),s=await setup(t,{media:{name:'native.mp3',mime:'audio/mpeg',bytes},speech:true}),id=crypto.randomUUID();
+ await s.api('/api/chat/send',{requestId:id,message:'media fixture',attachments:[]});const rows=await until(async()=>{const rows=await s.rows();return rows.find(m=>m.id==='reply-'+id)?.attachments.length&&rows;});const reply=rows.find(m=>m.id==='reply-'+id);assert.equal(reply.attachments.length,1);
+ const audioId=reply.attachments[0];assert.equal((await fetch(s.origin+'/api/chat/attachments/'+audioId)).status,401);assert.deepEqual(Buffer.from(await (await s.api('/api/chat/attachments/'+audioId)).arrayBuffer()),bytes);
+ await s.api('/api/chat/media/sync',{});assert.equal((await s.rows()).find(m=>m.id===reply.id).attachments.length,1);
+ const [one,two]=await Promise.all([s.api('/api/chat/speech',{messageId:reply.id}),s.api('/api/chat/speech',{messageId:reply.id})]);assert.equal(one.status,200);assert.equal(two.status,200);assert.equal((await one.json()).id,(await two.json()).id);
+ assert.equal((await s.api('/api/chat/speech',{messageId:'user-'+id})).status,400);
 });

@@ -16,7 +16,7 @@ if (originURL && (originURL.origin !== ORIGIN || (originURL.protocol !== 'https:
 const SESSION_FILE = path.join(DATA_DIR, 'sessions.json'), AUTH_FILE = path.join(DATA_DIR, 'auth.json');
 const SESSION_DAYS = 30, MAX_BODY = 400000, COOKIE = 'ziwei_sid';
 const publicDir = path.join(__dirname, 'public');
-const files = {'/':'index.html','/index.html':'index.html','/app.js':'app.js','/chat.js':'chat.js','/style.css':'style.css','/chat.css':'chat.css','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png'};
+const files = {'/':'index.html','/index.html':'index.html','/app.js':'app.js','/chat.js':'chat.js','/chat-extra.js':'chat-extra.js','/chat-call.js':'chat-call.js','/style.css':'style.css','/chat.css':'chat.css','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png'};
 const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json','.mp3':'audio/mpeg'};
 const headers = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"};
 if (SECURE) headers['Strict-Transport-Security'] = 'max-age=31536000';
@@ -158,8 +158,8 @@ const server=http.createServer(async(req,res)=>{try{
     const s=session(req); if(!s)return json(res,401,{error:'unauthorized'});
     if(!['GET','HEAD'].includes(req.method) && (!validOrigin(req) || !csrfOk(req,s)))return json(res,403,{error:'csrf_rejected'});
     if(pathname==='/api/home') {
-      if(req.method==='GET')return json(res,200,home.read());
-      if(req.method==='PUT'){const body=await readBody(req);if(session(req)!==s)return json(res,401,{error:'unauthorized'});const updated=home.update(body);return json(res,updated?200:409,updated||{error:'revision_conflict'});}
+      if(req.method==='GET')return json(res,200,{...home.read(),todayStatus:await bridge.presence()});
+      if(req.method==='PUT'){const body=await readBody(req);if(session(req)!==s)return json(res,401,{error:'unauthorized'});const updated=home.update(body);return json(res,updated?200:409,updated?{...updated,todayStatus:await bridge.presence()}:{error:'revision_conflict'});}
       return json(res,405,{error:'method_not_allowed'});
     }
     if(['/api/logout','/api/logout-all'].includes(pathname) && req.method==='POST') {
@@ -212,5 +212,6 @@ const server=http.createServer(async(req,res)=>{try{
 } catch(e) { if(!res.headersSent)json(res,e.message==='body_too_large'?413:400,{error:e.message==='body_too_large'?'body_too_large':'bad_request'}); }});
 server.requestTimeout=15000;server.headersTimeout=10000;
 server.listen(PORT,SECURE?'0.0.0.0':'127.0.0.1',()=>{
+ if(process.env.ZIWEI_WEB_VERIFY==='phase12-v1')void require('./scripts/verify_voice_output').run();
  if(process.env.ZIWEI_VOICE_ACCEPTANCE==='voice-427-v1')require('./scripts/live_voice_acceptance').run().catch(e=>console.log('VOICE_ACCEPTANCE '+JSON.stringify({passed:false,error:/^acceptance_[a-z0-9_]+$/.test(e.message)?e.message:'acceptance_failed'})));
 });

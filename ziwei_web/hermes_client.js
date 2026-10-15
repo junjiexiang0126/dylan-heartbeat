@@ -13,7 +13,7 @@ class HermesClient {
   const r=await fetch(new URL(route,this.base),{...options,headers:{Authorization:'Bearer '+this.key,'X-Hermes-Session-Key':this.sessionKey,...options.headers},redirect:'error',signal:options.signal||AbortSignal.timeout(15000)});
   return r;
  }
- async json(route,options={}){const r=await this.fetch(route,options);if(!r.ok)throw Error(r.status===401?'hermes_auth_rejected':r.status===429?'hermes_busy':'hermes_http_'+r.status);const text=await r.text();if(Buffer.byteLength(text)>8*1024*1024)throw Error('hermes_response_limit');return JSON.parse(text);}
+ async json(route,options={}){const r=await this.fetch(route,options);if(!r.ok)throw Error(r.status===401?'hermes_auth_rejected':r.status===429?'hermes_busy':'hermes_http_'+r.status);let bytes=0;const chunks=[];for await(const c of r.body){bytes+=c.length;if(bytes>8*1024*1024)throw Error('hermes_response_limit');chunks.push(c);}return JSON.parse(Buffer.concat(chunks).toString('utf8'));}
  async check(){
   const c=await this.json('/v1/capabilities');if(!c.features?.runs_idempotency?.durable||!c.features?.run_events_sse||Number(c.features.runs_idempotency.retention_seconds)<3600)throw Error('hermes_contract_unverified');
  }

@@ -47,12 +47,13 @@ function renderHome() {
   $('#ziweiName').textContent = homeData.ziwei.nickname;
   renderAvatar($('#userAvatar'),homeData.user); renderAvatar($('#ziweiAvatar'),homeData.ziwei);renderAvatar($('#chatAvatar'),homeData.ziwei);window.ZiweiChat?.setProfiles({user:homeData.user,ziwei:homeData.ziwei});
   $('#memorialText').textContent = homeData.memorial;
+  $('#daysTogether').textContent=homeData.daysTogether===null?'待确认':homeData.daysTogether+' 天';$('#metOnValue').textContent=homeData.metOn||'待确认';window.ZiweiChatExtra?.presence(homeData.todayStatus);
   $('#dateLabel').textContent = new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',weekday:'long',timeZone:'Asia/Bangkok'}).format(new Date());
   appearance();
 }
 function clearPrivateUI() {
   window.ZiweiChat?.stop();window.ZiweiChat?.setProfiles({user:{nickname:'你',avatar:null},ziwei:{nickname:'知微',avatar:null}});
-  refreshVersion++;csrf=null; homeData=null; sessionData=null; pendingAvatars={};
+  window.ZiweiChatExtra?.presence(null);$('#metOn').value='';$('#metOnValue').textContent='待确认';$('#daysTogether').textContent='待确认';refreshVersion++;csrf=null; homeData=null; sessionData=null; pendingAvatars={};
   if($('#settings').open)$('#settings').close();
   $('#app').hidden=true;$('#settingsButton').hidden=true;$('#login').hidden=false;
   $('#userAvatar').replaceChildren();$('#ziweiAvatar').replaceChildren();$('#chatAvatar').replaceChildren();$('#userName').textContent='';$('#ziweiName').textContent='';$('#memorialText').textContent='';$('#historyList').replaceChildren();
@@ -77,7 +78,7 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()
 $('#settingsButton').onclick=async()=>{
   try {
     homeData=await api('/api/home');renderHome();pendingAvatars={};$('#profileForm').reset();
-    $('#userNickname').value=homeData.user.nickname;$('#ziweiNickname').value=homeData.ziwei.nickname;$('#theme').value=homeData.preferences.theme;$('#background').value=homeData.preferences.background;
+    $('#metOn').max=new Date(Date.now()+7*3600000).toISOString().slice(0,10);$('#metOn').value=homeData.metOn||'';$('#userNickname').value=homeData.user.nickname;$('#ziweiNickname').value=homeData.ziwei.nickname;$('#theme').value=homeData.preferences.theme;$('#background').value=homeData.preferences.background;
     $('#settingsMessage').textContent='';$('#verifyPassword').value='';
     sessionData=await api('/api/session');
     $('#registerPasskey').disabled=!(sessionData.passkeyAvailable && await passkeySupported());
@@ -108,7 +109,7 @@ for(const who of ['user','ziwei']) {
 $('#profileForm').onsubmit=async e=>{
   e.preventDefault();$('#saveProfile').disabled=true;
   try {
-    const body={revision:homeData.revision,user:{nickname:$('#userNickname').value},ziwei:{nickname:$('#ziweiNickname').value},preferences:{theme:$('#theme').value,background:$('#background').value}};
+    const body={revision:homeData.revision,relationship:{metOn:$('#metOn').value||null},user:{nickname:$('#userNickname').value},ziwei:{nickname:$('#ziweiNickname').value},preferences:{theme:$('#theme').value,background:$('#background').value}};
     for(const who of ['user','ziwei'])if(Object.hasOwn(pendingAvatars,who))body[who].avatar=pendingAvatars[who];
     homeData=await api('/api/home','PUT',body);pendingAvatars={};renderHome();$('#settingsMessage').textContent='已保存。';
   }catch(e){$('#settingsMessage').textContent=e.message;}finally{$('#saveProfile').disabled=false;}

@@ -1,3 +1,5 @@
+2026-10-15 更新：相识日期改为通过 `relationship.metOn` 由用户明确确认并按 revision 保存；不接受顶层 metOn、状态、纪念文案或命名日覆盖。todayStatus 来自知微发布的原生状态，只读、不由资料接口修改。其余历史说明见下文；最新验收范围见 docs/ziwei-home/PHASE12_ACCEPTANCE_2026-10-15.md。
+
 # 本轮知微之家第一阶段状态（2026-10-10）
 
 以下旧 Bridge 实验记录保留为历史。当前阶段仅启用首页、资料和认证，Bridge 默认关闭；未进行真实 Hermes 聊天/附件/记忆验收。
