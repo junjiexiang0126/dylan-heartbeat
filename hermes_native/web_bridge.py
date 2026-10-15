@@ -122,6 +122,26 @@ def media_paths(output):
     return media_manifest(output)[0]
 
 
+def install_status_tool(registry, toolsets):
+    # Platform selection expands composites back into category names. Recovery
+    # of a non-configurable category needs a static definition, not just a
+    # registry entry. Keep it distinct from memory/file tools and profile config.
+    definition = toolsets.TOOLSETS.setdefault('ziwei_web', {
+        'description':'Voluntary status published by 知微 to the private Web UI',
+        'tools':[], 'includes':[]})
+    if 'ziwei_status' not in definition['tools']:
+        definition['tools'].append('ziwei_status')
+    for bundle in ('hermes-api-server', 'hermes-cron'):
+        tools = toolsets.TOOLSETS.get(bundle, {}).get('tools', [])
+        if 'ziwei_status' not in tools: tools.append('ziwei_status')
+    # Register LAST: the registry generation then invalidates toolset/schema
+    # caches after all static memberships are in place.
+    registry.register(name='ziwei_status', toolset='ziwei_web', schema={
+        'name':'ziwei_status',
+        'description':'Publish your own current status to the private 知微之家 Web UI. Choose only a truthful present state, not a fabricated or automatic feeling. Optional; no need to publish every turn. Expires as current status after 30 minutes. Does not change memory or personality.',
+        'parameters':{'type':'object','properties':{'state':{'type':'string','enum':list(STATES)}},'required':['state'],'additionalProperties':False}}, handler=publish_status)
+
+
 def install():
     import gateway.platforms.api_server as api
     from gateway.platforms.api_server_runs import _load_owned_run
@@ -130,14 +150,7 @@ def install():
     import toolsets
     adapter = api.APIServerAdapter
     if getattr(adapter, '_ziwei_web_installed', False): return
-
-    registry.register(name='ziwei_status', toolset='ziwei_web', schema={
-        'name':'ziwei_status',
-        'description':'Publish your own current status to the private 知微之家 Web UI. Choose only a truthful present state, not a fabricated or automatic feeling. Optional; no need to publish every turn. Expires as current status after 30 minutes. Does not change memory or personality.',
-        'parameters':{'type':'object','properties':{'state':{'type':'string','enum':list(STATES)}},'required':['state'],'additionalProperties':False}}, handler=publish_status)
-    for bundle in ('hermes-api-server', 'hermes-cron'):
-        tools = toolsets.TOOLSETS.get(bundle, {}).get('tools', [])
-        if 'ziwei_status' not in tools: tools.append('ziwei_status')
+    install_status_tool(registry, toolsets)
 
     async def state(self, request):
         err = self._check_auth(request)

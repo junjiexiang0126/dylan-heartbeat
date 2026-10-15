@@ -60,6 +60,28 @@ class BridgeFiles(unittest.TestCase):
         files,errors=bridge.media_manifest('MEDIA:'+str(missing));self.assertEqual(files,[]);self.assertEqual(errors,[{'code':'media_file_missing'}])
         files,errors=bridge.media_manifest('MEDIA:'+str(missing.with_suffix('.exe')));self.assertEqual(files,[]);self.assertEqual(errors,[{'code':'media_type_not_supported'}])
 
+class ToolRegistration(unittest.TestCase):
+    def test_static_category_is_available_before_registry_cache_invalidation(self):
+        import copy
+        import types
+        toolsets=types.SimpleNamespace(TOOLSETS={
+            'hermes-api-server':{'tools':['terminal'],'includes':[]},
+            'hermes-cron':{'tools':['cronjob_manage'],'includes':[]},
+            'hermes-cli':{'tools':['terminal'],'includes':[]}})
+        registrations=[]
+        registry=types.SimpleNamespace(register=lambda **kw:registrations.append((kw,copy.deepcopy(toolsets.TOOLSETS))))
+        bridge.install_status_tool(registry,toolsets)
+        bridge.install_status_tool(registry,toolsets)
+        for registration,snapshot in registrations:
+            self.assertEqual(registration['toolset'],'ziwei_web')
+            self.assertIs(registration['handler'],bridge.publish_status)
+            self.assertEqual(snapshot['ziwei_web']['tools'],['ziwei_status'])
+            self.assertEqual(snapshot['ziwei_web']['includes'],[])
+            self.assertEqual(registration['schema']['parameters']['properties']['state']['enum'],list(bridge.STATES))
+            for bundle in ('hermes-api-server','hermes-cron'):
+                self.assertEqual(snapshot[bundle]['tools'].count('ziwei_status'),1)
+            self.assertEqual(snapshot['hermes-cli']['tools'],['terminal'])
+
 class RouteBoundary(unittest.TestCase):
     def test_routes_require_authentication_and_native_run_ownership(self):
         import asyncio

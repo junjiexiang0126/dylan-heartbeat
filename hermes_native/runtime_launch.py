@@ -37,8 +37,14 @@ if __name__ == '__main__':
         tree = Path(sys.argv[2]); activate(tree)
         import run_agent, model_tools, toolsets
         from hermes_cli.config import load_config
-        assert load_config()['platforms']['api_server']['enabled']
-        assert len(model_tools.get_tool_definitions(enabled_toolsets=['hermes-api-server','kanban','tts'])) > 20
+        from hermes_cli.tools_config import _get_platform_tools
+        config = load_config()
+        assert config['platforms']['api_server']['enabled']
+        enabled = sorted(_get_platform_tools(config, 'api_server'))
+        definitions = model_tools.get_tool_definitions(enabled_toolsets=enabled, quiet_mode=True)
+        assert len(definitions) > 20
+        assert any(t.get('function', {}).get('name') == 'ziwei_status' for t in definitions), 'ziwei_status missing from resolved api_server tools'
+        print('[ziwei] ziwei_status visible in resolved api_server tool definitions.')
     else:
         tree = Path(os.environ.get('ZIWEI_TEST_TREE', '/opt/ziwei-runtime/current'))
         main = activate(tree)
