@@ -2,8 +2,65 @@
 
 No agent loop, proxy, memory store, scheduler or billing implementation lives here.
 """
+import datetime
+import hashlib
 import os
 from pathlib import Path
+
+SHIPPED_AUTONOMY_GATE = {
+    # Every reviewed copy this project has shipped. A persisted script whose
+    # content is NOT in this set was edited by hand: leave it alone and say so,
+    # rather than silently replacing an operator's file.
+    "de3d8c5a784f2bf1bae8880e9991e99d49f4e4bbeb5145cfb1cfd4f551c6f6f1",  # 2026-10-10 reviewed
+    "2cba28d19ce9b47bd1e6420112f9dff2c3cd5b211410b637e5252a7b312d96c9",  # 2026-10-15 idle action menu
+}
+
+
+def refresh_reviewed_script(script: Path, template: Path, home: Path) -> str:
+    """Bring a reviewed Cron script up to the image's copy, but only when safe.
+
+    The gate must never update silently: keep a byte-identical backup first, skip
+    anything an operator edited by hand, and write down what happened. Never
+    raises — a failed refresh must not stop the container from booting.
+    """
+    try:
+        current = script.read_bytes()
+        wanted = template.read_bytes()
+    except OSError as exc:
+        return f"unreadable ({exc.__class__.__name__})"
+    if current == wanted:
+        return "already current"
+    if hashlib.sha256(current).hexdigest() not in SHIPPED_AUTONOMY_GATE:
+        return "kept: hash is not a reviewed copy (hand-edited?)"
+    backup_dir = home / "workspace" / "backups"
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup = backup_dir / f"{script.stem}-before-refresh-{stamp}.py"
+    tmp = script.with_name("." + script.name + ".new")
+    try:
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup.write_bytes(current)
+        tmp.write_bytes(wanted)
+        os.chmod(tmp, 0o444)
+        os.replace(tmp, script)
+    except OSError as exc:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        return f"kept: refresh failed ({exc.__class__.__name__})"
+    return f"refreshed; previous copy saved as {backup.name}"
+
+
+def note_refresh(home: Path, name: str, outcome: str) -> None:
+    """Best-effort audit line; losing the sink must never break the boot."""
+    try:
+        log = home / "logs" / "autonomy_gate_refresh.log"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with log.open("a", encoding="utf-8") as stream:
+            stream.write(f"{datetime.datetime.now().astimezone().isoformat(timespec='seconds')} {name}: {outcome}\n")
+    except OSError:
+        pass
+    print(f"[seed] {name}: {outcome}", flush=True)
 
 
 def seed(home: Path, template: Path) -> None:
@@ -31,6 +88,10 @@ def seed(home: Path, template: Path) -> None:
     except FileExistsError:
         if not script.is_file():
             raise RuntimeError("Cron preflight is not a regular file.")
+        # A newer image must be able to update this gate without an operator
+        # running commands as root; reviewed copies only, backup first.
+        note_refresh(home, script.name,
+                     refresh_reviewed_script(script, template.with_name("autonomy_gate.py"), home))
 
     skill = home / "skills" / "ziwei-self-update"
     if skill.is_symlink():
