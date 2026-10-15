@@ -722,6 +722,89 @@ def logs_page(date=None, cursor=None, limit=None):
             'next_cursor': _encode_cursor({'at': page[-1]['at'], 'id': page[-1]['kind']}) if page and has_more else None}
 
 
+DIARY_DIR = 'diary'
+DIARY_PAGE_DEFAULT = 20
+DIARY_PAGE_MAX = 100
+DIARY_PREVIEW = 200
+DIARY_NAME = re.compile(r'^\d{4}-\d{2}-\d{2}\.md$')
+
+
+def _diary_id(relative):
+    """Stable, opaque, credential-free identifier for one diary file."""
+    return 'diary-' + hashlib.sha256(relative.encode('utf-8')).hexdigest()[:16]
+
+
+def _diary_title(text, date):
+    for line in text.splitlines():
+        cleaned = line.lstrip('#').strip()
+        if cleaned:
+            return cleaned[:60]
+    return f'{date} 日记'
+
+
+def diary_records():
+    """Every saved diary file as the Web contract wants it: date, source, fingerprint, preview."""
+    root = home() / 'workspace' / DIARY_DIR
+    records, errors = [], []
+    try:
+        names = sorted(os.listdir(root))
+    except FileNotFoundError:
+        return records, errors
+    except OSError:
+        raise MemoryError('diary_directory_unreadable')
+    for name in names:
+        if not name.endswith('.md') or name.startswith('.'):
+            continue
+        try:
+            raw = read_beneath(root, name, 4 * 1024 * 1024)
+            stamp = datetime.fromtimestamp((root / name).stat().st_mtime, BANGKOK)
+        except (OSError, ValueError):
+            errors.append({'code': 'diary_unreadable', 'source': f'workspace/{DIARY_DIR}/{name}'})
+            continue
+        text = raw.decode('utf-8', 'replace')
+        relative = f'workspace/{DIARY_DIR}/{name}'
+        date = name[:10] if DIARY_NAME.match(name) else stamp.strftime('%Y-%m-%d')
+        records.append({'id': _diary_id(relative), 'title': _diary_title(text, date), 'date': date,
+                        'at': stamp.isoformat(), 'savedAt': stamp.isoformat(), 'source': relative,
+                        'preview': text.strip()[:DIARY_PREVIEW], 'revision': hashlib.sha256(raw).hexdigest(),
+                        'document': True, 'content': text})
+    records.sort(key=lambda r: (r['date'], r['savedAt']), reverse=True)
+    return records, errors
+
+
+def diary_page(limit=None, offset=None, q=None):
+    """List saved diaries newest first. Real totals, real fingerprints, never a made-up diary."""
+    try:
+        size = int(limit) if limit not in (None, '') else DIARY_PAGE_DEFAULT
+        start = int(offset) if offset not in (None, '') else 0
+    except (TypeError, ValueError):
+        raise MemoryError('invalid_pagination')
+    if not 1 <= size <= DIARY_PAGE_MAX or start < 0:
+        raise MemoryError('invalid_pagination')
+    records, errors = diary_records()
+    needle = str(q or '').strip().lower()
+    if needle:
+        records = [r for r in records if needle in r['content'].lower() or needle in r['title'].lower()]
+    total = len(records)
+    page = [{k: v for k, v in record.items() if k != 'content'} for record in records[start:start + size]]
+    following = start + size
+    return {'data': page, 'total': total, 'nextOffset': following if following < total else None,
+            'checkedAt': datetime.now(BANGKOK).isoformat(), 'errors': errors}
+
+
+def diary_document(identifier):
+    """Full saved text for one diary id. The id is matched, never turned into a path."""
+    wanted = str(identifier or '').strip()
+    if not wanted or not re.fullmatch(r'diary-[0-9a-f]{16}', wanted):
+        raise MemoryError('invalid_id', wanted[:40])
+    records, errors = diary_records()
+    for record in records:
+        if record['id'] == wanted:
+            return {'id': record['id'], 'content': record['content'], 'source': record['source'],
+                    'revision': record['revision'], 'savedAt': record['savedAt'], 'errors': errors}
+    raise MemoryError('diary_not_found', wanted)
+
+
 MOMENT_SCHEMA = {
     'name': 'ziwei_moment',
     'description': (
@@ -847,6 +930,25 @@ def install():
             'memory_entry_protected', 'memory_budget_exceeded', 'memory_match_not_unique') else 400
         return web.json_response(body, status=status, headers={'Cache-Control': 'no-store'})
 
+    async def diary(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        try:
+            identifier = request.query.get('id')
+            if identifier not in (None, ''):
+                value = await asyncio.to_thread(diary_document, identifier)
+            else:
+                value = await asyncio.to_thread(diary_page, request.query.get('limit'),
+                                                request.query.get('offset'), request.query.get('q'))
+        except MemoryError as exc:
+            # A diary that cannot be read is reported as an error, never as "no diary yet".
+            code = 404 if exc.code == 'diary_not_found' else 400 if exc.code in (
+                'invalid_id', 'invalid_pagination') else 500
+            return web.json_response({'error': exc.code, 'errors': [{'code': exc.code}],
+                                      'data': [], 'total': 0, 'nextOffset': None},
+                                     status=code, headers={'Cache-Control': 'no-store'})
+        return web.json_response(value, headers={'Cache-Control': 'no-store'})
+
     async def logs(self, request):
         err = self._check_auth(request)
         if err is not None: return err
@@ -915,6 +1017,6 @@ def install():
 
     original = adapter._http_route_table
     def routes(self):
-        return original(self) + [('GET','/ziwei/web/memory',lambda request:memory(self,request)), ('POST','/ziwei/web/memory/edit',lambda request:memory_edit(self,request)), ('GET','/ziwei/web/logs',lambda request:logs(self,request)), ('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
+        return original(self) + [('GET','/ziwei/web/memory',lambda request:memory(self,request)), ('POST','/ziwei/web/memory/edit',lambda request:memory_edit(self,request)), ('GET','/ziwei/web/logs',lambda request:logs(self,request)), ('GET','/ziwei/web/diary',lambda request:diary(self,request)), ('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
     adapter._http_route_table = routes
     adapter._ziwei_web_installed = True

@@ -4,6 +4,9 @@ COPY . /opt/ziwei-native
 # launcher. Keep the adapter immutable and reachable in every Hermes tree.
 RUN ln -s /opt/ziwei-native/browser_persistence.py /opt/hermes/browser_persistence.py \
  && printf '\nfrom browser_persistence import install as _ziwei_browser_install\n_ziwei_browser_install()\n' >> /opt/hermes/tools/browser_tool.py
+# Inbound WeCom media: accept the callback's URL/key aliases and log the payload shape
+# instead of silently dropping the user's file (see hermes_native/patches/README.md).
+RUN cp /opt/ziwei-native/patches/plugins/platforms/wecom/media.py /opt/hermes/plugins/platforms/wecom/media.py
 # Official first-boot setup seeds this template only when config.yaml is absent.
 # Supply our deployment template there, before the official setup runs.
 COPY config.yaml /opt/hermes/cli-config.yaml.example

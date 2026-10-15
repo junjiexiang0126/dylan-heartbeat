@@ -322,4 +322,63 @@ class MemoryAndLogs(unittest.TestCase):
         with self.assertRaises(bridge.MemoryError) as caught:bridge.logs_page()
         self.assertEqual(caught.exception.code,'log_store_corrupt')
 
+class DiaryRecords(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(); self.root = Path(self.tmp.name)
+        self.dir = self.root/'workspace/diary'; self.dir.mkdir(parents=True)
+        self.old = bridge.home; bridge.home = lambda:self.root
+        (self.dir/'2026-10-15.md').write_text('# 今天的日记\n今天把记忆整理做完了。\n', encoding='utf-8')
+        (self.dir/'2026-10-14.md').write_text('十月十四：课很累，但她进步了。\n', encoding='utf-8')
+        (self.dir/'2026-10-13.md').write_text('十月十三：搬机器。\n', encoding='utf-8')
+        (self.dir/'notes.txt').write_text('不是日记\n', encoding='utf-8')
+    def tearDown(self):
+        bridge.home = self.old; self.tmp.cleanup()
+    def test_list_is_newest_first_with_real_metadata(self):
+        page = bridge.diary_page()
+        self.assertEqual([r['date'] for r in page['data']], ['2026-10-15','2026-10-14','2026-10-13'])
+        self.assertEqual(page['total'], 3); self.assertIsNone(page['nextOffset'])
+        self.assertEqual(page['errors'], []); self.assertTrue(page['checkedAt'])
+        first = page['data'][0]
+        self.assertEqual(first['source'], 'workspace/diary/2026-10-15.md')
+        self.assertEqual(first['title'], '今天的日记'); self.assertTrue(first['document'])
+        self.assertEqual(first['revision'], hashlib.sha256((self.dir/'2026-10-15.md').read_bytes()).hexdigest())
+        self.assertNotIn('content', first)
+    def test_id_is_stable_opaque_and_lookup_returns_the_saved_text(self):
+        first = bridge.diary_page()['data'][0]
+        self.assertRegex(first['id'], r'^diary-[0-9a-f]{16}$')
+        self.assertNotIn('2026', first['id'])
+        document = bridge.diary_document(first['id'])
+        self.assertIn('今天把记忆整理做完了', document['content'])
+        self.assertEqual(document['revision'], first['revision'])
+        self.assertEqual(bridge.diary_page()['data'][0]['id'], first['id'])
+    def test_search_and_pagination(self):
+        page = bridge.diary_page(q='搬机器')
+        self.assertEqual([r['date'] for r in page['data']], ['2026-10-13']); self.assertEqual(page['total'], 1)
+        limited = bridge.diary_page(limit='2')
+        self.assertEqual(len(limited['data']), 2); self.assertEqual(limited['nextOffset'], 2)
+        second = bridge.diary_page(limit='2', offset='2')
+        self.assertEqual([r['date'] for r in second['data']], ['2026-10-13']); self.assertIsNone(second['nextOffset'])
+    def test_bad_ids_and_pagination_are_refused_not_guessed(self):
+        for bad in ('diary-0000000000000000', 'workspace/diary/2026-10-15.md', '../memories/MEMORY.md', ''):
+            with self.assertRaises(bridge.MemoryError) as caught:
+                bridge.diary_document(bad)
+            self.assertEqual(caught.exception.code, 'invalid_id' if bad != 'diary-0000000000000000' else 'diary_not_found')
+        for bad in ('0', '101', '-1', 'abc'):
+            with self.assertRaises(bridge.MemoryError) as caught:
+                bridge.diary_page(limit=bad)
+            self.assertEqual(caught.exception.code, 'invalid_pagination')
+    def test_missing_directory_is_empty_not_an_error(self):
+        (self.dir/'2026-10-15.md').unlink(); (self.dir/'2026-10-14.md').unlink(); (self.dir/'2026-10-13.md').unlink()
+        empty = bridge.diary_page()
+        self.assertEqual(empty['data'], []); self.assertEqual(empty['total'], 0); self.assertEqual(empty['errors'], [])
+    def test_unreadable_file_is_reported_not_silently_skipped(self):
+        broken = self.dir/'2026-10-12.md'; broken.write_text('坏文件\n', encoding='utf-8'); broken.chmod(0o000)
+        try:
+            page = bridge.diary_page()
+            codes = [e['code'] for e in page['errors']]
+            self.assertIn('diary_unreadable', codes)
+            self.assertEqual(page['total'], 3)
+        finally:
+            broken.chmod(0o644)
+
 if __name__=='__main__':unittest.main()
