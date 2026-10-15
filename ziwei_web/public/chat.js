@@ -67,7 +67,7 @@ window.ZiweiChatAppearance=(()=>{
 
 'use strict';
 window.ZiweiChat=(()=>{
- const $=s=>document.querySelector(s);let token=null,version=0,loadVersion=0,events=null,attachments=[],quote=null,pending=null,before=null,favorite=false,trash=false,busy=false,uploading=0,queuedSend=false,uploadFailed=false,source='live',buffers=new Map(),active=new Map(),reloadTimer=null,startPromise=null,loadError='',lastRequest=null,recorder=null,recordStream=null,listening=false,voiceTimer=null,layoutFrame=null,voiceEpoch=0,voiceDraft=null,voiceURL=null,voiceUploading=false;
+ const $=s=>document.querySelector(s);let token=null,version=0,loadVersion=0,events=null,attachments=[],quote=null,pending=null,before=null,favorite=false,trash=false,busy=false,uploading=0,queuedSend=false,uploadFailed=false,source='live',buffers=new Map(),active=new Map(),reloadTimer=null,startPromise=null,loadError='',lastRequest=null,recorder=null,recordStream=null,listening=false,voiceTimer=null,layoutFrame=null,voiceEpoch=0,voiceDraft=null,voiceURL=null,voiceUploading=false,profileData={user:{nickname:'你',avatar:null},ziwei:{nickname:'知微',avatar:null}},connectionTimer=null;
  const renderedMessages=new WeakMap();
  const states={queued:'等待发送',dispatching:'正在送出',running:'知微正在回应',recovering:'恢复连接中',uncertain:'等待核对，请勿重复发送',completed:'已回复',failed:'处理失败',cancelled:'已结束',interrupted:'处理被中断',archived:'历史档案'};
  const errors={hermes_not_configured:'聊天尚未配置连接。',request_conflict:'此发送编号的内容不一致，已阻止重复执行。',queue_full:'待处理消息较多，请稍后再发送。',attachment_too_large:'附件超过 20 MB。',attachment_quota:'附件空间已满，请联系维护者。',active_file_rejected:'此文件类型暂不接受，请选择图片、视频或普通文档。'};
@@ -108,17 +108,20 @@ window.ZiweiChat=(()=>{
  }
  function messageLabel(m){return (m.source==='archive'?m.role==='user'?'历史用户':m.role==='assistant'?'历史助手':'原始档案':m.role==='user'?'你':'知微')+' · '+timestamp(m.created_at)+' · '+(states[m.status]||m.status)+(m.kind==='commentary'?' · 过程消息':'')+(m.favorite?' · ★':'');}
  function rememberMessage(card,m){renderedMessages.set(card,{full:JSON.stringify(m),withoutStatus:JSON.stringify({...m,status:null})});}
+ function paintMessageAvatar(el,role){const profile=role==='user'?profileData.user:role==='assistant'?profileData.ziwei:{nickname:'原始档案',avatar:null};el.replaceChildren();el.removeAttribute('role');el.removeAttribute('aria-label');if(profile.avatar){const img=element('img');img.src=profile.avatar;img.alt=profile.nickname+'的头像';el.append(img);}else{el.textContent=[...profile.nickname][0]||'微';el.setAttribute('role','img');el.setAttribute('aria-label',profile.nickname+'的头像');}}
+ function setProfiles(profiles){for(const who of ['user','ziwei'])if(profiles?.[who])profileData[who]={nickname:profiles[who].nickname||(who==='user'?'你':'知微'),avatar:profiles[who].avatar||null};document.querySelectorAll('#chatMessages .message-avatar').forEach(el=>paintMessageAvatar(el,el.dataset.role));}
  function renderMessage(m){
   const card=element('article','message '+m.role+(m.source==='archive'?' archive':''));card.dataset.id=m.id;
-  card.append(element('p','message-label',messageLabel(m)));
-  if(m.source_ref)card.append(element('p','message-label','来源：'+m.source_ref));
-  const bubble=element('div','message-bubble glass');if(m.quote)bubble.append(element('blockquote','message-quote',m.quote.content));const content=element('p','message-content',m.content.slice(0,5000));bubble.append(content);if(m.content.length>5000)bubble.append(button('展开完整记录',()=>{content.textContent=m.content;}));card.append(bubble);
+  const avatar=element('div','message-avatar'),body=element('div','message-body');avatar.dataset.role=m.role;paintMessageAvatar(avatar,m.role);card.append(avatar,body);
+  body.append(element('p','message-label',messageLabel(m)));
+  if(m.source_ref)body.append(element('p','message-label','来源：'+m.source_ref));
+  const bubble=element('div','message-bubble glass');if(m.quote)bubble.append(element('blockquote','message-quote',m.quote.content));const content=element('p','message-content',m.content.slice(0,5000));bubble.append(content);if(m.content.length>5000)bubble.append(button('展开完整记录',()=>{content.textContent=m.content;}));body.append(bubble);
   for(const id of m.attachments)void media(bubble,id);
   const actions=element('div','message-actions');
   if(m.source==='live'&&!m.deleted)actions.append(button('引用',()=>{quote=m;$('#chatQuote').hidden=false;$('#chatQuoteText').textContent=m.content.slice(0,120)||'附件消息';$('#chatInput').focus();}));
   actions.append(button('复制',async()=>{await copy(m.content);$('#chatError').textContent='已复制。';}),button(m.favorite?'取消收藏':'收藏',async()=>{await request('/api/chat/action','POST',{id:m.id,action:m.favorite?'unfavorite':'favorite'});await load();}));
   if(m.source==='live')actions.append(button(m.deleted?'恢复':'删除',async()=>{if(!m.deleted&&!confirm('将这条消息移入回收站？原始记录与知微已有上下文会保留。'))return;await request('/api/chat/action','POST',{id:m.id,action:m.deleted?'restore':'delete'});await load();}));
-  card.append(actions);rememberMessage(card,m);return card;
+  body.append(actions);rememberMessage(card,m);return card;
  }
  async function load(older=false){
   const epoch=version,loadEpoch=++loadVersion,params=new URLSearchParams({q:$('#chatSearch').value,source,favorite:String(favorite),trash:String(trash),limit:'50'});if(older&&before)params.set('before',before);
@@ -134,6 +137,7 @@ window.ZiweiChat=(()=>{
    if(older){const fragment=document.createDocumentFragment();for(const card of cards)if(!existing.has(card.dataset.id))fragment.append(card);list.prepend(fragment);}
    else{let cursor=list.firstElementChild;for(const card of cards){if(card===cursor)cursor=cursor.nextElementSibling;else list.insertBefore(card,cursor);}while(cursor){const next=cursor.nextElementSibling;cursor.querySelectorAll('audio').forEach(a=>a.pause());cursor.remove();cursor=next;}}
 
+   if(!older&&source==='live'&&!$('#chatSearch').value&&!favorite&&!trash)responseNotice(o.data);
    before=o.before;$('#chatOlder').hidden=!o.hasMore;$('#chatEmpty').hidden=!!list.children.length;
    $('#chatEmpty').textContent=$('#chatSearch').value||favorite||trash?'没有符合条件的聊天记录。':source==='archive'?'还没有导入的历史档案。':'这里，留给我们慢慢说。';
    $('#chatRetry').hidden=true;if($('#chatError').textContent===loadError)$('#chatError').textContent='';loadError='';
@@ -214,13 +218,20 @@ window.ZiweiChat=(()=>{
   }catch(e){if(epoch===version&&attempt===voiceEpoch){voiceUploading=false;controls();$('#chatVoiceHint').textContent=e.message+' 录音已保留，请重试发送。';}}
  }
  function controls(){if(pending)$('#chatSendStatus').textContent=busy?'正在发送…':'发送状态待确认';syncPeer();const archive=source==='archive';$('#chatForm').hidden=archive;$('#archiveNotice').hidden=!archive;$('#chatSend').disabled=busy||!!pending||listening||voiceUploading;$('#chatSend').dataset.state=busy?'sending':pending?'uncertain':'ready';$('#chatSend').setAttribute('aria-label',busy?'消息正在发送':pending?'发送状态待确认':'发送消息');$('#chatVoice').disabled=busy||!!pending||voiceUploading;$('#chatVoice').setAttribute('aria-pressed',String(listening));$('#chatInput').disabled=busy||!!pending||listening||voiceUploading;$('#chatFiles').disabled=busy||uploading>0||!!pending||voiceUploading||listening;$('#chatRecover').hidden=!pending||busy;$('#chatRecover').disabled=busy;progress();compose();}
- async function connection(){const s=await request('/api/chat/status');$('#chatConnection').textContent=!navigator.onLine?'已离线':!s.configured?'待接通':s.connected?'已连接':'连接中';}
+ function responseNotice(messages){
+  const latest=messages.at(-1),node=$('#chatServiceNotice');
+  const failed=latest?.status==='failed',unavailable=failed&&latest.role==='assistant'&&/\b503\b/.test(latest.content)&&/API|service|error|busy|服务/i.test(latest.content);
+  node.hidden=!failed;node.textContent=unavailable?'上次回复时模型服务暂不可用，可稍后再发消息。聊天记录和录音仍可使用。':failed?'上次回复未能完成，消息记录已保留。':'';
+ }
+ async function connection(){const epoch=version,s=await request('/api/chat/status');if(epoch!==version||!token)return;const text=!navigator.onLine?'已离线':!s.configured?'待接通':s.connected?'已连接':'连接中';$('#chatConnection').textContent=text;$('#chatConnection').title=text;}
+ function pollConnection(){if(connectionTimer)return;connectionTimer=setInterval(()=>{if(token&&!$('#chat').hidden&&!document.hidden)void connection().catch(()=>{if(token)$('#chatConnection').textContent=navigator.onLine?'连接状态暂不可用':'已离线';});},30000);}
+
  function subscribe(){
   if(events)events.close();events=new EventSource('/api/chat/events');const epoch=version,guard=fn=>e=>{if(token&&epoch===version)fn(e);};
   let opened=false;events.onopen=guard(()=>{if(opened){void load().catch(()=>{});void connection().catch(()=>{});}opened=true;});
   events.addEventListener('message.delta',guard(e=>{const o=JSON.parse(e.data);if(active.has(o.requestId)){buffers.set(o.requestId,(buffers.get(o.requestId)||'')+o.delta);progress();}}));
   events.addEventListener('message.saved',guard(()=>scheduleLoad()));events.addEventListener('timeline.changed',guard(()=>scheduleLoad()));
-  events.addEventListener('request.state',guard(e=>{const o=JSON.parse(e.data);track(o.requestId,o.state);progress();scheduleLoad();}));
+  events.addEventListener('request.state',guard(e=>{const o=JSON.parse(e.data);track(o.requestId,o.state);if(o.requestId===lastRequest&&['failed','completed'].includes(o.state))void connection().catch(()=>{});progress();scheduleLoad();}));
   events.addEventListener('request.notice',guard(e=>{$('#chatWork').textContent=JSON.parse(e.data).text;}));
   events.onerror=guard(()=>{$('#chatConnection').textContent=navigator.onLine?'正在恢复连接':'已离线';});
  }
@@ -251,9 +262,9 @@ window.ZiweiChat=(()=>{
  $('#chatFavorites').onclick=()=>{favorite=!favorite;$('#chatFavorites').setAttribute('aria-pressed',String(favorite));load().catch(()=>{});};
  $('#chatSearch').oninput=()=>scheduleLoad();$('#chatOlder').onclick=()=>load(true).catch(()=>{});
  window.addEventListener('online',()=>{if(token){void start(token);if(pending)void deliver();}});window.addEventListener('offline',()=>{$('#chatConnection').textContent='已离线';});
- function stop(){stopVoice();window.ZiweiChatAppearance?.setVisible(false);version++;loadVersion++;token=null;startPromise=null;loadError='';lastRequest=null;$('#chatVoiceHint').textContent='';$('#chatSendStatus').textContent='';events?.close();events=null;clearTimeout(reloadTimer);attachments=[];quote=null;pending=null;before=null;favorite=false;trash=false;source='live';busy=false;uploading=0;queuedSend=false;uploadFailed=false;active.clear();buffers.clear();$('#chatMessages').replaceChildren();$('#chatInput').value='';$('#chatSearch').value='';$('#chatSource').value='live';$('#chatFavorites').setAttribute('aria-pressed','false');$('#chatTrash').setAttribute('aria-pressed','false');$('#chatQuote').hidden=true;$('#chatError').textContent='';$('#chatStreaming').textContent='';$('#chatProgress').hidden=true;$('#chatEmpty').hidden=false;$('#chatEmpty').textContent='这里，留给我们慢慢说。';$('#chatRetry').hidden=true;$('#chatOlder').hidden=true;$('#chatTimeline').setAttribute('aria-busy','false');chips();controls();}
+ function stop(){stopVoice();clearInterval(connectionTimer);connectionTimer=null;$('#chatServiceNotice').hidden=true;$('#chatServiceNotice').textContent='';window.ZiweiChatAppearance?.setVisible(false);version++;loadVersion++;token=null;startPromise=null;loadError='';lastRequest=null;$('#chatVoiceHint').textContent='';$('#chatSendStatus').textContent='';events?.close();events=null;clearTimeout(reloadTimer);attachments=[];quote=null;pending=null;before=null;favorite=false;trash=false;source='live';busy=false;uploading=0;queuedSend=false;uploadFailed=false;active.clear();buffers.clear();$('#chatMessages').replaceChildren();$('#chatInput').value='';$('#chatSearch').value='';$('#chatSource').value='live';$('#chatFavorites').setAttribute('aria-pressed','false');$('#chatTrash').setAttribute('aria-pressed','false');$('#chatQuote').hidden=true;$('#chatError').textContent='';$('#chatStreaming').textContent='';$('#chatProgress').hidden=true;$('#chatEmpty').hidden=false;$('#chatEmpty').textContent='这里，留给我们慢慢说。';$('#chatRetry').hidden=true;$('#chatOlder').hidden=true;$('#chatTimeline').setAttribute('aria-busy','false');chips();controls();}
  async function start(csrf){
-  if(!csrf)return;if(token!==csrf){stop();token=csrf;}window.ZiweiChatAppearance?.setVisible(true);syncPeer();compose();if(startPromise)return startPromise;
+  if(!csrf)return;if(token!==csrf){stop();token=csrf;}window.ZiweiChatAppearance?.setVisible(true);syncPeer();compose();pollConnection();if(startPromise)return startPromise;
   const epoch=version;
   // History must remain usable even when status checking or SSE is unavailable.
   const job=(async()=>{
@@ -264,5 +275,5 @@ window.ZiweiChat=(()=>{
   })();
   startPromise=job;try{await job;}finally{if(epoch===version)startPromise=null;}
  }
- return {start,stop,leave:()=>{stopVoice();$('#chatInput').blur();}};
+ return {start,stop,setProfiles,leave:()=>{stopVoice();$('#chatInput').blur();}};
 })();
