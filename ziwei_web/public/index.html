@@ -79,7 +79,29 @@
 <fieldset class="security"><legend>登录与设备</legend><p class="hint">登录保留 30 天。设备解锁使用 Passkey；面容、指纹或 PIN 由设备系统验证。</p><label for="verifyPassword">确认密码（开启或移除设备解锁时使用）</label><input id="verifyPassword" type="password" autocomplete="current-password" maxlength="512"><button id="registerPasskey" class="secondary" type="button">开启设备解锁</button><button id="removePasskeys" class="text-button" type="button">移除所有设备解锁凭据</button><p id="passkeyMessage" class="hint" role="status"></p><div class="logout-actions"><button id="logout" type="button" class="secondary">锁定 / 退出此设备</button><button id="logoutAll" type="button" class="secondary">退出全部设备</button></div></fieldset>
 </dialog>
 <dialog id="chatImageViewer" class="glass chat-image-viewer" aria-label="图片预览"><div class="viewer-toolbar"><button id="chatImageClose" type="button" aria-label="关闭图片">×</button><button id="chatImagePrevious" type="button" aria-label="上一张图片">‹</button><button id="chatImageNext" type="button" aria-label="下一张图片">›</button><button id="chatImageZoomOut" type="button" aria-label="缩小图片">−</button><button id="chatImageZoomIn" type="button" aria-label="放大图片">＋</button><button id="chatImageRetry" type="button" hidden>重试读取</button><a id="chatImageSave" download>保存原图</a></div><p id="chatImageName"></p><div id="chatImageCanvas"><img id="chatImageFull" alt=""></div></dialog>
-<dialog id="chatCallDialog" class="glass chat-call-dialog" aria-label="与知微语音通话"><h2>与知微语音通话</h2><p>轮流说话。你说完后暂停片刻，知微会回应。</p><p id="chatCallState" role="status">尚未开始</p><div id="chatCallApprovals" aria-live="polite"></div><audio id="chatCallAudio" playsinline></audio><button id="chatCallStart" type="button" class="primary">开始通话</button><button id="chatCallRetry" type="button" class="secondary" hidden>重试播放回复</button><button id="chatCallEnd" type="button" class="secondary">结束通话</button></dialog>
+<dialog id="chatCallDialog" class="chat-call-dialog" aria-labelledby="chatCallName" aria-describedby="chatCallMode" data-phase="idle">
+  <div class="call-screen">
+    <header class="call-heading"><span>语音通话</span><time id="chatCallElapsed" aria-label="通话时长">00:00</time><span id="chatCallMicStatus">麦克风未开启</span></header>
+    <div class="call-peer">
+      <div id="chatCallPortrait" class="call-portrait"><div id="chatCallAvatar" class="call-avatar" role="img" aria-label="知微的头像">微</div></div>
+      <h2 id="chatCallName">知微</h2>
+      <p id="chatCallState" role="status">准备好后，开始通话</p>
+      <div id="chatCallWave" class="call-wave" aria-hidden="true"></div>
+      <p id="chatCallSpeaker" class="call-speaker">声波随实际声音变化</p>
+    </div>
+    <div id="chatCallApprovals" class="call-approvals" aria-live="polite"></div>
+    <div class="call-bottom">
+      <button id="chatCallRetry" type="button" class="secondary" hidden>点击播放知微的回复</button>
+      <div class="call-controls">
+        <button id="chatCallMute" type="button" class="call-control" aria-label="静音麦克风" aria-pressed="false" disabled><span class="call-control-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v3M9 21h6"/><path class="call-mute-slash" d="m3 3 18 18"/></svg></span><span id="chatCallMuteLabel">静音</span></button>
+        <button id="chatCallStart" type="button" class="call-control call-answer" aria-label="开始通话"><span class="call-control-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 3 3 5-2 2c1.4 2.6 3.4 4.6 6 6l2-2 5 3-1 4C10 22 2 14 3 4Z"/></svg></span><span>开始通话</span></button>
+        <button id="chatCallEnd" type="button" class="call-control call-hangup" aria-label="结束通话"><span class="call-control-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15v-4c5-5 13-5 18 0v4l-5 1-1-4a12 12 0 0 0-6 0l-1 4Z"/></svg></span><span>挂断</span></button>
+      </div>
+      <p id="chatCallMode" class="call-mode">当前按句轮流交流：你说完暂停片刻，知微回应。文字回复会朗读。</p>
+    </div>
+  </div>
+  <audio id="chatCallAudio" playsinline></audio>
+</dialog>
 <script src="/chat.js" defer></script><script src="/chat-extra.js" defer></script><script src="/chat-call.js" defer></script><script src="/app.js" defer></script>
 <script src="/viewport-debug.js?v=2" defer></script>
 </body></html>
