@@ -4,9 +4,9 @@ async function open(page){await page.goto('/');await page.locator('#password').f
 const row=(role,content,status='completed')=>({id:'profile-'+role,role,content,status,attachments:[],created_at:'2026-10-15T00:00:00Z',source:'live'});
 test('both saved avatars flank compact bubbles, scale with font, survive reload and clear on logout',async({page})=>{
  await page.route('**/api/chat/messages?*',r=>r.fulfill({json:{data:[row('user','27'),row('assistant','收到')],before:1,hasMore:false}}));
- await open(page);await page.locator('#settingsButton').click();
+ await open(page);await page.locator('#settingsButton').click();await expect(page.locator('#settings')).toBeVisible();
  const image=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=c.height=20;return c.toDataURL('image/png').split(',')[1];});
- for(const who of ['user','ziwei']){await page.locator('#'+who+'AvatarFile').setInputFiles({name:'avatar.png',mimeType:'image/png',buffer:Buffer.from(image,'base64')});await expect(page.locator('#settingsMessage')).toContainText('头像已准备好');}
+ for(const who of ['user','ziwei']){await page.locator('#'+who+'AvatarFile').setInputFiles({name:'avatar.png',mimeType:'image/png',buffer:Buffer.from(image,'base64')});await expect(page.locator('#saveProfile')).toBeEnabled();await expect(page.locator('#settingsMessage')).toContainText('头像已准备好');}
  await page.locator('#saveProfile').click();await expect(page.locator('#settingsMessage')).toHaveText('已保存。');await page.locator('#closeSettings').click();
  for(const role of ['user','assistant'])await expect(page.locator('.message.'+role+' .message-avatar img')).toBeVisible();
  const dimensions=()=>page.locator('.message.user .message-bubble').evaluate(el=>({width:el.getBoundingClientRect().width,padding:parseFloat(getComputedStyle(el).paddingLeft),radius:parseFloat(getComputedStyle(el).borderTopLeftRadius)}));
