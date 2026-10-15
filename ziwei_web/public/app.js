@@ -59,12 +59,23 @@ function clearPrivateUI() {
   $('#userAvatar').replaceChildren();$('#ziweiAvatar').replaceChildren();$('#chatAvatar').replaceChildren();$('#userName').textContent='';$('#ziweiName').textContent='';$('#memorialText').textContent='';$('#historyList').replaceChildren();
   $('#profileForm').reset();$('#verifyPassword').value='';appearance();
 }
-async function passkeySupported() {
-  try { return !!(window.isSecureContext && window.PublicKeyCredential && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); } catch { return false; }
+function passkeyUnavailableReason() {
+  if (!window.isSecureContext) return '设备解锁需要 HTTPS 安全连接，请使用正式网页地址。';
+  if (!window.PublicKeyCredential || !navigator.credentials?.create || !navigator.credentials?.get) return '当前浏览器不支持通行密钥，请用 Safari 打开正式网址后重试。';
+  if (!sessionData?.passkeyAvailable) return '服务端尚未启用通行密钥，请检查网页服务的正式访问地址配置。';
+  return '';
+}
+function renderPasskeyControls() {
+  const reason=passkeyUnavailableReason();
+  $('#unlockButton').hidden=false;$('#unlockButton').disabled=!!reason;
+  $('#unlockHint').textContent=reason || '已开启后可用 Face ID / 设备解锁。首次请用访问密码登录，再到右上角设置顶部开启。';
+  $('#registerPasskey').disabled=!!reason;
+  $('#passkeyMessage').textContent=reason || (sessionData.passkeyCount ? `已保存 ${sessionData.passkeyCount} 个设备解锁凭据。锁定后可用 Face ID / 设备解锁。` : '尚未开启：输入访问密码，点击“开启 Face ID / 设备解锁”创建通行密钥。');
+  $('#removePasskeys').disabled=!sessionData?.passkeyCount;
 }
 async function refresh() {
   const version=++refreshVersion;const s = await api('/api/session');if(version!==refreshVersion)return;sessionData=s;csrf=s.csrf;
-  if (!s.authenticated) { clearPrivateUI(); $('#unlockButton').hidden=!(s.passkeyAvailable && await passkeySupported()); return; }
+  if (!s.authenticated) { clearPrivateUI(); sessionData=s; renderPasskeyControls(); return; }
   const h=await api('/api/home');if(version!==refreshVersion)return;homeData=h;renderHome();
   $('#login').hidden=true;$('#app').hidden=false;$('#settingsButton').hidden=false;
   if(activeTab==='chat')window.ZiweiChat?.start(csrf);
@@ -81,13 +92,11 @@ $('#settingsButton').onclick=async()=>{
     $('#metOn').max=new Date(Date.now()+7*3600000).toISOString().slice(0,10);$('#metOn').value=homeData.metOn||'';$('#userNickname').value=homeData.user.nickname;$('#ziweiNickname').value=homeData.ziwei.nickname;$('#theme').value=homeData.preferences.theme;$('#background').value=homeData.preferences.background;
     $('#settingsMessage').textContent='';$('#verifyPassword').value='';
     sessionData=await api('/api/session');
-    $('#registerPasskey').disabled=!(sessionData.passkeyAvailable && await passkeySupported());
-    $('#passkeyMessage').textContent=$('#registerPasskey').disabled?'此环境暂不支持设备解锁，请继续使用密码。':`已保存 ${sessionData.passkeyCount} 个设备解锁凭据。`;
-    $('#removePasskeys').disabled=!sessionData.passkeyCount;
+    renderPasskeyControls();
     $('#historyList').replaceChildren();
     homeData.profileHistory.slice().reverse().forEach(h=>{const li=document.createElement('li');li.textContent=`${new Intl.DateTimeFormat('zh-CN',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Bangkok'}).format(new Date(h.at))} · 你修改了${h.who==='user'?'你的':'知微的'}资料：${h.before.nickname} → ${h.after.nickname}${h.before.avatar!==h.after.avatar?'（头像已变更）':''}`;$('#historyList').append(li);});
     if(!homeData.profileHistory.length){const li=document.createElement('li');li.textContent='还没有资料变更。';$('#historyList').append(li);}
-    $('#settings').showModal();
+    $('#settings').showModal();$('#settings').scrollTop=0;$('#verifyPassword').blur();
   }catch(e){$('#loginError').textContent=e.message;}
 };
 $('#closeSettings').onclick=()=>{$('#settings').close();pendingAvatars={};$('#verifyPassword').value='';};
@@ -126,10 +135,11 @@ function optionsJSON(o) {
   for(const key of ['excludeCredentials','allowCredentials'])if(v[key])v[key]=v[key].map(c=>({...c,id:decode(c.id)}));
   return v;
 }
-function deviceError(e){return ['NotAllowedError','AbortError'].includes(e.name)?'设备解锁已取消或超时，可使用密码继续。':e.name==='InvalidStateError'?'此设备已保存解锁凭据。':e.message;}
+function deviceError(e){return ['NotAllowedError','AbortError'].includes(e.name)?'设备解锁已取消或超时。若系统没有弹窗，请检查 iPhone 的面容与密码、通行密钥设置后重试；也可继续使用访问密码。':e.name==='InvalidStateError'?'此设备已保存解锁凭据，可锁定后直接解锁。':e.name==='SecurityError'?'通行密钥的网页域名不匹配，请从正式网址重新进入。':e.name==='NotSupportedError'?'当前设备无法创建此通行密钥，请检查系统通行密钥设置，或在 Safari 中重试。':e.message;}
 $('#registerPasskey').onclick=async()=>{
+  if(!$('#verifyPassword').value){$('#passkeyMessage').textContent='请先输入访问密码，再开启 Face ID / 设备解锁。';$('#verifyPassword').focus();return;}
   $('#registerPasskey').disabled=true;
-  try {const o=await api('/api/passkey/register/options','POST',{password:$('#verifyPassword').value});$('#verifyPassword').value='';const c=await navigator.credentials.create({publicKey:optionsJSON(o)});await api('/api/passkey/register/verify','POST',credentialJSON(c));$('#passkeyMessage').textContent='设备解锁已开启。下次退出或锁定后可以使用。';$('#removePasskeys').disabled=false;}
+  try {const o=await api('/api/passkey/register/options','POST',{password:$('#verifyPassword').value});$('#verifyPassword').value='';const c=await navigator.credentials.create({publicKey:optionsJSON(o)});await api('/api/passkey/register/verify','POST',credentialJSON(c));sessionData.passkeyCount=(sessionData.passkeyCount||0)+1;$('#passkeyMessage').textContent='设备解锁已开启。下次锁定后点击“用 Face ID / 设备解锁”。';$('#removePasskeys').disabled=false;}
   catch(e){$('#passkeyMessage').textContent=deviceError(e);}finally{$('#verifyPassword').value='';$('#registerPasskey').disabled=false;}
 };
 $('#unlockButton').onclick=async()=>{
@@ -138,7 +148,7 @@ $('#unlockButton').onclick=async()=>{
   catch(e){$('#loginError').textContent=deviceError(e);}finally{$('#unlockButton').disabled=false;}
 };
 $('#removePasskeys').onclick=async()=>{
-  try {await api('/api/passkey/remove-all','POST',{password:$('#verifyPassword').value});$('#passkeyMessage').textContent='所有设备解锁凭据已移除。';$('#removePasskeys').disabled=true;}catch(e){$('#passkeyMessage').textContent=e.message;}finally{$('#verifyPassword').value='';}
+  try {await api('/api/passkey/remove-all','POST',{password:$('#verifyPassword').value});sessionData.passkeyCount=0;$('#passkeyMessage').textContent='所有设备解锁凭据已移除。';$('#removePasskeys').disabled=true;}catch(e){$('#passkeyMessage').textContent=e.message;}finally{$('#verifyPassword').value='';}
 };
 async function logout(all) {try {await api(all?'/api/logout-all':'/api/logout','POST');clearPrivateUI();tab('home');await refresh();}catch(e){$('#passkeyMessage').textContent=e.message;}}
 $('#logout').onclick=()=>logout(false);$('#logoutAll').onclick=()=>logout(true);
