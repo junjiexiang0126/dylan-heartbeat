@@ -6,7 +6,7 @@ async function listen(s){await new Promise(r=>s.listen(0,'127.0.0.1',r));return 
 async function until(fn,timeout=8000){const end=Date.now()+timeout;while(Date.now()<end){const v=await fn();if(v)return v;await new Promise(r=>setTimeout(r,70));}throw Error('timeout');}
 async function setup(t,options={}){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ziwei-chat-')),fake=fakeHermes(options),up=await listen(fake.server);const probe=http.createServer();const port=await listen(probe);await new Promise(r=>probe.close(r));const origin='http://127.0.0.1:'+port;
- const env={...process.env,PORT:String(port),NODE_ENV:'test',ZIWEI_WEB_PASSWORD:'testing-password-123456',ZIWEI_WEB_DATA_DIR:dir,ZIWEI_WEB_ORIGIN:origin,ZIWEI_BRIDGE_ENABLED:'true',ZIWEI_BRIDGE_ALLOW_HTTP_FOR_TESTS:'true',ZIWEI_HERMES_URL:'http://127.0.0.1:'+up,ZIWEI_HERMES_API_KEY:'protocol-fixture-key',ZIWEI_HERMES_WEB_SESSION_ID:'isolated-test-session'};let child;
+ const env={...process.env,PORT:String(port),NODE_ENV:'test',ZIWEI_WEB_PASSWORD:'testing-password-123456',ZIWEI_WEB_DATA_DIR:dir,ZIWEI_WEB_ORIGIN:origin,ZIWEI_BRIDGE_ENABLED:'true',ZIWEI_BRIDGE_ALLOW_HTTP_FOR_TESTS:'true',ZIWEI_HERMES_URL:'http://127.0.0.1:'+up,ZIWEI_HERMES_API_KEY:'protocol-fixture-key',ZIWEI_HERMES_WEB_SESSION_ID:'isolated-test-session',...(options.speech?{ZIWEI_VOICE_PYTHON:process.execPath,ZIWEI_SPEECH_TEST_RUNNER:path.join(__dirname,'helpers/speech_fixture.js')}:{ }),...(options.voice?{ZIWEI_VOICE_PYTHON:process.execPath,ZIWEI_VOICE_MODEL_PATH:__dirname,ZIWEI_VOICE_TEST_RUNNER:path.join(__dirname,'helpers/voice_fixture.js')}:{})};let child;
  const start=async()=>{child=spawn(process.execPath,['server.js'],{cwd:path.join(__dirname,'..'),env,stdio:'ignore'});await until(async()=>{try{return (await fetch(origin+'/health')).ok;}catch{return false;}});};await start();
  const stop=async()=>{const p=child;if(p&&p.exitCode===null){p.kill();await new Promise(r=>p.once('exit',r));}};
  t.after(async()=>{await stop();fake.server.closeAllConnections();await new Promise(r=>fake.server.close(r));fs.rmSync(dir,{recursive:true,force:true});});
@@ -53,4 +53,51 @@ test('private attachments, type/size gates, range downloads and inline image/tex
 test('unknown admission older than the native retention safety window never resubmits',async t=>{
  const s=await setup(t);await s.stop();const db=new DatabaseSync(path.join(s.dir,'chat.sqlite'),{readOnly:true}),scope=db.prepare("SELECT value FROM meta WHERE key='scope'").get().value;db.close();const store=new ChatStore(s.dir,scope),id=crypto.randomUUID();store.addRequest(id,{message:'unknown old request',attachments:[],quote:null});store.db.prepare('UPDATE requests SET state=?,submitted_at=?,payload=? WHERE id=?').run('uncertain',Date.now()-7200000,JSON.stringify({message:'unknown old request',attachments:[],quote:null,transport:'unknown old request'}),id);store.close();await s.start();
  await until(async()=>{const o=await (await s.api('/api/chat/requests')).json();return o.data.some(r=>r.error==='admission_uncertain_no_resubmit');});assert.equal(s.fake.executions,0);assert.ok(s.fake.seen.every(r=>r.url!=='/v1/runs'));
+});
+
+test('voice bytes stay private, transcript reaches Hermes once, failed audio does not block text',async t=>{
+ const s=await setup(t,{voice:true});
+ const upload=async data=>(await (await fetch(s.origin+'/api/chat/attachments',{method:'POST',headers:{...s.headers,'Content-Type':'application/octet-stream','X-Filename':'voice.wav'},body:data})).json());
+ const wav=Buffer.alloc(16044);wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(16000,40);
+ const a=await upload(wav);assert.equal(a.mime,'audio/wav');
+ assert.equal((await fetch(s.origin+'/api/chat/attachments/'+a.id)).status,401);
+ const play=await fetch(s.origin+'/api/chat/attachments/'+a.id,{headers:{...s.headers,Range:'bytes=0-43'}});assert.equal(play.status,206);assert.match(play.headers.get('content-disposition'),/inline/);
+ const id=crypto.randomUUID(),body={requestId:id,message:'',attachments:[a.id]};await s.api('/api/chat/send',body);
+ await until(async()=>{const r=await s.rows();return r.some(m=>m.id==='reply-'+id);});
+ assert.match(JSON.parse([...s.fake.keys.values()][0].body).input,/fixture spoken 427/);
+ const message=(await s.rows()).find(m=>m.id==='user-'+id);assert.equal(message.content,'');assert.deepEqual(message.attachments,[a.id]);
+ await s.api('/api/chat/send',body);assert.equal(s.fake.executions,1);
+ const bad=await upload(Buffer.from('RIFFbad!WAVEbad'));const badId=crypto.randomUUID();await s.api('/api/chat/send',{requestId:badId,message:'',attachments:[bad.id]});
+ await until(async()=> (await s.rows()).some(m=>m.id==='user-'+badId&&m.status==='failed'));
+ const textId=crypto.randomUUID();await s.api('/api/chat/send',{requestId:textId,message:'after invalid voice',attachments:[]});
+ await until(async()=> (await s.rows()).some(m=>m.id==='reply-'+textId));assert.equal(s.fake.executions,2);
+ await s.stop();await s.start();assert.equal((await s.rows()).find(m=>m.id==='user-'+id).attachments[0],a.id);assert.equal((await s.api('/api/chat/attachments/'+a.id)).status,200);
+});
+
+test('approval cards resolve one exact owned native request and expired choices never execute',async t=>{
+ const s=await setup(t,{approval:true,delay:500}),id=crypto.randomUUID();await s.api('/api/chat/send',{requestId:id,message:'approval fixture',attachments:[]});
+ const list=await until(async()=>{const a=await (await s.api('/api/chat/approvals')).json();return a.data.length&&a.data;});const a=list[0];assert.deepEqual(a.choices,['once','deny']);
+ assert.equal((await s.api('/api/chat/approval',{requestId:id,approvalId:'wrong',choice:'once'})).status,409);
+ assert.equal((await s.api('/api/chat/approval',{requestId:id,approvalId:a.approvalId,choice:'always'})).status,400);
+ assert.equal((await s.api('/api/chat/approval',{requestId:id,approvalId:a.approvalId,choice:'once'})).status,200);
+ await until(async()=> (await s.rows()).some(m=>m.id==='reply-'+id));assert.equal(s.fake.executions,1);assert.equal([...s.fake.runs.values()][0].decision,'once');
+ assert.equal((await s.api('/api/chat/approval',{requestId:id,approvalId:a.approvalId,choice:'once'})).status,409);
+});
+
+test('native history imports incrementally without duplicate rows or writes to Hermes',async t=>{
+ const history=[{id:'real-history-fixture',messages:[{id:1,role:'user',content:'older user',timestamp:1700000000},{id:2,role:'assistant',content:'older reply',timestamp:1700000001},{id:1,role:'user',content:'older user',timestamp:1700000000}]}],s=await setup(t,{history});
+ assert.equal((await s.api('/api/chat/history/sync',{})).status,202);await until(async()=> (await (await s.api('/api/chat/history')).json()).state==='completed');
+ let archive=await (await s.api('/api/chat/messages?source=archive')).json();assert.equal(archive.data.length,2);assert.ok(archive.data[0].source_ref.startsWith('native:'));
+ history[0].messages.push({id:3,role:'user',content:'new increment',timestamp:1700000002});await s.api('/api/chat/history/sync',{});await until(async()=>{const state=await (await s.api('/api/chat/history')).json();return state.state==='completed'&&state.messages===3;});
+ archive=await (await s.api('/api/chat/messages?source=archive')).json();assert.equal(archive.data.length,3);assert.equal(s.fake.executions,0);assert.equal(s.fake.seen.some(r=>r.method!=='GET'),false);
+ await s.stop();await s.start();assert.equal((await (await s.api('/api/chat/history')).json()).messages,3);
+});
+
+test('native media is copied privately, verified and linked once; reply reading is cached',async t=>{
+ const bytes=Buffer.from('ID3private-fixture-audio'),s=await setup(t,{media:{name:'native.mp3',mime:'audio/mpeg',bytes},speech:true}),id=crypto.randomUUID();
+ await s.api('/api/chat/send',{requestId:id,message:'media fixture',attachments:[]});const rows=await until(async()=>{const rows=await s.rows();return rows.find(m=>m.id==='reply-'+id)?.attachments.length&&rows;});const reply=rows.find(m=>m.id==='reply-'+id);assert.equal(reply.attachments.length,1);
+ const audioId=reply.attachments[0];assert.equal((await fetch(s.origin+'/api/chat/attachments/'+audioId)).status,401);assert.deepEqual(Buffer.from(await (await s.api('/api/chat/attachments/'+audioId)).arrayBuffer()),bytes);
+ await s.api('/api/chat/media/sync',{});assert.equal((await s.rows()).find(m=>m.id===reply.id).attachments.length,1);
+ const [one,two]=await Promise.all([s.api('/api/chat/speech',{messageId:reply.id}),s.api('/api/chat/speech',{messageId:reply.id})]);assert.equal(one.status,200);assert.equal(two.status,200);assert.equal((await one.json()).id,(await two.json()).id);
+ assert.equal((await s.api('/api/chat/speech',{messageId:'user-'+id})).status,400);
 });

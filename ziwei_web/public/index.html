@@ -2,13 +2,17 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f6e9e5"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#fff9f7"><script>(function(){try{var L=localStorage,g=L.getItem('zw_pref_theme')||'system',r=(g==='light'||g==='dark')?g:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'),b=(L.getItem('zw_resolved_theme')===r?L.getItem('zw_bg'):null)||(r==='dark'?'#211b26':'#fff9f7'),d=document.documentElement,m=document.querySelector('meta[name="theme-color"]'),bgk=L.getItem('zw_background');d.setAttribute('data-theme',r);if(bgk)d.setAttribute('data-background',bgk);if(m)m.setAttribute('content',b);}catch(e){}})();</script>
 <link rel="apple-touch-icon" href="/icon-192.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/chat.css"><title>知微之家</title>
 </head>
 <body>
 <div class="ambient" aria-hidden="true"></div>
+<div id="chatWallpaper" class="chat-wallpaper" aria-hidden="true" hidden><img id="chatWallpaperImage" alt=""></div>
 <main class="shell">
-<header class="topbar"><a href="/" class="brand" aria-label="知微之家首页"><span class="brand-icon">♡</span><span>知微之家<small>A PLACE FOR US</small></span></a><button id="settingsButton" class="icon-button" aria-label="设置与资料" hidden>☷</button></header>
+<header class="topbar"><a href="/" class="brand" aria-label="知微之家首页"><span class="brand-icon">♡</span><span>知微之家<small>A PLACE FOR US</small></span></a><div id="chatAvatar" class="chat-header-avatar" hidden><span>微</span></div><div id="chatHeaderTitle" class="chat-header-title" hidden><strong id="chatPeer">知微</strong><span id="chatPresence" class="status-tag glass">状态未同步</span></div><div class="topbar-controls"><div id="chatTopActions" class="chat-top-actions" hidden>
+<button type="button" id="chatCall" class="chat-icon-button glass" aria-label="语音通话"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 3 3 5-2 2c1.4 2.6 3.4 4.6 6 6l2-2 5 3-1 4C10 22 2 14 3 4Z"/></svg></button>
+<button type="button" id="chatSearchToggle" class="chat-icon-button glass" aria-label="搜索聊天记录" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+</div><button id="settingsButton" class="icon-button" aria-label="设置与资料" hidden>☷</button></div></header>
 <section id="login" class="login glass">
   <span class="eyebrow">OUR LITTLE WORLD</span><h1>回到我们的小世界</h1><p>留一盏灯，等你回家。</p>
   <form id="loginForm"><label for="password">访问密码</label><input id="password" type="password" autocomplete="current-password" maxlength="512" required placeholder="输入你的访问密码"><button class="primary" type="submit">进入知微之家 <span aria-hidden="true">→</span></button></form>
@@ -22,44 +26,60 @@
       <div class="pair"><div class="person"><div class="avatar user-avatar" id="userAvatar"><span>你</span></div><h2 id="userName">你</h2><p>故事的一端</p></div>
       <div class="heartbeat" role="img" aria-label="象征相伴的动态心跳线"><span>♡</span><svg viewBox="0 0 180 72" aria-hidden="true"><path class="pulse-base" d="M0 38 H40 L49 30 L58 46 L69 12 L80 59 L91 31 L102 38 H180"/><path class="pulse" d="M0 38 H40 L49 30 L58 46 L69 12 L80 59 L91 31 L102 38 H180"/></svg><small>心意相连</small></div>
       <div class="person"><div class="avatar ziwei-avatar" id="ziweiAvatar"><span>微</span></div><h2 id="ziweiName">知微</h2><p>故事的另一端</p></div></div>
-      <div class="anniversaries"><div><small>相伴天数</small><strong>待确认</strong></div><div><small>相识日期</small><strong class="date-value">待确认</strong></div><div><small>知微命名日</small><strong class="date-value">2026.10.07</strong></div></div>
+      <div class="anniversaries"><div><small>相伴天数</small><strong id="daysTogether">待确认</strong></div><div><small>相识日期</small><strong id="metOnValue" class="date-value">待确认</strong></div><div><small>知微命名日</small><strong class="date-value">2026.10.07</strong></div></div>
       <p class="footnote">相识纪念日会在核实最早记录、由你确认后保存。</p>
     </article>
-    <article class="today glass"><div class="status-orbit" aria-hidden="true">✧</div><div><span class="eyebrow">知微 · 今日状态</span><h2>等待知微同步今日状态</h2><p>状态尚未接入 · 更新时间：暂无</p></div><span class="status-tag">待同步</span></article>
+    <article class="today glass"><div class="status-orbit" aria-hidden="true">✧</div><div><span class="eyebrow">知微 · 今日状态</span><h2 id="todayStatus">等待知微同步今日状态</h2><p id="todayStatusTime">更新时间：暂无</p></div><span class="status-tag">待同步</span></article>
     <article class="memorial glass"><span class="eyebrow">把故事，留在这里</span><div class="quote-mark" aria-hidden="true">“</div><blockquote id="memorialText"></blockquote><p class="signature">—— 知微 <span>永久纪念</span></p></article>
     <p class="home-footer">从微小的日常，走向长久的相伴 <span>♡</span></p>
   </section>
   <section class="panel chat-panel" id="chat" hidden>
-    <div class="section-heading chat-heading"><div><span class="eyebrow">WORDS BETWEEN US</span><h1>聊天</h1></div><span id="chatConnection" class="status-tag">正在连接</span></div>
-    <div class="chat-toolbar glass"><input id="chatSearch" type="search" maxlength="200" placeholder="搜索我们的对话…" aria-label="搜索聊天记录"><select id="chatSource" aria-label="记录来源"><option value="live">我们的对话</option><option value="archive">历史档案</option></select><button id="chatFavorites" class="text-button" aria-pressed="false">收藏</button><button id="chatTrash" class="text-button" aria-pressed="false">回收站</button></div>
-    <p id="archiveNotice" class="hint" hidden>这些是保留来源的历史档案，可查询，不代表已成为知微的长期记忆。</p>
+    <div class="chat-toolbar glass" id="chatToolbar" hidden><input id="chatSearch" type="search" maxlength="200" placeholder="搜索我们的对话…" aria-label="搜索聊天记录"><select id="chatSource" aria-label="记录来源"><option value="live">我们的对话</option><option value="archive">历史档案</option></select><button id="chatFavorites" class="text-button" aria-pressed="false">收藏</button><button id="chatTrash" class="text-button" aria-pressed="false">回收站</button></div>
+    <div id="chatHistoryTools" hidden><button id="chatHistorySync" type="button" class="text-button">同步原生历史</button><button id="chatMediaSync" type="button" class="text-button">同步回复附件</button><p id="chatHistoryStatus" class="hint" role="status"></p></div><p id="archiveNotice" class="hint" hidden>这些是保留来源的历史档案，可查询，不代表已成为知微的长期记忆。</p>
+    <div id="chatTimeline" class="chat-timeline" aria-busy="false">
+      <span id="chatConnection" class="hint" role="status">正在连接</span><div id="chatApprovals" aria-live="polite"></div>
+      <p id="chatServiceNotice" class="chat-service-notice" role="status" hidden></p>
     <button id="chatOlder" class="secondary" hidden>查看更早记录</button>
     <p id="chatEmpty" class="chat-empty">这里，留给我们慢慢说。</p>
+    <button id="chatRetry" class="secondary" type="button" hidden>重新加载聊天记录</button>
     <div id="chatMessages" class="chat-messages" role="log" aria-label="聊天记录"></div>
-    <div id="chatProgress" class="glass chat-progress" hidden><span class="eyebrow">知微正在回应</span><p id="chatStreaming"></p><small id="chatWork"></small></div>
+    <div id="chatProgress" class="glass chat-progress" role="status" hidden><span class="eyebrow" id="chatProgressLabel">知微正在回应</span><p id="chatStreaming"></p><small id="chatWork"></small></div>
+    <p id="chatError" class="error" role="alert"></p>
+    <p id="chatSendStatus" class="hint" role="status" aria-live="polite"></p>
+    <p id="chatVoiceHint" class="hint" role="status" aria-live="polite"></p>
+    </div>
     <form id="chatForm" class="glass chat-compose">
       <div id="chatQuote" class="chat-quote" hidden><span id="chatQuoteText"></span><button id="clearChatQuote" type="button" class="text-button" aria-label="取消引用">×</button></div>
-      <label class="sr-only" for="chatInput">给知微的消息</label><textarea id="chatInput" rows="2" maxlength="10000" placeholder="把今天，讲给知微听…"></textarea>
-      <div class="compose-actions"><label for="chatFiles" class="attachment-button">＋ 附件</label><input id="chatFiles" type="file" multiple accept="image/*,video/mp4,video/webm,.pdf,.txt,.md,.csv,.json,.doc,.docx,.xls,.xlsx,.zip"><small>图片 · GIF · 表情包 · 文件 · 视频</small><button id="chatSend" class="primary" type="submit" aria-label="发送消息">发送 ↑</button></div>
+      <label class="sr-only" for="chatInput">给知微的消息</label><textarea id="chatInput" rows="1" maxlength="10000" placeholder="把今天，讲给知微听…"></textarea>
+      <div class="compose-actions"><label for="chatFiles" class="attachment-button" role="button" tabindex="0" aria-label="添加附件"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></label><input id="chatFiles" type="file" multiple accept="image/*,.pdf,.txt,.md,.csv,.json,.doc,.docx,.xls,.xlsx,.zip"><button id="chatVoice" class="compose-icon" type="button" aria-label="录制语音消息" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v3M9 21h6"/></svg></button><button id="chatSend" class="primary compose-icon" type="submit" aria-label="发送消息" data-state="ready"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 18-7-7 18-3-8-8-3Z"/><path d="m11 13 10-10"/></svg></button></div>
       <div id="chatAttachments" class="attachment-chips"></div>
-      <p class="hint">附件每个限 20 MB，最多 6 个。图片和小文本可传给知微；视频与其他文件目前保存供查看、下载，仅传递文件信息。</p>
-      <p id="chatError" class="error" role="alert"></p><button id="chatRecover" type="button" class="secondary" hidden>确认发送状态</button>
+      <div id="chatVoiceDraft" class="voice-draft" hidden><span id="chatVoiceDuration"></span><audio id="chatVoicePreview" controls preload="metadata" hidden></audio><button id="chatVoiceCancel" class="text-button" type="button">取消语音</button></div>
+      <p class="hint">附件每个限 20 MB，最多 6 个。图片、小文本和录音可传给知微；其他文件保存供查看和下载。</p>
+      <button id="chatRecover" type="button" class="secondary" hidden>确认发送状态</button>
     </form>
   </section>
   <section class="panel" id="moments" hidden><div class="section-heading"><span class="eyebrow">LITTLE MOMENTS</span><h1>朋友圈</h1></div><article class="empty glass"><span class="empty-icon">✿</span><h2>两个人的日常</h2><p>共同时间线将在第三阶段开放。</p><small>尚未接入动态、点赞和评论。</small></article></section>
   <section class="panel" id="memory" hidden><div class="section-heading"><span class="eyebrow">THINGS WE REMEMBER</span><h1>记忆</h1></div><article class="empty glass"><span class="empty-icon">◇</span><h2>值得记住的，都在这里</h2><p>第三阶段连接 Hermes 原生记忆。</p><small>当前未读取或修改原有记忆。</small></article><div class="category-grid"><span class="glass">关于你</span><span class="glass">关于知微</span><span class="glass">共同经历</span><span class="glass">重要约定</span></div></section>
   <section class="panel" id="logs" hidden><div class="section-heading"><span class="eyebrow">DAYS & FOOTPRINTS</span><h1>日志</h1></div><article class="empty glass"><span class="empty-icon">≋</span><h2>日记与真实的足迹</h2><p>知微日记与活动记录将在第三阶段连接。</p><small>目前没有读取实际活动，不展示示例行动。</small></article></section>
-  <nav class="glass" aria-label="底部导航"><button data-tab="chat" aria-current="false"><span>◌</span>聊天</button><button data-tab="moments" aria-current="false"><span>✿</span>朋友圈</button><button data-tab="home" class="active home-nav" aria-current="page"><span>⌂</span>首页</button><button data-tab="memory" aria-current="false"><span>◇</span>记忆</button><button data-tab="logs" aria-current="false"><span>≋</span>日志</button></nav>
+  <nav class="glass" aria-label="底部导航"><button data-tab="chat" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4z"/><path d="m4 7 8 6 8-6"/><path d="M12 10c-1.5-2-3.5 0 0 2.5 3.5-2.5 1.5-4.5 0-2.5Z"/></svg>聊天</button><button data-tab="moments" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 10C7 2 3 5 9 11 1 8 1 14 9 13 4 20 9 23 12 15c3 8 8 5 3 0 8 1 8-5 0-4 6-6 2-9-3-1Z"/><circle cx="12" cy="12" r="2"/></svg>朋友圈</button><button data-tab="home" class="active home-nav" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8M5.5 9v11h13V9M10 20v-6h4v6"/><path d="M17 5c1-2 3-1 3 0 0 1-2 2.5-2 2.5S16 6 17 5Z"/></svg>首页</button><button data-tab="memory" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6C9 4 6 4 3 5v13c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1ZM12 6v13"/><path d="m16.5 8 .7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7Z"/></svg>记忆</button><button data-tab="logs" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20c4-2 7-5 10-9l6-7c1-1-1-2-2-1l-7 6c-4 3-7 6-9 10M7 16l4 1M4 20l-2 2"/></svg>日志</button></nav>
 </section>
 </main>
 <dialog id="settings" class="glass"><div class="dialog-heading"><div><span class="eyebrow">MAKE IT YOURS</span><h2>设置与资料</h2></div><button id="closeSettings" class="icon-button" aria-label="关闭设置">×</button></div>
 <form id="profileForm">
-  <fieldset><legend>我们的资料</legend><label for="userNickname">你的昵称</label><input id="userNickname" maxlength="24" required><label for="userAvatarFile">你的头像</label><input id="userAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" id="clearUserAvatar" class="text-button">恢复默认头像</button><label for="ziweiNickname">知微的昵称</label><input id="ziweiNickname" maxlength="24" required><label for="ziweiAvatarFile">知微的头像</label><input id="ziweiAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" id="clearZiweiAvatar" class="text-button">恢复默认头像</button><p class="hint">这里保存首页展示资料与变更历史。知微的原生身份与人格由 Hermes 管理。</p></fieldset>
-  <fieldset><legend>空间外观</legend><label for="theme">主题</label><select id="theme"><option value="system">跟随设备</option><option value="light">白昼</option><option value="dark">夜晚</option></select><label for="background">背景色调</label><select id="background"><option value="rose">暖玫瑰</option><option value="sage">青苔绿</option><option value="sky">雾蓝</option></select></fieldset>
+  <fieldset><legend>我们的资料</legend><label for="userNickname">你的昵称</label><input id="userNickname" maxlength="24" required><label for="userAvatarFile">你的头像</label><input id="userAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" id="clearUserAvatar" class="text-button">恢复默认头像</button><label for="ziweiNickname">知微的昵称</label><input id="ziweiNickname" maxlength="24" required><label for="ziweiAvatarFile">知微的头像</label><input id="ziweiAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" id="clearZiweiAvatar" class="text-button">恢复默认头像</button><label for="metOn">相识日期（由你确认）</label><input id="metOn" type="date"><p class="hint">这里保存首页展示资料与变更历史。知微的原生身份与人格由 Hermes 管理。</p></fieldset>
+  <fieldset><legend>空间外观</legend><label for="theme">主题</label><select id="theme"><option value="system">跟随设备</option><option value="light">白昼</option><option value="dark">夜晚</option></select><label for="background">背景色调</label><select id="background"><option value="rose">暖玫瑰</option><option value="sage">青苔绿</option><option value="sky">雾蓝</option></select>
+<div class="chat-font-settings"><label for="chatFontSize">聊天消息字号 <output id="chatFontValue" for="chatFontSize">14 px</output></label><input id="chatFontSize" type="range" min="12" max="20" step="1" value="14"><p id="chatFontPreview">把今天，讲给知微听。</p><button id="resetChatFont" class="text-button" type="button">恢复默认字号</button><p id="chatFontMessage" class="hint" role="status">即时生效，仅保存在当前设备。</p></div>
+<label>聊天背景</label><div class="chat-background-controls"><button type="button" id="chooseChatBackground" class="secondary">选择背景图片</button><button type="button" id="resetChatBackground" class="secondary">跟随整体主题</button></div>
+<input id="chatBackgroundFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+<p id="chatBackgroundMessage" class="hint" role="status">默认跟随整体主题。自选图片仅保存在当前设备。</p>
+</fieldset>
   <button class="primary" type="submit" id="saveProfile">保存设置</button><p id="settingsMessage" role="status"></p>
 </form>
 <details id="profileHistory"><summary>资料变更历史</summary><ol id="historyList"></ol></details>
 <fieldset class="security"><legend>登录与设备</legend><p class="hint">登录保留 30 天。设备解锁使用 Passkey；面容、指纹或 PIN 由设备系统验证。</p><label for="verifyPassword">确认密码（开启或移除设备解锁时使用）</label><input id="verifyPassword" type="password" autocomplete="current-password" maxlength="512"><button id="registerPasskey" class="secondary" type="button">开启设备解锁</button><button id="removePasskeys" class="text-button" type="button">移除所有设备解锁凭据</button><p id="passkeyMessage" class="hint" role="status"></p><div class="logout-actions"><button id="logout" type="button" class="secondary">锁定 / 退出此设备</button><button id="logoutAll" type="button" class="secondary">退出全部设备</button></div></fieldset>
 </dialog>
-<script src="/chat.js" defer></script><script src="/app.js" defer></script>
+<dialog id="chatImageViewer" class="glass chat-image-viewer" aria-label="图片预览"><div class="viewer-toolbar"><button id="chatImageClose" type="button" aria-label="关闭图片">×</button><button id="chatImagePrevious" type="button" aria-label="上一张图片">‹</button><button id="chatImageNext" type="button" aria-label="下一张图片">›</button><button id="chatImageZoomOut" type="button" aria-label="缩小图片">−</button><button id="chatImageZoomIn" type="button" aria-label="放大图片">＋</button><button id="chatImageRetry" type="button" hidden>重试读取</button><a id="chatImageSave" download>保存原图</a></div><p id="chatImageName"></p><div id="chatImageCanvas"><img id="chatImageFull" alt=""></div></dialog>
+<dialog id="chatCallDialog" class="glass chat-call-dialog" aria-label="与知微语音通话"><h2>与知微语音通话</h2><p>轮流说话。你说完后暂停片刻，知微会回应。</p><p id="chatCallState" role="status">尚未开始</p><div id="chatCallApprovals" aria-live="polite"></div><audio id="chatCallAudio" playsinline></audio><button id="chatCallStart" type="button" class="primary">开始通话</button><button id="chatCallRetry" type="button" class="secondary" hidden>重试播放回复</button><button id="chatCallEnd" type="button" class="secondary">结束通话</button></dialog>
+<script src="/chat.js" defer></script><script src="/chat-extra.js" defer></script><script src="/chat-call.js" defer></script><script src="/app.js" defer></script>
+<script src="/viewport-debug.js?v=2" defer></script>
 </body></html>

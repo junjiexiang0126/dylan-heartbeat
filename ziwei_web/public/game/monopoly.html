@@ -1,0 +1,2245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>课堂大富翁 · 4大主题</title>
+<script src="libs/three.min.js"></script>
+<script src="libs/peerjs.min.js"></script>
+<script src="libs/qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:#f6e7c1;background:#050109;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+button{font-family:inherit;cursor:pointer;border:none;transition:.18s cubic-bezier(.4,.1,.3,1)}
+button:active{transform:scale(.96)}
+.hidden{display:none!important}
+
+/* ===================== 全局背景 ===================== */
+.page-bg{position:fixed;inset:0;z-index:0;pointer-events:none;background:linear-gradient(180deg,#1a0b2e 0%,#0f051d 55%,#050109 100%)}
+.page-bg::before{content:"";position:absolute;inset:0;
+  background-image:radial-gradient(circle,rgba(255,255,255,.55) 1px,transparent 1.6px),radial-gradient(circle,rgba(255,200,120,.4) 1px,transparent 1.6px);
+  background-size:64px 64px,110px 110px;opacity:.32;animation:tw 6s ease-in-out infinite alternate}
+@keyframes tw{from{opacity:.2}to{opacity:.5}}
+
+/* ===================== 大厅 ===================== */
+#lobbyScreen{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;padding:clamp(14px,2.4vmin,26px);overflow-y:auto}
+.lobby-header{text-align:center;margin-bottom:clamp(14px,2.2vmin,24px)}
+.lobby-header h1{font-size:clamp(26px,4.8vmin,52px);font-weight:900;letter-spacing:.06em;
+  background:linear-gradient(180deg,#fff5dc,#ffd166 45%,#ff8126);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 4px 24px rgba(255,150,60,.55));margin-bottom:.2em}
+.lobby-header p{font-size:clamp(11px,1.7vmin,15px);color:#c4b5fd;letter-spacing:.3em}
+
+.map-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 4px}
+.map-label{font-size:clamp(12px,1.8vmin,15px);color:#ffd166;font-weight:800;letter-spacing:.12em}
+.map-current{font-size:clamp(12px,1.8vmin,15px);color:#7fffb0;font-weight:800;letter-spacing:.08em}
+
+.maps-row{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(8px,1.4vmin,16px);margin-bottom:clamp(14px,2.2vmin,24px)}
+@media (max-width:820px){.maps-row{grid-template-columns:repeat(2,1fr)}}
+.map-card{position:relative;aspect-ratio:16/8.5;border-radius:16px;overflow:hidden;cursor:pointer;
+  border:2.5px solid rgba(255,255,255,.12);transition:.24s cubic-bezier(.4,.1,.3,1);
+  box-shadow:0 8px 26px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.15)}
+.map-card:hover{transform:translateY(-4px);border-color:rgba(255,255,255,.4)}
+.map-card.selected{border-color:#ffd166;box-shadow:0 0 0 3px rgba(255,209,102,.55),0 12px 34px rgba(255,140,0,.55);transform:translateY(-4px)}
+.map-card .preview{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:6px}
+.map-card .preview-emoji{font-size:clamp(20px,3.4vmin,34px);filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));animation:floatEmoji 3s ease-in-out infinite}
+.map-card .preview-emoji:nth-child(2){animation-delay:-1s}
+.map-card .preview-emoji:nth-child(3){animation-delay:-2s}
+@keyframes floatEmoji{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.map-card .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(0,0,0,.72) 100%)}
+.map-card .info{position:absolute;left:10px;right:10px;bottom:8px;z-index:2}
+.map-card .name{font-size:clamp(12px,1.9vmin,16px);font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.9);letter-spacing:.03em}
+.map-card .desc{font-size:clamp(9px,1.35vmin,12px);color:rgba(255,255,255,.85);text-shadow:0 1px 4px rgba(0,0,0,.9);margin-top:2px}
+.map-card .check{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;
+  background:#ffd166;color:#2b1000;font-size:14px;font-weight:900;
+  display:none;align-items:center;justify-content:center;box-shadow:0 0 12px rgba(255,209,102,.9)}
+.map-card.selected .check{display:flex}
+
+.lobby-main{display:grid;grid-template-columns:1.2fr 1fr;gap:clamp(12px,2vmin,22px);flex:1;min-height:0}
+@media (max-width:820px){.lobby-main{grid-template-columns:1fr}}
+.panel{background:linear-gradient(180deg,rgba(45,20,78,.62),rgba(20,8,36,.6));
+  backdrop-filter:blur(18px);border:1.5px solid rgba(168,120,255,.3);border-radius:20px;
+  padding:clamp(14px,2vmin,22px);
+  box-shadow:0 10px 34px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08)}
+.panel h3{font-size:clamp(12px,1.9vmin,16px);font-weight:800;color:#ffd166;letter-spacing:.1em;
+  margin-bottom:14px;display:flex;align-items:center;gap:8px;padding-bottom:.5em;border-bottom:1px dashed rgba(255,170,60,.25)}
+.panel h3 .dot{width:8px;height:8px;border-radius:50%;background:#7fffb0;box-shadow:0 0 10px #7fffb0}
+
+.qr-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0}
+.qr-frame{background:#fff;padding:14px;border-radius:16px;box-shadow:0 0 40px rgba(255,209,102,.35),inset 0 0 0 3px rgba(255,209,102,.25)}
+.qr-frame canvas,.qr-frame img{display:block}
+.room-code{font-size:clamp(24px,3.6vmin,34px);font-weight:900;color:#ffd166;letter-spacing:.2em;font-variant-numeric:tabular-nums;text-shadow:0 0 18px rgba(255,160,60,.9)}
+.room-hint{font-size:clamp(10px,1.5vmin,13px);color:#c4b5fd;text-align:center;line-height:1.7;letter-spacing:.04em}
+
+.players-list{display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;margin-top:6px}
+.player-card{display:flex;align-items:center;gap:10px;
+  background:linear-gradient(90deg,rgba(255,209,102,.14),rgba(255,209,102,.04));
+  border:1.5px solid rgba(255,209,102,.35);border-radius:14px;padding:10px 14px;
+  animation:slideIn .4s cubic-bezier(.4,1.2,.6,1)}
+@keyframes slideIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+.player-card .p-av{font-size:30px;filter:drop-shadow(0 0 10px rgba(255,160,60,.6))}
+.player-card .p-info{flex:1;min-width:0}
+.player-card .p-nm{font-size:15px;font-weight:800;color:#fff;text-shadow:0 0 10px rgba(255,209,102,.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player-card .p-status{font-size:11px;color:#7fffb0;margin-top:2px;font-weight:700}
+.player-card .p-status::before{content:"● ";color:#7fffb0;animation:pulseDot 1.6s infinite}
+@keyframes pulseDot{50%{opacity:.35}}
+.empty-players{text-align:center;padding:26px 10px;color:#8b7ab8;font-size:13px;font-style:italic;line-height:1.8}
+.empty-players .big{font-size:36px;margin-bottom:8px;opacity:.5;display:block}
+
+textarea{width:100%;font-family:inherit;font-size:13px;background:rgba(0,0,0,.42);color:#ffe9c0;
+  border:1.5px solid rgba(255,170,60,.3);border-radius:14px;padding:12px 14px;outline:none;resize:vertical;
+  min-height:120px;line-height:1.7;transition:.18s}
+textarea:focus{border-color:#ffb347;box-shadow:0 0 0 3px rgba(255,150,40,.18);background:rgba(0,0,0,.5)}
+.q-actions{display:flex;gap:8px;margin-top:10px}
+.q-actions button{flex:1;padding:10px;border-radius:11px;font-size:13px;font-weight:800;letter-spacing:.06em}
+.q-actions .import-btn{background:linear-gradient(180deg,#ffd166,#ffa53c);color:#2b1000;box-shadow:0 4px 0 #a04a00,0 8px 20px rgba(255,140,0,.4)}
+.q-actions .import-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #a04a00}
+.q-actions .template-btn{background:rgba(255,255,255,.08);color:#ffd166;border:1.5px solid rgba(255,170,60,.4)}
+.q-count{font-size:11px;color:#9d8ec4;text-align:center;margin-top:8px;font-weight:600}
+
+.start-game-btn{width:100%;margin-top:18px;padding:18px;font-size:20px;font-weight:900;letter-spacing:.18em;
+  color:#2b1000;background:linear-gradient(180deg,#ffd166,#ffa53c 45%,#ff8126);
+  border-radius:18px;box-shadow:0 7px 0 #a04a00,0 14px 34px rgba(255,140,0,.5),inset 0 1px 0 rgba(255,255,255,.5)}
+.start-game-btn:hover{filter:brightness(1.06)}
+.start-game-btn:active{transform:translateY(6px);box-shadow:0 1px 0 #a04a00}
+.start-game-btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.5);transform:none;box-shadow:0 7px 0 #555}
+
+/* ===================== 游戏页 ===================== */
+#gameScreen{position:fixed;inset:0;z-index:50;display:grid;grid-template-columns:200px 1fr 210px;grid-template-rows:58px 1fr;gap:12px;padding:12px}
+@media (max-width:1100px){#gameScreen{grid-template-columns:180px 1fr 190px}}
+.top-bar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 16px;
+  background:linear-gradient(180deg,rgba(45,20,78,.72),rgba(20,8,36,.65));
+  backdrop-filter:blur(18px);border:1.5px solid rgba(168,120,255,.28);border-radius:16px;
+  box-shadow:0 4px 22px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.08);position:relative;overflow:hidden}
+.top-bar .brand{font-size:15px;font-weight:900;letter-spacing:.04em;
+  background:linear-gradient(90deg,#ffd166,#ff7518);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 10px rgba(255,140,0,.6));display:flex;align-items:center;gap:8px}
+.top-bar .info-chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-size:12px;color:#c4b5fd;background:rgba(255,255,255,.06);border:1px solid rgba(168,85,247,.3);
+  border-radius:999px;padding:5px 13px;white-space:nowrap;font-weight:700}
+.chip.room{color:#7fffb0;border-color:rgba(127,255,176,.45);background:rgba(127,255,176,.1)}
+.chip.goal{color:#ffd166;border-color:rgba(255,209,102,.5);background:rgba(255,209,102,.12)}
+.top-bar .tools{display:flex;gap:6px}
+.tool-btn{background:rgba(255,255,255,.07);color:#ffd166;border:1px solid rgba(255,170,60,.38);border-radius:10px;
+  font-size:12px;font-weight:700;padding:7px 13px;display:flex;align-items:center;gap:5px}
+.tool-btn:hover{background:rgba(255,170,60,.22)}
+.left-panel,.right-panel{background:linear-gradient(180deg,rgba(45,20,78,.62),rgba(20,8,36,.52));
+  backdrop-filter:blur(16px);border:1.5px solid rgba(168,120,255,.25);border-radius:16px;padding:14px;
+  overflow-y:auto;box-shadow:0 6px 24px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)}
+.panel-title{font-size:11px;font-weight:800;color:#c4b5fd;letter-spacing:.14em;margin-bottom:10px;
+  display:flex;align-items:center;justify-content:space-between;padding-bottom:.35em;border-bottom:1px dashed rgba(168,120,255,.22)}
+.panel-title .count{color:#ffd166;font-size:1.05em}
+.online-list{display:flex;flex-direction:column;gap:6px;min-height:40px}
+.online-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#ffe9c0;background:rgba(127,255,176,.08);
+  border:1px solid rgba(127,255,176,.28);border-radius:10px;padding:6px 10px;font-weight:600}
+.online-item .dot{width:7px;height:7px;border-radius:50%;background:#7fffb0;box-shadow:0 0 8px #7fffb0;animation:pulseDot 1.6s infinite}
+.online-empty{font-size:11px;color:#8b7ab8;text-align:center;padding:10px 4px;font-style:italic}
+.log-box{font-size:11px;color:#9d8ec4;line-height:1.75;max-height:180px;overflow-y:auto;
+  background:rgba(0,0,0,.28);border-radius:10px;padding:10px 12px;margin-top:12px}
+.log-box .line{padding:2px 0;border-bottom:1px dashed rgba(255,255,255,.05)}
+.log-box .line:last-child{border-bottom:none}
+.log-box .line b{color:#ffd166;font-weight:800}
+.center{position:relative;border-radius:18px;overflow:hidden;background:radial-gradient(circle at 50% 25%,#2a1050,#0a0414 75%);
+  border:1.5px solid rgba(168,120,255,.32);box-shadow:inset 0 0 80px rgba(124,58,237,.18),0 8px 40px rgba(0,0,0,.5)}
+#canvasWrap{position:absolute;inset:0}
+#canvasWrap canvas{display:block;width:100%;height:100%}
+.turn-banner{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:5;
+  display:flex;align-items:center;gap:.55em;background:linear-gradient(180deg,rgba(35,15,60,.92),rgba(18,6,32,.92));
+  backdrop-filter:blur(12px);border:2px solid #ffb347;border-radius:999px;padding:9px 24px;
+  box-shadow:0 0 30px rgba(255,160,60,.55),0 0 60px rgba(255,140,0,.28),inset 0 1px 0 rgba(255,255,255,.12)}
+.turn-banner .av{font-size:24px;filter:drop-shadow(0 0 8px rgba(255,160,60,.8))}
+.turn-banner .txt{font-size:17px;font-weight:900;background:linear-gradient(180deg,#fff2c9,#ffd166 55%,#ffa53c);
+  -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 12px rgba(255,160,60,.7))}
+.center-bottom{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:5}
+.big-roll{font-size:19px;font-weight:900;letter-spacing:.14em;color:#2b1000;padding:16px 48px;border-radius:999px;
+  background:linear-gradient(180deg,#ffd166,#ffa53c 45%,#ff8126);
+  box-shadow:0 7px 0 #a04a00,0 12px 32px rgba(255,140,0,.55),0 0 60px rgba(255,180,80,.35),inset 0 1px 0 rgba(255,255,255,.5);
+  animation:pulseBtn 2.4s ease-in-out infinite}
+@keyframes pulseBtn{0%,100%{box-shadow:0 7px 0 #a04a00,0 12px 32px rgba(255,140,0,.42),inset 0 1px 0 rgba(255,255,255,.5)}
+  50%{box-shadow:0 7px 0 #a04a00,0 12px 32px rgba(255,140,0,.72),0 0 60px rgba(255,180,80,.55),inset 0 1px 0 rgba(255,255,255,.5)}}
+.big-roll:hover{filter:brightness(1.07)}
+.big-roll:active{transform:translateY(5px);box-shadow:0 2px 0 #a04a00}
+.big-roll:disabled{opacity:.35;animation:none;cursor:not-allowed;filter:grayscale(.4)}
+.team-card{display:flex;align-items:center;gap:.55em;background:linear-gradient(90deg,rgba(255,255,255,.055),rgba(255,255,255,.03));
+  border:1.5px solid rgba(255,170,60,.16);border-radius:12px;padding:.6em .7em;margin-bottom:.5em;transition:.28s}
+.team-card.active{border-color:#ffb347;background:linear-gradient(90deg,rgba(255,157,60,.22),rgba(255,157,60,.08));
+  box-shadow:0 0 24px rgba(255,157,60,.5);transform:translateX(-4px)}
+.team-card .av{font-size:24px;line-height:1;flex:0 0 auto}
+.team-card .info{flex:1;min-width:0}
+.team-card .nm{font-size:12.5px;font-weight:800;color:#ffe9c0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-card .members{font-size:10px;color:#9d8ec4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-card .sc{font-size:16px;font-weight:900;color:#ffd166;font-variant-numeric:tabular-nums;flex:0 0 auto;text-shadow:0 0 10px rgba(255,180,80,.5)}
+.team-card .sc.neg{color:#ff9c9c}
+.team-card .sc.near{color:#7fffb0;text-shadow:0 0 14px rgba(127,255,176,.9);animation:nearPulse 1.2s infinite}
+@keyframes nearPulse{50%{transform:scale(1.12)}}
+
+/* 题目弹窗 */
+#questionModal{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(5,2,10,.8);backdrop-filter:blur(10px)}
+.q-card{width:min(720px,94vw);max-height:94vh;overflow-y:auto;
+  background:linear-gradient(160deg,#fffaf0,#ffeccd 65%,#ffdca6);border:4px solid #ff9d3c;border-radius:24px;
+  padding:clamp(22px,3.4vmin,40px);
+  box-shadow:0 0 80px rgba(255,157,60,.55),0 30px 70px rgba(0,0,0,.8),inset 0 0 60px rgba(255,180,90,.25)}
+.q-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:10px}
+.q-tag{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(90deg,#ff8126,#ffb347);
+  color:#fff;font-weight:900;font-size:13px;padding:8px 18px;border-radius:999px;box-shadow:0 0 20px rgba(255,140,0,.7)}
+.q-timer{font-size:26px;font-weight:900;color:#e2570a;font-variant-numeric:tabular-nums;min-width:62px;text-align:center;
+  background:rgba(255,157,60,.18);border-radius:12px;padding:4px 14px}
+.q-timer.warn{color:#ef4444;animation:tpulse .6s infinite}
+@keyframes tpulse{50%{transform:scale(1.14)}}
+.q-progress{height:7px;border-radius:999px;background:rgba(226,87,10,.15);overflow:hidden;margin-bottom:24px}
+.q-progress-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#ffb347,#ff7518);transition:width .2s linear}
+.q-text{font-size:clamp(20px,3.4vmin,32px);font-weight:900;color:#3a1560;line-height:1.55;margin-bottom:30px;text-align:center;padding:0 4px}
+.q-judge{display:flex;gap:14px}
+.judge-btn{flex:1;padding:22px 12px;border-radius:18px;font-size:clamp(16px,2.4vmin,20px);font-weight:900;
+  letter-spacing:.06em;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px}
+.judge-btn.correct{background:linear-gradient(180deg,#4ade80,#16a34a);box-shadow:0 6px 0 #15803d,0 10px 24px rgba(34,197,94,.45)}
+.judge-btn.wrong{background:linear-gradient(180deg,#ff6b6b,#dc2626);box-shadow:0 6px 0 #991b1b,0 10px 24px rgba(239,68,68,.45)}
+.judge-btn:active{transform:translateY(4px)}
+.judge-btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* QR 弹窗 */
+#qrModal{position:fixed;inset:0;z-index:350;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(5,2,10,.9);backdrop-filter:blur(10px)}
+.qr-box{width:min(460px,92vw);text-align:center;
+  background:linear-gradient(160deg,rgba(45,18,80,.85),rgba(20,8,36,.95));backdrop-filter:blur(20px);
+  border:2px solid rgba(127,255,176,.55);border-radius:24px;padding:32px 28px;
+  box-shadow:0 0 80px rgba(34,197,94,.35),0 26px 60px rgba(0,0,0,.75)}
+.qr-box h2{font-size:22px;margin-bottom:8px;background:linear-gradient(180deg,#b8ffd4,#7fffb0);
+  -webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900}
+.qr-box p{font-size:13px;color:#b9a3dc;line-height:1.7;margin-bottom:18px}
+.qr-img{background:#fff;padding:18px;border-radius:18px;display:inline-block;margin-bottom:14px;
+  box-shadow:0 0 40px rgba(127,255,176,.4)}
+.qr-img canvas,.qr-img img{display:block}
+.room-code{font-size:36px;font-weight:900;color:#ffd166;letter-spacing:.24em;font-variant-numeric:tabular-nums;
+  text-shadow:0 0 18px rgba(255,160,60,.8);margin:8px 0 16px}
+.copy-url{font-size:11px;color:#9d8ec4;word-break:break-all;background:rgba(0,0,0,.35);border-radius:10px;padding:10px 14px;margin-bottom:16px}
+
+/* 结算 */
+#resultModal{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:rgba(5,2,10,.9);backdrop-filter:blur(12px)}
+.result-box{width:min(560px,94vw);background:linear-gradient(160deg,rgba(45,18,80,.9),rgba(20,8,36,.96));
+  backdrop-filter:blur(20px);border:2px solid rgba(255,170,80,.5);border-radius:24px;padding:36px 30px;text-align:center}
+.result-box h2{font-size:28px;margin-bottom:6px;background:linear-gradient(180deg,#fff2c9,#ffb347 55%,#e2570a);
+  -webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900}
+.rank-list{display:flex;flex-direction:column;gap:9px;margin:20px 0}
+.rank-item{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,170,60,.22);
+  border-radius:14px;padding:13px 18px}
+.rank-item.first{border-color:#ffd166;background:linear-gradient(90deg,rgba(255,209,102,.22),rgba(255,209,102,.08));
+  box-shadow:0 0 26px rgba(255,209,102,.4);transform:scale(1.02)}
+.rank-item .medal{font-size:26px;width:38px;text-align:center}
+.rank-item .av{font-size:26px}
+.rank-item .nm{flex:1;text-align:left;font-size:15px;font-weight:800;color:#ffe9c0}
+.rank-item .sc{font-size:22px;font-weight:900;color:#ffd166;font-variant-numeric:tabular-nums}
+.result-actions{display:flex;gap:10px;margin-top:18px}
+.result-actions .btn{flex:1;padding:15px;border-radius:14px;font-size:15px;font-weight:800;letter-spacing:.08em}
+.btn.primary{background:linear-gradient(180deg,#ffd166,#ff9a2e);color:#2b1000;box-shadow:0 5px 0 #b85c00}
+.btn.ghost{background:rgba(255,255,255,.08);color:#ffd166;border:1.5px solid rgba(255,170,60,.45)}
+
+/* 胜利 */
+#winnerModal{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 40%,rgba(255,157,60,.25),transparent 60%),
+    radial-gradient(ellipse at 20% 80%,rgba(168,85,247,.3),transparent 55%),
+    radial-gradient(ellipse at 80% 20%,rgba(255,80,180,.2),transparent 55%),
+    rgba(3,1,8,.92);backdrop-filter:blur(14px)}
+.winner-box{position:relative;z-index:2;width:min(560px,94vw);text-align:center;padding:36px 30px 32px;
+  background:linear-gradient(160deg,rgba(70,30,120,.7),rgba(30,10,50,.9));backdrop-filter:blur(24px);
+  border:3px solid #ffd166;border-radius:28px;
+  box-shadow:0 0 80px rgba(255,209,102,.6),0 0 160px rgba(255,140,0,.35),0 30px 70px rgba(0,0,0,.85)}
+.winner-box::before{content:"";position:absolute;inset:-3px;border-radius:28px;pointer-events:none;
+  background:conic-gradient(from 0deg,#ffd166,#ff8126,#ff5ab5,#a855f7,#7fffb0,#ffd166);
+  z-index:-1;filter:blur(14px);opacity:.7;animation:spinGlow 4s linear infinite}
+@keyframes spinGlow{to{transform:rotate(360deg)}}
+.winner-crown{font-size:76px;line-height:1;margin-bottom:6px;filter:drop-shadow(0 0 30px rgba(255,200,80,1));
+  animation:crownBounce 1.2s ease-in-out infinite}
+@keyframes crownBounce{0%,100%{transform:translateY(0) rotate(-6deg) scale(1)}50%{transform:translateY(-14px) rotate(6deg) scale(1.1)}}
+.winner-title{font-size:clamp(20px,3.4vmin,30px);font-weight:900;letter-spacing:.14em;margin-bottom:16px;
+  background:linear-gradient(180deg,#fff8d6,#ffd166 45%,#ff7518);-webkit-background-clip:text;background-clip:text;color:transparent}
+.winner-avatar{font-size:96px;line-height:1;margin:6px 0 4px;filter:drop-shadow(0 0 30px rgba(255,200,80,.9))}
+.winner-name{font-size:clamp(28px,5vmin,44px);font-weight:900;color:#fff;letter-spacing:.06em;margin:8px 0 4px;
+  text-shadow:0 0 20px rgba(255,209,102,1),0 0 40px rgba(255,140,0,.7),0 4px 0 rgba(120,40,0,.5)}
+.winner-score{font-size:clamp(32px,6vmin,54px);font-weight:900;color:#7fffb0;font-variant-numeric:tabular-nums;
+  text-shadow:0 0 24px rgba(127,255,176,.9);margin:6px 0 12px}
+.winner-sub{font-size:14px;color:#c4b5fd;letter-spacing:.08em;margin-bottom:20px;line-height:1.7}
+.winner-actions{display:flex;gap:12px}
+.winner-actions .btn{flex:1;padding:16px;border-radius:16px;font-size:16px;font-weight:900}
+
+/* 学生端 */
+#joinScreen{position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;padding:20px}
+.join-box{width:min(440px,92vw);text-align:center;background:linear-gradient(160deg,rgba(45,18,80,.85),rgba(20,8,36,.95));
+  backdrop-filter:blur(20px);border:2px solid rgba(255,170,80,.45);border-radius:24px;padding:36px 28px}
+.join-box h1{font-size:28px;margin-bottom:6px;background:linear-gradient(180deg,#fff2c9,#ffb347 55%,#e2570a);
+  -webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900}
+.join-box p{font-size:13px;color:#b9a3dc;margin-bottom:24px;line-height:1.7}
+.avatar-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:22px}
+.avatar-opt{aspect-ratio:1;border-radius:14px;background:rgba(255,255,255,.06);border:2px solid rgba(255,170,60,.28);
+  display:flex;align-items:center;justify-content:center;font-size:32px;cursor:pointer;transition:.18s}
+.avatar-opt.sel{border-color:#ffb347;background:linear-gradient(180deg,rgba(255,157,60,.32),rgba(255,157,60,.14));
+  box-shadow:0 0 22px rgba(255,157,60,.7);transform:scale(1.08)}
+.join-input{width:100%;font-family:inherit;font-size:18px;background:rgba(0,0,0,.42);color:#ffe9c0;text-align:center;
+  border:1.5px solid rgba(255,170,60,.35);border-radius:14px;padding:15px;outline:none;margin-bottom:18px;font-weight:700}
+.join-input:focus{border-color:#ffb347;box-shadow:0 0 0 4px rgba(255,150,40,.18)}
+.join-btn{width:100%;padding:17px;font-size:18px;font-weight:900;letter-spacing:.14em;color:#062a15;
+  background:linear-gradient(180deg,#7fffb0,#22c55e);border-radius:16px;box-shadow:0 6px 0 #15803d}
+.join-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #15803d}
+.join-status{font-size:13px;color:#9d8ec4;margin-top:16px;min-height:22px}
+#playerApp{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;padding:16px;gap:12px}
+.player-header{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(45,20,78,.75),rgba(20,8,36,.68));
+  backdrop-filter:blur(16px);border:1.5px solid rgba(168,120,255,.32);border-radius:18px;padding:16px 20px}
+.player-header .me{display:flex;align-items:center;gap:14px}
+.player-header .av{font-size:42px}
+.player-header .nm{font-size:22px;font-weight:900;color:#ffe9c0}
+.player-header .my-score{font-size:38px;font-weight:900;color:#ffd166;font-variant-numeric:tabular-nums}
+.player-topic{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,rgba(60,25,95,.7),rgba(20,8,36,.85));backdrop-filter:blur(14px);
+  border:2px solid rgba(255,170,60,.38);border-radius:22px;padding:32px;text-align:center;position:relative;min-height:0}
+.topic-label{font-size:14px;color:#b9a3dc;letter-spacing:.2em;margin-bottom:14px}
+.topic-text{font-size:clamp(22px,4.4vmin,42px);font-weight:900;color:#ffd166;line-height:1.45;max-width:100%}
+.topic-empty{font-size:18px;color:#9d8ec4;line-height:1.7}
+.topic-turn{position:absolute;top:20px;right:22px;font-size:13px;color:#7fffb0;background:rgba(127,255,176,.12);
+  border:1px solid rgba(127,255,176,.45);border-radius:999px;padding:6px 16px;font-weight:800}
+.player-rank{background:linear-gradient(180deg,rgba(45,20,78,.75),rgba(20,8,36,.68));backdrop-filter:blur(16px);
+  border:1.5px solid rgba(168,120,255,.32);border-radius:18px;padding:16px 20px;max-height:36vh;overflow-y:auto}
+.player-rank h3{font-size:13px;color:#c4b5fd;letter-spacing:.15em;margin-bottom:12px}
+.rank-row{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:11px;font-size:16px;margin-bottom:5px}
+.rank-row.me{background:linear-gradient(90deg,rgba(255,157,60,.25),rgba(255,157,60,.1));border:1.5px solid rgba(255,180,80,.55)}
+.rank-row .rk{width:26px;text-align:center;color:#ffd166;font-weight:900}
+.rank-row .av{font-size:24px}
+.rank-row .nm{flex:1;color:#ffe9c0;font-weight:700;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank-row .sc{color:#ffd166;font-weight:900;font-variant-numeric:tabular-nums;font-size:18px}
+
+/* 加载 & 特效 */
+#loading{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#050109;
+  color:#ffb347;font-size:18px;font-weight:800;letter-spacing:.14em;gap:16px}
+.spinner{width:42px;height:42px;border:4px solid rgba(255,170,60,.22);border-top-color:#ffb347;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.float-score{position:fixed;z-index:999;pointer-events:none;font-size:38px;font-weight:900;
+  text-shadow:0 4px 16px rgba(0,0,0,.95);transform:translate(-50%,-50%);animation:floatUp 1.2s cubic-bezier(.2,.9,.3,1) forwards}
+@keyframes floatUp{0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}22%{opacity:1;transform:translate(-50%,-72%) scale(1.3)}100%{opacity:0;transform:translate(-50%,-180%) scale(1)}}
+.confetti{position:fixed;top:-24px;width:10px;height:16px;z-index:1;pointer-events:none;border-radius:2px;animation:confettiFall linear forwards}
+@keyframes confettiFall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(105vh) rotate(720deg);opacity:.85}}
+.confetti.round{border-radius:50%;width:12px;height:12px}
+.firework{position:fixed;z-index:1;pointer-events:none;border-radius:50%;animation:fireworkPop .9s ease-out forwards}
+@keyframes fireworkPop{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--fx),var(--fy)) scale(0);opacity:0}}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,.15);border-radius:3px}
+::-webkit-scrollbar-thumb{background:rgba(168,85,247,.4);border-radius:3px}
+
+/* ===== 知微加的万圣节插画背景（用 fixed 图层，兼容 iPad/Safari） ===== */
+#zw-bg{
+  position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background-image:linear-gradient(180deg, rgba(8,3,16,.42), rgba(8,3,16,.72)), url('img/bg-halloween.jpg');
+  background-size:cover, cover;
+  background-position:center, center;
+  background-repeat:no-repeat, no-repeat;
+}
+/* 页面自身底色清掉，露出背景图层 */
+html,body{background-color:transparent !important; background-image:none !important;}
+@media (max-width:820px){
+  #zw-bg{background-attachment:scroll, scroll;}
+}
+</style>
+</head>
+<body>
+<div id="zw-bg" aria-hidden="true"></div>
+
+<div id="loading"><div class="spinner"></div>正在召唤魔法…</div>
+<div class="page-bg"></div>
+
+<!-- ==================== 老师：大厅 ==================== -->
+<div id="lobbyScreen" class="hidden">
+  <div class="lobby-header">
+    <h1>🎮 课堂大富翁</h1>
+    <p>全学科课堂互动答题游戏</p>
+  </div>
+
+  <div class="map-bar">
+    <div class="map-label">🗺️ 选择地图</div>
+    <div class="map-current" id="mapCurrent">万圣节魔法之夜</div>
+  </div>
+  <div class="maps-row" id="mapsRow"></div>
+
+  <div class="lobby-main">
+    <div class="panel">
+      <h3><span class="dot"></span>学生名单 <span id="playerCount" style="margin-left:auto;color:#7fffb0;font-size:.9em">(0)</span></h3>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input id="stuName" placeholder="输入学生名字，回车添加" maxlength="12"
+               style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.28);color:#fff;font-size:15px">
+        <button id="stuAdd" class="import-btn" style="white-space:nowrap">＋ 添加</button>
+      </div>
+      <div id="stuAvatars" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+      <div class="players-list" id="playersList">
+        <div class="empty-players"><span class="big">🎃</span>还没有学生，先在上面输入名字</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button id="stuDemo" class="template-btn" style="flex:1">一键添加 4 个示例</button>
+        <button id="stuClear" class="template-btn" style="flex:1">清空名单</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3><span class="dot"></span>题库设置</h3>
+      <textarea id="questionsInput" placeholder="每行一道题…"></textarea>
+      <div class="q-actions">
+        <button class="import-btn" id="importBtn">📥 导入题库</button>
+        <button class="template-btn" id="templateBtn">📄 下载模板</button>
+      </div>
+      <div class="q-count" id="qCount"></div>
+      <button class="start-game-btn" id="startGameBtn" disabled>开 始 游 戏</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 老师：游戏 ==================== -->
+<div id="gameScreen" class="hidden">
+  <div class="top-bar">
+    <div class="brand">🎮 课堂大富翁</div>
+    <div class="info-chips">
+      <span class="chip" id="chipMap">🎃 万圣节</span>
+      <span class="chip" id="chipRound">第 1 回合</span>
+      <span class="chip goal">🎯 先到 100 分获胜</span>
+      <span class="chip room" id="chipRoom">房间：----</span>
+    </div>
+    <div class="tools">
+      <button class="tool-btn" id="qrBtn">📱 二维码</button>
+      <button class="tool-btn" id="musicBtn">🔊 音乐</button>
+      <button class="tool-btn" id="restartBtn">🔄 重开</button>
+      <button class="tool-btn" id="backBtn">⚙️ 大厅</button>
+    </div>
+  </div>
+  <aside class="left-panel">
+    <div class="panel-title">📡 已加入 <span class="count" id="onlineCount">(0)</span></div>
+    <div class="online-list" id="onlineList"></div>
+    <div class="panel-title" style="margin-top:12px">📜 记录</div>
+    <div class="log-box" id="logBox"></div>
+  </aside>
+  <div class="center">
+    <div id="canvasWrap"></div>
+    <div class="turn-banner" id="turnBanner"><span class="av">🎃</span><span class="txt">轮到 第1组</span></div>
+    <div class="center-bottom"><button class="big-roll" id="rollBtn">掷 骰 子 🎲</button></div>
+  </div>
+  <aside class="right-panel">
+    <div class="panel-title">🏆 排行 <span style="font-size:10px;color:#7fffb0">先到100胜</span></div>
+    <div id="teamsPanel"></div>
+  </aside>
+</div>
+
+<!-- ==================== 老师：题目 ==================== -->
+<div id="questionModal" class="hidden">
+  <div class="q-card">
+    <div class="q-head">
+      <div class="q-tag" id="qTag">⚡ 请回答</div>
+      <div class="q-timer" id="qTimer">30</div>
+    </div>
+    <div class="q-progress"><div class="q-progress-fill" id="qProgressFill"></div></div>
+    <div class="q-text" id="qText">题目</div>
+    <div class="q-judge">
+      <button class="judge-btn correct" id="judgeRightBtn">✅ 答对了 (+10)</button>
+      <button class="judge-btn wrong" id="judgeWrongBtn">❌ 答错了 (-5)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 老师：QR ==================== -->
+<div id="qrModal" class="hidden">
+  <div class="qr-box">
+    <h2>📱 扫码加入</h2>
+    <p>学生用 iPad 扫描二维码<br>输入名字即可加入</p>
+    <div class="qr-img" id="qrImg"></div>
+    <div class="room-code" id="qrRoomCode">----</div>
+    <div class="copy-url" id="copyUrl">—</div>
+    <button class="btn primary" id="closeQrBtn" style="width:100%;margin-top:10px;padding:14px;border-radius:14px;font-weight:800">关闭</button>
+  </div>
+</div>
+
+<!-- ==================== 老师：结算 ==================== -->
+<div id="resultModal" class="hidden">
+  <div class="result-box">
+    <h2>🏆 最终排名</h2>
+    <div class="rank-list" id="rankList"></div>
+    <div class="result-actions">
+      <button class="btn ghost" id="rankBackBtn">返回大厅</button>
+      <button class="btn primary" id="rankAgainBtn">再来一局</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 胜利 ==================== -->
+<div id="winnerModal" class="hidden">
+  <div class="winner-box">
+    <div class="winner-crown">🏆</div>
+    <div class="winner-title">🎉 恭 喜 获 胜 🎉</div>
+    <div class="winner-avatar" id="winnerAvatar">🎃</div>
+    <div class="winner-name" id="winnerName">—</div>
+    <div class="winner-score" id="winnerScore">0 分</div>
+    <div class="winner-sub" id="winnerSub"></div>
+    <div class="winner-actions">
+      <button class="btn ghost" id="winnerBackBtn">返回大厅</button>
+      <button class="btn primary" id="winnerAgainBtn">再来一局</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 学生端 ==================== -->
+<div id="joinScreen" class="hidden">
+  <div class="join-box">
+    <h1>🎮 加入游戏</h1>
+    <p>选择头像，输入名字<br>等待老师开始</p>
+    <div class="avatar-grid" id="playerAvatarGrid"></div>
+    <input class="join-input" id="playerNameInput" maxlength="8" placeholder="输入你的名字">
+    <button class="join-btn" id="joinBtn">加 入 🎉</button>
+    <div class="join-status" id="joinStatus">正在连接房间…</div>
+  </div>
+</div>
+
+<div id="playerApp" class="hidden">
+  <div class="player-header">
+    <div class="me">
+      <div class="av" id="pMeAvatar">🎃</div>
+      <div>
+        <div class="nm" id="pMeName">未命名</div>
+        <div style="font-size:12px;color:#9d8ec4" id="pRoomLabel">房间 —</div>
+      </div>
+    </div>
+    <div class="my-score" id="pMyScore">0</div>
+  </div>
+  <div class="player-topic">
+    <div class="topic-turn" id="pTurnLabel">等待开始</div>
+    <div class="topic-label" id="pTopicLabel">题目</div>
+    <div class="topic-text" id="pTopicText"><div class="topic-empty">等待老师开始游戏…</div></div>
+  </div>
+  <div class="player-rank">
+    <h3>🏆 实时排行</h3>
+    <div id="pRankList"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   主题配置（4张地图）
+   ============================================================ */
+const THEMES = {
+  halloween: {
+    id:'halloween', name:'万圣节魔法之夜', short:'万圣节', emoji:'🎃',
+    desc:'南瓜、幽灵和蝙蝠的魔法之夜',
+    previewGradient:'linear-gradient(135deg,#7a2ab8 0%,#3a1060 45%,#0a0318 100%)',
+    previewEmojis:['🎃','👻','🦇'],
+    sceneBg:0x12071f, fogColor:0x12071f, fogDensity:0.018,
+    groundTop:0x3d2060, groundRock:0x1e0a38, groundTip:0x120524,
+    groundTex:{r:58,g:32,b:98}, rockTex:{r:30,g:14,b:50},
+    castleBody:0x4a2a78, castleRoof:0x8b1a4a, castleBody2:0x5a3588,
+    ambient:0x9b7ad9, keyLight:0xffe0b0, fillLight:0xa060ff, pointLight:0xff7518,
+    cellColors:{start:0xffd166, bonus:0x22c55e, trap:0xef4444, question:0xa855f7},
+    buildColors:{
+      question:[[0x4a2860,0x2a1030,0xffb347],[0x3a2055,0x5a1a3a,0x7fffb0],[0x552868,0x3a1050,0x60a5fa],[0x4a3055,0x2a2030,0xff5ab5]],
+      bonus:[0xff8126,0xb54a00], trap:0x4a4a5a, start:0x3a2055, startFlag:0xffd166
+    },
+    particleColors:[0xffd166,0xff5ab5,0x7fffb0,0xa855f7,0x60a5fa],
+    lampColors:[0xffb347,0xff5ab5,0x7fffb0,0x60a5fa],
+    tokenColors:[0xff6b6b,0x60a5fa,0xfbbf24,0x4ade80,0xa855f7,0xec4899],
+    treeLeaf:0x2d5a3d, treeTrunk:0x3a2410, decorFlavor:'pumpkin'
+  },
+  candy: {
+    id:'candy', name:'糖果乐园', short:'糖果乐园', emoji:'🍭',
+    desc:'彩虹糖果和甜蜜冒险',
+    previewGradient:'linear-gradient(135deg,#ffd1f0 0%,#ff8cc8 45%,#c44a8a 100%)',
+    previewEmojis:['🍭','🍬','🧁'],
+    sceneBg:0x3a0a3a, fogColor:0x3a0a3a, fogDensity:0.015,
+    groundTop:0xffb3e0, groundRock:0xff8cc8, groundTip:0xcc66a0,
+    groundTex:{r:255,g:179,b:224}, rockTex:{r:255,g:140,b:200},
+    castleBody:0xffc8e0, castleRoof:0xff6bb5, castleBody2:0xffb3d0,
+    ambient:0xffd1f0, keyLight:0xfff5d0, fillLight:0xffb3e6, pointLight:0xff5ab5,
+    cellColors:{start:0xffd166, bonus:0x7fffb0, trap:0xff5ab5, question:0x60a5fa},
+    buildColors:{
+      question:[[0xffc8e0,0xff8cc8,0xffd166],[0xffd1f0,0xff6bb5,0x7fffb0],[0xffe0a0,0xffa0d0,0x60a5fa],[0xffb3e0,0xff8cc8,0xff5ab5]],
+      bonus:[0xffd166,0xb58a00], trap:0xff5ab5, start:0xffc8e0, startFlag:0xff6bb5
+    },
+    particleColors:[0xffd166,0xff5ab5,0x7fffb0,0x60a5fa,0xffc8e0],
+    lampColors:[0xffd166,0xff5ab5,0x7fffb0,0x60a5fa],
+    tokenColors:[0xff6b6b,0x60a5fa,0xffd166,0x7fffb0,0xff5ab5,0xa855f7],
+    treeLeaf:0xff8cc8, treeTrunk:0xb55a8a, decorFlavor:'candy'
+  },
+  ocean: {
+    id:'ocean', name:'海底世界', short:'海底世界', emoji:'🐠',
+    desc:'珊瑚礁与沉船宝藏',
+    previewGradient:'linear-gradient(135deg,#00d4ff 0%,#0066aa 50%,#001a3a 100%)',
+    previewEmojis:['🐠','🐙','🦀'],
+    sceneBg:0x001a3a, fogColor:0x001a3a, fogDensity:0.022,
+    groundTop:0x1a5a8a, groundRock:0x0a2a4a, groundTip:0x041a2e,
+    groundTex:{r:26,g:90,b:138}, rockTex:{r:10,g:42,b:74},
+    castleBody:0x2a7ab8, castleRoof:0x00a0c0, castleBody2:0x4a9ac8,
+    ambient:0x60d0ff, keyLight:0xb0f0ff, fillLight:0x2080c0, pointLight:0x00d4ff,
+    cellColors:{start:0xffd166, bonus:0x7fffb0, trap:0xff5ab5, question:0x60a5fa},
+    buildColors:{
+      question:[[0x2a7ab8,0x0a4a7a,0x7fffb0],[0x1a5a8a,0x0066aa,0xffd166],[0x2a90c8,0x0a6a9a,0x60a5fa],[0x1a7ab8,0x0a5a8a,0xff5ab5]],
+      bonus:[0x7fffb0,0x15803d], trap:0xff5ab5, start:0x2a7ab8, startFlag:0xffd166
+    },
+    particleColors:[0x7fffb0,0x60a5fa,0xffd166,0x00d4ff,0xff5ab5],
+    lampColors:[0x7fffb0,0x60a5fa,0x00d4ff,0xffd166],
+    tokenColors:[0x00d4ff,0x7fffb0,0xffd166,0xff5ab5,0x60a5fa,0x4ade80],
+    treeLeaf:0x40d0a0, treeTrunk:0x2a5a4a, decorFlavor:'coral'
+  },
+  jungle: {
+    id:'jungle', name:'动物冒险', short:'动物冒险', emoji:'🦁',
+    desc:'丛林探险和小动物伙伴',
+    previewGradient:'linear-gradient(135deg,#7dd33d 0%,#2d7a1a 50%,#0d2a0d 100%)',
+    previewEmojis:['🦁','🐯','🐵'],
+    sceneBg:0x0a1f0a, fogColor:0x0a1f0a, fogDensity:0.02,
+    groundTop:0x3d6b2a, groundRock:0x1a3d1a, groundTip:0x0a200a,
+    groundTex:{r:61,g:107,b:42}, rockTex:{r:26,g:61,b:26},
+    castleBody:0x6a8a4a, castleRoof:0x8a5a20, castleBody2:0x7aa05a,
+    ambient:0x90d060, keyLight:0xfff0c0, fillLight:0x40a020, pointLight:0xffa040,
+    cellColors:{start:0xffd166, bonus:0x7fffb0, trap:0xef4444, question:0xa855f7},
+    buildColors:{
+      question:[[0x6a8a4a,0x3a5a1a,0xffd166],[0x5a7a3a,0x2a4a0a,0x7fffb0],[0x7a9a5a,0x4a6a2a,0x60a5fa],[0x6a8a4a,0x3a5a1a,0xff5ab5]],
+      bonus:[0xffd166,0xa07800], trap:0xef4444, start:0x6a8a4a, startFlag:0xffd166
+    },
+    particleColors:[0xffd166,0x7fffb0,0xff5ab5,0x60a5fa,0xa855f7],
+    lampColors:[0xffd166,0x7fffb0,0x60a5fa,0xffa040],
+    tokenColors:[0xff6b6b,0xffd166,0x7fffb0,0x60a5fa,0xa855f7,0x4ade80],
+    treeLeaf:0x4a9a3a, treeTrunk:0x5a3a1a, decorFlavor:'jungle'
+  }
+};
+
+const MAP_ORDER = ['halloween','candy','ocean','jungle'];
+
+/* ============================================================
+   基础工具
+   ============================================================ */
+const params = new URLSearchParams(location.search);
+const ROOM_ID = params.get('room');
+const IS_PLAYER = !!ROOM_ID;
+const PEER_PREFIX = 'hw-monopoly-v4-';
+const WIN_SCORE = 100;
+
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+/* ============================================================
+   音频引擎
+   ============================================================ */
+let audioCtx=null,musicGain=null,sfxGain=null;
+let musicPlaying=false,musicTimer=null,musicNextTime=0;
+function ensureAudio(){
+  if(audioCtx)return;
+  try{
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    musicGain=audioCtx.createGain();musicGain.gain.value=0.0001;musicGain.connect(audioCtx.destination);
+    sfxGain=audioCtx.createGain();sfxGain.gain.value=0.4;sfxGain.connect(audioCtx.destination);
+  }catch(e){audioCtx=null;}
+}
+function resumeAudio(){ensureAudio();if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();}
+function tone(freq,start,dur,type,vol,dest){
+  if(!audioCtx)return;
+  const osc=audioCtx.createOscillator();const g=audioCtx.createGain();
+  osc.type=type;osc.frequency.setValueAtTime(freq,start);
+  g.gain.setValueAtTime(0.0001,start);
+  g.gain.exponentialRampToValueAtTime(vol,start+0.016);
+  g.gain.exponentialRampToValueAtTime(0.0001,start+dur);
+  osc.connect(g);g.connect(dest);osc.start(start);osc.stop(start+dur+0.05);
+}
+const MNOTE={A2:110,F2:87.31,G2:98,E2:82.41,A4:440,B4:493.88,C5:523.25,D5:587.33,E5:659.25,E4:329.63,F4:349.23,F5:698.46,G4:392,G5:783.99,A5:880};
+const MELODY=[['A4',1],['C5',1],['E5',1],['A5',1],['E5',1],['C5',1],['A4',1],['C5',1],['F4',1],['A4',1],['C5',1],['F5',1],['C5',1],['A4',1],['F4',1],['A4',1],['G4',1],['B4',1],['D5',1],['G5',1],['D5',1],['B4',1],['G4',1],['B4',1],['E4',1],['G4',1],['B4',1],['E5',1],['B4',1],['G4',1],['E4',1],['G4',1]];
+const BASS=[['A2',8],['F2',8],['G2',8],['E2',8]];
+function musicTick(){
+  if(!musicPlaying||!audioCtx)return;
+  const eighth=0.25;
+  const t0=Math.max(audioCtx.currentTime+0.08,musicNextTime);
+  let t=t0;
+  for(const[n,d] of MELODY){tone(MNOTE[n],t,d*eighth*0.66,'triangle',0.16,musicGain);t+=d*eighth;}
+  const loopLen=t-t0;t=t0;
+  for(const[n,d] of BASS){tone(MNOTE[n],t,d*eighth*0.9,'sine',0.42,musicGain);t+=d*eighth;}
+  musicNextTime=t0+loopLen;
+  musicTimer=setTimeout(musicTick,Math.max(60,(musicNextTime-audioCtx.currentTime-0.2)*1000));
+}
+function startMusic(){
+  resumeAudio();if(!audioCtx||musicPlaying)return;
+  musicPlaying=true;musicNextTime=audioCtx.currentTime+0.1;
+  const g=musicGain.gain;g.cancelScheduledValues(audioCtx.currentTime);
+  g.setValueAtTime(0.0001,audioCtx.currentTime);
+  g.exponentialRampToValueAtTime(0.1,audioCtx.currentTime+1.6);
+  musicTick();
+}
+function stopMusic(){
+  if(!musicPlaying||!audioCtx)return;
+  musicPlaying=false;clearTimeout(musicTimer);
+  const g=musicGain.gain;g.cancelScheduledValues(audioCtx.currentTime);
+  g.setValueAtTime(Math.max(g.value,0.0001),audioCtx.currentTime);
+  g.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.45);
+}
+function sfxClick(){if(!audioCtx)return;tone(880,audioCtx.currentTime,0.07,'sine',0.14,sfxGain);}
+function sfxRoll(){if(!audioCtx)return;const t=audioCtx.currentTime;for(let i=0;i<10;i++)tone(280+Math.random()*500,t+i*0.06,0.07,'square',0.09,sfxGain);}
+function sfxStep(){if(!audioCtx)return;tone(600+Math.random()*200,audioCtx.currentTime,0.07,'sine',0.14,sfxGain);}
+function sfxReveal(){if(!audioCtx)return;const t=audioCtx.currentTime;[523.25,659.25,783.99,1046.5].forEach((f,i)=>tone(f,t+i*0.07,0.4,'triangle',0.22,sfxGain));}
+function sfxRight(){if(!audioCtx)return;const t=audioCtx.currentTime;[659.25,830.61,1046.5,1318.5].forEach((f,i)=>tone(f,t+i*0.08,0.35,'triangle',0.28,sfxGain));}
+function sfxWrong(){if(!audioCtx)return;const t=audioCtx.currentTime;const osc=audioCtx.createOscillator(),g=audioCtx.createGain();osc.type='sawtooth';osc.frequency.setValueAtTime(260,t);osc.frequency.exponentialRampToValueAtTime(80,t+0.42);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.28,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.46);osc.connect(g);g.connect(sfxGain);osc.start(t);osc.stop(t+0.5);}
+function sfxBonus(){if(!audioCtx)return;const t=audioCtx.currentTime;[783.99,987.77,1174.66,1567.98].forEach((f,i)=>tone(f,t+i*0.07,0.42,'sine',0.24,sfxGain));}
+function sfxTrap(){if(!audioCtx)return;const t=audioCtx.currentTime;tone(220,t,0.3,'square',0.2,sfxGain);tone(165,t+0.14,0.35,'square',0.18,sfxGain);}
+function sfxWin(){if(!audioCtx)return;const t=audioCtx.currentTime;const seq=[523.25,659.25,783.99,1046.5,1318.5,1567.98,2093];seq.forEach((f,i)=>{tone(f,t+i*0.13,0.6,'triangle',0.3,sfxGain);tone(f/2,t+i*0.13,0.6,'sine',0.18,sfxGain);});setTimeout(()=>{if(!audioCtx)return;const t2=audioCtx.currentTime;[1046.5,1318.5,1567.98,2093].forEach(f=>tone(f,t2,1.6,'triangle',0.22,sfxGain));},900);}
+function sfxCheer(){if(!audioCtx)return;const t=audioCtx.currentTime;for(let i=0;i<12;i++)tone(400+i*80+Math.random()*100,t+i*0.04,0.2,'sine',0.15,sfxGain);}
+
+/* ============================================================
+   常量
+   ============================================================ */
+const MAX_TEAMS=6;
+const BOARD_SIZE=24;
+const BOARD_RADIUS=7.5;
+const TURN_TIME=30;
+const TEAM_COLORS=[0xff6b6b,0x60a5fa,0xfbbf24,0x4ade80,0xa855f7,0xec4899];
+const TEAM_EMOJIS=['🎃','👻','🦇','🕷️','🧛','🧟'];
+const PLAYER_AVATARS=['🎃','👻','🦇','🕷️','🧛','🧟','🧙','🧚','🐈','🦉','🐺','💀','🍬','🌙','⭐','🕸️'];
+
+const DEFAULT_QUESTIONS=[
+  '万圣节是几月几日？','"不给糖就捣蛋"用英文怎么说？','南瓜灯的英文是什么？',
+  '女巫骑的交通工具是什么？','蝙蝠属于哪一类动物？','蜘蛛有几条腿？',
+  '"ghost" 是什么意思？','吸血鬼最怕什么？','万圣节的代表颜色是哪两种？',
+  '僵尸的英文怎么说？','万圣节人们会把什么戴在脸上？','"witch" 是什么意思？',
+  '骷髅的英文怎么说？','万圣节的夜晚人们会点起什么？','猫头鹰通常在什么时候活动？',
+  '万圣节常用来装饰的动物是什么？','"candy" 是什么意思？','木乃伊的英文怎么说？',
+  '南瓜属于蔬菜还是水果？','万圣节时小朋友会提着什么去要糖？','"bat" 是什么动物？',
+  '"vampire" 是什么意思？','万圣节时人们会做什么装扮？','南瓜灯里通常放什么？',
+  '"spider" 是什么动物？','万圣节又叫什么节？','"skeleton" 是什么意思？',
+  '女巫的帽子通常是什么形状？','"pumpkin" 是什么意思？','万圣节的英文怎么说？'
+].join('\n');
+
+/* ============================================================
+   彩带烟花
+   ============================================================ */
+const CONFETTI_COLORS=['#ffd166','#ff8126','#ff5ab5','#a855f7','#7fffb0','#60a5fa','#ffffff','#fbbf24','#4ade80'];
+function launchConfetti(count=140){
+  for(let i=0;i<count;i++){
+    const el=document.createElement('div');
+    el.className='confetti'+(Math.random()>0.5?' round':'');
+    el.style.left=(Math.random()*100)+'vw';
+    el.style.background=CONFETTI_COLORS[Math.floor(Math.random()*CONFETTI_COLORS.length)];
+    el.style.animationDuration=(2.6+Math.random()*2.4)+'s';
+    el.style.animationDelay=(Math.random()*1.8)+'s';
+    el.style.width=(7+Math.random()*10)+'px';
+    el.style.height=(10+Math.random()*14)+'px';
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),6500);
+  }
+}
+function launchFirework(cx,cy){
+  const colors=['#ffd166','#ff8126','#ff5ab5','#a855f7','#7fffb0','#60a5fa','#ffffff'];
+  const color=colors[Math.floor(Math.random()*colors.length)];
+  const n=18;
+  for(let i=0;i<n;i++){
+    const el=document.createElement('div');
+    el.className='firework';
+    const ang=(i/n)*Math.PI*2;
+    const dist=90+Math.random()*80;
+    el.style.setProperty('--fx',(Math.cos(ang)*dist).toFixed(0)+'px');
+    el.style.setProperty('--fy',(Math.sin(ang)*dist).toFixed(0)+'px');
+    el.style.left=cx+'px';el.style.top=cy+'px';
+    el.style.background=color;
+    el.style.width=el.style.height=(6+Math.random()*8)+'px';
+    el.style.boxShadow='0 0 12px '+color;
+    el.style.animationDuration=(0.8+Math.random()*0.5)+'s';
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1400);
+  }
+}
+function startCelebration(){
+  launchConfetti(160);
+  let count=0;
+  const iv=setInterval(()=>{
+    launchFirework(window.innerWidth*(15+Math.random()*70)/100,window.innerHeight*(20+Math.random()*50)/100);
+    if(++count>=12)clearInterval(iv);
+  },320);
+  setTimeout(()=>launchConfetti(80),1800);
+  setTimeout(()=>launchConfetti(80),3600);
+}
+
+/* ============================================================
+   分支
+   ============================================================ */
+if(IS_PLAYER){initPlayerApp();}
+else{initTeacherApp();}
+
+/* ============================================================
+   学生端
+   ============================================================ */
+function initPlayerApp(){
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('joinScreen').classList.remove('hidden');
+
+  const state={name:'',avatar:'🎃',myAvatar:'🎃',conn:null,peer:null};
+
+  const grid=document.getElementById('playerAvatarGrid');
+  PLAYER_AVATARS.forEach((a,i)=>{
+    const d=document.createElement('div');
+    d.className='avatar-opt'+(i===0?' sel':'');
+    d.textContent=a;
+    d.onclick=()=>{
+      sfxClick();
+      grid.querySelectorAll('.avatar-opt').forEach(x=>x.classList.remove('sel'));
+      d.classList.add('sel');
+      state.avatar=a;
+    };
+    grid.appendChild(d);
+  });
+
+  const statusEl=document.getElementById('joinStatus');
+  let connected=false;
+
+  function connectHost(){
+    const peer=new Peer(undefined,{debug:0});
+    state.peer=peer;
+    peer.on('open',()=>{
+      statusEl.textContent='正在连接老师…';
+      const conn=peer.connect(PEER_PREFIX+ROOM_ID,{reliable:true});
+      state.conn=conn;
+      conn.on('open',()=>{connected=true;statusEl.textContent='✅ 已连接，输入名字后点击加入';});
+      conn.on('data',handleHostMessage);
+      conn.on('close',()=>{connected=false;statusEl.textContent='⚠️ 与老师断开连接，请刷新页面';});
+      conn.on('error',()=>{statusEl.textContent='⚠️ 连接失败，请刷新重试';});
+    });
+    peer.on('error',(err)=>{
+      statusEl.textContent=err.type==='peer-unavailable'?'⚠️ 找不到老师的房间：'+ROOM_ID:'⚠️ 网络异常，请刷新重试';
+    });
+  }
+  connectHost();
+
+  document.getElementById('joinBtn').onclick=()=>{
+    if(!connected){statusEl.textContent='⚠️ 还没连上老师，请稍等…';return;}
+    const name=document.getElementById('playerNameInput').value.trim();
+    if(!name){statusEl.textContent='⚠️ 请输入你的名字';return;}
+    state.name=name;
+    state.myAvatar=state.avatar;
+    sfxClick();
+    state.conn.send({type:'join',name,avatar:state.avatar});
+    document.getElementById('joinScreen').classList.add('hidden');
+    document.getElementById('playerApp').classList.remove('hidden');
+    document.getElementById('pMeAvatar').textContent=state.avatar;
+    document.getElementById('pMeName').textContent=name;
+    document.getElementById('pRoomLabel').textContent='房间 '+ROOM_ID;
+  };
+
+  function handleHostMessage(msg){
+    if(!msg||!msg.type)return;
+    if(msg.type==='state')renderPlayerState(msg.state);
+    else if(msg.type==='result'){
+      if(msg.correct){sfxRight();if(msg.targetAvatar===state.avatar)showPlayerFloat('+10','#7fffb0');}
+      else{sfxWrong();if(msg.targetAvatar===state.avatar)showPlayerFloat('-5','#ff9c9c');}
+    }else if(msg.type==='winner'){
+      stopMusic();sfxWin();setTimeout(sfxCheer,800);startCelebration();
+      document.getElementById('pTopicLabel').textContent='游戏结束';
+      document.getElementById('pTopicText').innerHTML='<div class="topic-empty">🏆 获胜者：'+escapeHtml(msg.winner.name)+'<br>得分：'+msg.winner.score+' 分<br><br>你的得分：'+(msg.myScore??0)+'</div>';
+    }else if(msg.type==='kicked')location.reload();
+  }
+
+  function renderPlayerState(s){
+    if(!s)return;
+    const me=s.teams.find(t=>t.avatar===state.myAvatar&&t.name===state.name);
+    if(me)document.getElementById('pMyScore').textContent=me.score;
+    const label=document.getElementById('pTopicLabel');
+    const text=document.getElementById('pTopicText');
+    const turn=document.getElementById('pTurnLabel');
+    if(s.question){label.textContent='题目';text.textContent=s.question;text.style.color='#ffd166';}
+    else if(s.phase==='rolling'){label.textContent='掷骰子中';text.innerHTML='<div class="topic-empty">🎲 '+escapeHtml(s.currentTeamName||'')+' 正在掷骰子…</div>';}
+    else if(s.phase==='moving'){label.textContent='移动中';text.innerHTML='<div class="topic-empty">🚶 '+escapeHtml(s.currentTeamName||'')+' 正在前进…</div>';}
+    else if(s.phase==='idle'){label.textContent='准备';text.innerHTML='<div class="topic-empty">等待老师掷骰子…</div>';}
+    else if(s.phase==='waiting'){label.textContent='等待中';text.innerHTML='<div class="topic-empty">等待老师操作…</div>';}
+    else if(s.phase==='over'){label.textContent='结束';text.innerHTML='<div class="topic-empty">游戏结束</div>';}
+    turn.textContent=s.currentTeamName?'👉 '+s.currentTeamName:'准备中';
+    if(s.teams){
+      const sorted=[...s.teams].sort((a,b)=>b.score-a.score);
+      const list=document.getElementById('pRankList');
+      list.innerHTML='';
+      const medals=['🥇','🥈','🥉','4','5','6'];
+      sorted.forEach((t,i)=>{
+        const row=document.createElement('div');
+        row.className='rank-row'+(t.avatar===state.myAvatar&&t.name===state.name?' me':'');
+        row.innerHTML='<span class="rk">'+(medals[i]||'•')+'</span><span class="av">'+t.avatar+'</span><span class="nm">'+escapeHtml(t.name)+'</span><span class="sc">'+t.score+'</span>';
+        list.appendChild(row);
+      });
+    }
+  }
+  function showPlayerFloat(text,color){
+    const el=document.createElement('div');
+    el.className='float-score';el.textContent=text;el.style.color=color;
+    el.style.left='50%';el.style.top='30%';el.style.fontSize='52px';
+    document.body.appendChild(el);setTimeout(()=>el.remove(),1200);
+  }
+  document.addEventListener('pointerdown',function kick(){resumeAudio();document.removeEventListener('pointerdown',kick);},{once:true});
+}
+
+/* ============================================================
+   老师端
+   ============================================================ */
+function initTeacherApp(){
+  const state={
+    teams:[],questions:[],currentIdx:0,round:1,
+    playing:false,rolling:false,waitingQuestion:false,
+    musicOn:true,phase:'idle',roomId:'',
+    peer:null,connections:[],currentQuestion:null,gameEnded:false,
+    currentTheme:THEMES.halloween
+  };
+  window.__state=state;
+
+  /* ---------- 3D 相关 ---------- */
+  let scene,camera,renderer,boardGroup;
+  let cells3D=[],tokens=[];
+  let diceMesh,diceRolling=false;
+  let pumpkinLight;
+  let floatParticles=[],bats=[],ghosts=[];
+  let clock;
+  let theme=state.currentTheme;
+
+  function getRingPosition(i){
+    const a=(i/BOARD_SIZE)*Math.PI*2-Math.PI/2;
+    const cx=Math.cos(a),sz=Math.sin(a);
+    const maxD=Math.max(Math.abs(cx),Math.abs(sz));
+    return {x:(cx/maxD)*BOARD_RADIUS,z:(sz/maxD)*BOARD_RADIUS};
+  }
+  function getCellType(i){
+    if(i===0)return 'start';
+    const mod=i%4;
+    if(mod===0)return 'bonus';
+    if(mod===2)return 'trap';
+    return 'question';
+  }
+  function getCellColor(t){return theme.cellColors[t]||theme.cellColors.question;}
+
+  function makeNoiseTexture(r,g,b){
+    const size=256;const c=document.createElement('canvas');c.width=c.height=size;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle=`rgb(${r},${g},${b})`;ctx.fillRect(0,0,size,size);
+    for(let i=0;i<1500;i++){
+      const x=Math.random()*size,y=Math.random()*size,v=Math.random();
+      ctx.fillStyle=`rgba(${r+v*60},${g+v*40},${b+v*80},${0.15+Math.random()*0.25})`;
+      ctx.beginPath();ctx.arc(x,y,1+Math.random()*3,0,Math.PI*2);ctx.fill();
+    }
+    const tex=new THREE.CanvasTexture(c);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;return tex;
+  }
+
+  /* ---------- 3D 初始化 ---------- */
+  function initThree(){
+    const wrap=document.getElementById('canvasWrap');
+    const W=wrap.clientWidth,H=wrap.clientHeight;
+    if(renderer){
+      renderer.domElement.remove();
+      cells3D=[];tokens=[];floatParticles=[];bats=[];ghosts=[];
+    }
+    scene=new THREE.Scene();
+    scene.background=new THREE.Color(theme.sceneBg);
+    scene.fog=new THREE.FogExp2(theme.fogColor,theme.fogDensity);
+    camera=new THREE.PerspectiveCamera(46,W/H,0.1,300);
+    camera.position.set(0,20,20);camera.lookAt(0,1,0);
+    renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(W,H);renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    wrap.appendChild(renderer.domElement);
+
+    // 星空
+    const starGeo=new THREE.BufferGeometry();
+    const positions=[];const colors=[];
+    for(let i=0;i<800;i++){
+      const r=70+Math.random()*60;
+      const theta=Math.random()*Math.PI*2;
+      const phi=Math.acos(Math.random()*1.4-0.4);
+      positions.push(r*Math.sin(phi)*Math.cos(theta),r*Math.cos(phi)+20,r*Math.sin(phi)*Math.sin(theta));
+      const c=Math.random();colors.push(0.7+c*0.3,0.6+c*0.4,0.9+c*0.1);
+    }
+    starGeo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+    starGeo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+    scene.add(new THREE.Points(starGeo,new THREE.PointsMaterial({size:0.6,vertexColors:true,transparent:true,opacity:0.9})));
+
+    // 灯光
+    scene.add(new THREE.HemisphereLight(theme.ambient,0x2a1050,0.75));
+    const key=new THREE.DirectionalLight(theme.keyLight,1.15);
+    key.position.set(14,26,12);key.castShadow=true;
+    key.shadow.mapSize.set(2048,2048);
+    key.shadow.camera.left=-18;key.shadow.camera.right=18;
+    key.shadow.camera.top=18;key.shadow.camera.bottom=-18;
+    key.shadow.camera.near=1;key.shadow.camera.far=70;
+    key.shadow.bias=-0.0005;scene.add(key);
+    const fill=new THREE.DirectionalLight(theme.fillLight,0.6);
+    fill.position.set(-12,12,-10);scene.add(fill);
+    pumpkinLight=new THREE.PointLight(theme.pointLight,1.6,36,2);
+    pumpkinLight.position.set(0,5,0);scene.add(pumpkinLight);
+
+    const cornerColors=[theme.lampColors[1],theme.lampColors[3],theme.lampColors[2],theme.lampColors[0]];
+    cornerColors.forEach((c,i)=>{
+      const a=(i/4)*Math.PI*2+Math.PI/4;
+      const pl=new THREE.PointLight(c,0.6,14,2);
+      pl.position.set(Math.cos(a)*9,2.5,Math.sin(a)*9);
+      pl.userData.baseY=2.5;pl.userData.phase=i*1.5;
+      scene.add(pl);
+    });
+
+    boardGroup=new THREE.Group();scene.add(boardGroup);
+    buildIsland();buildCells();buildDecorations();buildDice();buildParticles();
+    clock=new THREE.Clock();
+    animate();
+  }
+
+  function buildIsland(){
+    const gTex=makeNoiseTexture(theme.groundTex.r,theme.groundTex.g,theme.groundTex.b);
+    gTex.repeat.set(6,6);
+    const top=new THREE.Mesh(new THREE.CylinderGeometry(9.6,9.3,0.6,64,1),
+      new THREE.MeshStandardMaterial({map:gTex,roughness:0.95}));
+    top.position.y=-0.3;top.receiveShadow=true;boardGroup.add(top);
+
+    const edge=new THREE.Mesh(new THREE.TorusGeometry(9.45,0.18,8,64),
+      new THREE.MeshStandardMaterial({color:theme.groundTop,roughness:0.9}));
+    edge.rotation.x=Math.PI/2;edge.position.y=0.02;boardGroup.add(edge);
+
+    const rTex=makeNoiseTexture(theme.rockTex.r,theme.rockTex.g,theme.rockTex.b);
+    rTex.repeat.set(4,2);
+    const rock=new THREE.Mesh(new THREE.CylinderGeometry(9.3,7.2,3.2,48),
+      new THREE.MeshStandardMaterial({map:rTex,roughness:1}));
+    rock.position.y=-2.2;rock.receiveShadow=true;rock.castShadow=true;boardGroup.add(rock);
+
+    for(let i=0;i<16;i++){
+      const a=(i/16)*Math.PI*2+Math.random()*0.4;
+      const r=8.3+Math.random()*0.5;
+      const s=0.35+Math.random()*0.45;
+      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),
+        new THREE.MeshStandardMaterial({color:theme.groundRock,roughness:1,flatShading:true}));
+      stone.position.set(Math.cos(a)*r,-1.2-Math.random()*0.8,Math.sin(a)*r);
+      stone.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);
+      stone.castShadow=true;boardGroup.add(stone);
+    }
+    const tip=new THREE.Mesh(new THREE.ConeGeometry(7.2,3.4,48),
+      new THREE.MeshStandardMaterial({color:theme.groundTip,roughness:1}));
+    tip.position.y=-5.6;tip.rotation.x=Math.PI;boardGroup.add(tip);
+
+    const center=new THREE.Mesh(new THREE.CylinderGeometry(2.6,2.9,0.6,32),
+      new THREE.MeshStandardMaterial({color:theme.castleBody,emissive:theme.castleBody,emissiveIntensity:0.35,roughness:0.6}));
+    center.position.y=0.3;center.receiveShadow=true;boardGroup.add(center);
+    const decoRing=new THREE.Mesh(new THREE.TorusGeometry(2.35,0.06,8,48),
+      new THREE.MeshStandardMaterial({color:theme.cellColors.start,emissive:theme.cellColors.start,emissiveIntensity:0.8}));
+    decoRing.rotation.x=Math.PI/2;decoRing.position.y=0.62;boardGroup.add(decoRing);
+  }
+
+  /* ---------- 建筑工厂（按主题上色） ---------- */
+  function makeHouse(bodyColor,roofColor,winColor,scale=1){
+    const g=new THREE.Group();
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.52,0.08,8),
+      new THREE.MeshStandardMaterial({color:theme.groundRock,roughness:0.9}));
+    base.position.y=0.04;base.castShadow=true;base.receiveShadow=true;g.add(base);
+    const body=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.55,0.62),
+      new THREE.MeshStandardMaterial({color:bodyColor,roughness:0.85,metalness:0.05}));
+    body.position.y=0.36;body.castShadow=true;body.receiveShadow=true;g.add(body);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(0.55,0.48,4),
+      new THREE.MeshStandardMaterial({color:roofColor,roughness:0.85,flatShading:true}));
+    roof.position.y=0.87;roof.rotation.y=Math.PI/4;roof.castShadow=true;g.add(roof);
+    const winMat=new THREE.MeshStandardMaterial({color:winColor,emissive:winColor,emissiveIntensity:1.3});
+    const w1=new THREE.Mesh(new THREE.PlaneGeometry(0.16,0.18),winMat);
+    w1.position.set(0,0.38,0.311);g.add(w1);
+    const w2=new THREE.Mesh(new THREE.PlaneGeometry(0.16,0.18),winMat);
+    w2.position.set(0.311,0.38,0);w2.rotation.y=Math.PI/2;g.add(w2);
+    const door=new THREE.Mesh(new THREE.PlaneGeometry(0.14,0.22),
+      new THREE.MeshStandardMaterial({color:0x12041c}));
+    door.position.set(0,0.19,0.312);g.add(door);
+    const chimney=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.22,0.1),
+      new THREE.MeshStandardMaterial({color:theme.groundRock,roughness:0.9}));
+    chimney.position.set(0.28,0.75,0.22);chimney.castShadow=true;g.add(chimney);
+    g.scale.setScalar(scale);return g;
+  }
+
+  function makePumpkinHouse(){ // bonus: 用发光圆顶屋
+    const g=new THREE.Group();
+    const bc=theme.buildColors.bonus;
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.52,0.08,8),
+      new THREE.MeshStandardMaterial({color:theme.groundRock,roughness:0.9}));
+    base.position.y=0.04;base.castShadow=true;g.add(base);
+    const body=new THREE.Mesh(new THREE.SphereGeometry(0.55,20,16),
+      new THREE.MeshStandardMaterial({color:bc[0],emissive:bc[0],emissiveIntensity:0.5,roughness:0.55}));
+    body.scale.set(1,0.9,1);body.position.y=0.55;body.castShadow=true;g.add(body);
+    for(let i=0;i<4;i++){
+      const a=(i/4)*Math.PI*2;
+      const seg=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.03,6,16,Math.PI),
+        new THREE.MeshStandardMaterial({color:bc[1],roughness:0.7}));
+      seg.rotation.y=a;seg.scale.set(1,0.9,1);seg.position.y=0.55;g.add(seg);
+    }
+    const winMat=new THREE.MeshStandardMaterial({color:theme.cellColors.start,emissive:theme.cellColors.start,emissiveIntensity:1.4});
+    const e1=new THREE.Mesh(new THREE.ConeGeometry(0.09,0.14,4),winMat);
+    e1.position.set(-0.18,0.68,0.5);e1.rotation.x=Math.PI/2;e1.rotation.z=Math.PI/4;g.add(e1);
+    const e2=e1.clone();e2.position.set(0.18,0.68,0.5);e2.rotation.z=-Math.PI/4;g.add(e2);
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.08,0.18,6),
+      new THREE.MeshStandardMaterial({color:0x4a2b00,roughness:0.9}));
+    stem.position.y=1.02;g.add(stem);
+    return g;
+  }
+
+  function makeGrave(){
+    const g=new THREE.Group();
+    const mound=new THREE.Mesh(new THREE.SphereGeometry(0.42,12,8,0,Math.PI*2,0,Math.PI/2),
+      new THREE.MeshStandardMaterial({color:theme.groundRock,roughness:1}));
+    mound.scale.set(1,0.45,1);mound.position.y=0.05;g.add(mound);
+    const stoneMat=new THREE.MeshStandardMaterial({color:theme.buildColors.trap,roughness:0.95,flatShading:true});
+    const stone=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.62,0.14),stoneMat);
+    stone.position.y=0.36;stone.castShadow=true;g.add(stone);
+    const top=new THREE.Mesh(new THREE.CylinderGeometry(0.21,0.21,0.14,12,1,false,0,Math.PI),stoneMat);
+    top.rotation.z=Math.PI/2;top.rotation.x=Math.PI/2;top.position.y=0.67;g.add(top);
+    const crossMat=new THREE.MeshStandardMaterial({color:0x2a2a35,roughness:0.9});
+    const cv=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.28,0.03),crossMat);cv.position.set(0,0.4,0.09);g.add(cv);
+    const ch=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.06,0.03),crossMat);ch.position.set(0,0.46,0.09);g.add(ch);
+    return g;
+  }
+
+  function makeGate(){
+    const g=new THREE.Group();
+    const pillarMat=new THREE.MeshStandardMaterial({color:theme.buildColors.start,roughness:0.9});
+    const p1=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.9,0.18),pillarMat);
+    p1.position.set(-0.4,0.45,0);p1.castShadow=true;g.add(p1);
+    const p2=p1.clone();p2.position.x=0.4;g.add(p2);
+    const beam=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.14,0.2),pillarMat);
+    beam.position.y=0.94;beam.castShadow=true;g.add(beam);
+    const flagMat=new THREE.MeshStandardMaterial({color:theme.buildColors.startFlag,emissive:theme.buildColors.startFlag,emissiveIntensity:0.6,side:THREE.DoubleSide});
+    const flag=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.22),flagMat);
+    flag.position.set(0,1.05,0.11);g.add(flag);
+    const orbMat=new THREE.MeshStandardMaterial({color:theme.cellColors.start,emissive:theme.cellColors.start,emissiveIntensity:1.5});
+    const orb=new THREE.Mesh(new THREE.SphereGeometry(0.1,12,10),orbMat);
+    orb.position.y=0.55;g.add(orb);
+    return g;
+  }
+
+  /* ---------- 场景装饰（按主题选择） ---------- */
+  function makeTree(scale=1){
+    const g=new THREE.Group();
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.13,0.65,7),
+      new THREE.MeshStandardMaterial({color:theme.treeTrunk,roughness:0.95}));
+    trunk.position.y=0.32;trunk.castShadow=true;g.add(trunk);
+    const leafMat=new THREE.MeshStandardMaterial({color:theme.treeLeaf,roughness:0.9,flatShading:true});
+    for(let i=0;i<3;i++){
+      const cone=new THREE.Mesh(new THREE.ConeGeometry(0.45-i*0.11,0.5,7),leafMat);
+      cone.position.y=0.75+i*0.28;cone.castShadow=true;g.add(cone);
+    }
+    g.scale.setScalar(scale);return g;
+  }
+  function makeDeadTree(){
+    const g=new THREE.Group();
+    const trunkMat=new THREE.MeshStandardMaterial({color:0x2a1808,roughness:1});
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.12,1.0,6),trunkMat);
+    trunk.position.y=0.5;trunk.castShadow=true;g.add(trunk);
+    for(let i=0;i<5;i++){
+      const a=(i/5)*Math.PI*2;
+      const branch=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.05,0.4,5),trunkMat);
+      branch.position.set(Math.cos(a)*0.15,0.75+Math.random()*0.2,Math.sin(a)*0.15);
+      branch.rotation.z=Math.cos(a)*0.9;branch.rotation.x=-Math.sin(a)*0.9;
+      branch.castShadow=true;g.add(branch);
+    }
+    return g;
+  }
+  function makeLollipop(){
+    const g=new THREE.Group();
+    const stick=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.85,6),
+      new THREE.MeshStandardMaterial({color:0xfff5e0,roughness:0.7}));
+    stick.position.y=0.42;g.add(stick);
+    const candyMat=new THREE.MeshStandardMaterial({color:theme.cellColors.bonus,emissive:theme.cellColors.bonus,emissiveIntensity:0.6,roughness:0.4});
+    const ball=new THREE.Mesh(new THREE.SphereGeometry(0.32,16,12),candyMat);
+    ball.position.y=0.95;ball.castShadow=true;g.add(ball);
+    // 螺旋纹
+    const spiralMat=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:0.3});
+    for(let i=0;i<3;i++){
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(0.32,0.025,6,20,Math.PI),spiralMat);
+      ring.rotation.x=Math.PI/2;ring.rotation.z=(i/3)*Math.PI*2;ring.position.y=0.95;g.add(ring);
+    }
+    return g;
+  }
+  function makeCupcake(){
+    const g=new THREE.Group();
+    const cup=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.28,0.3,12),
+      new THREE.MeshStandardMaterial({color:0xffd166,roughness:0.8}));
+    cup.position.y=0.15;cup.castShadow=true;g.add(cup);
+    const frosting=new THREE.Mesh(new THREE.ConeGeometry(0.38,0.4,12),
+      new THREE.MeshStandardMaterial({color:theme.cellColors.trap,roughness:0.6}));
+    frosting.position.y=0.5;frosting.castShadow=true;g.add(frosting);
+    const cherry=new THREE.Mesh(new THREE.SphereGeometry(0.08,10,8),
+      new THREE.MeshStandardMaterial({color:0xff5ab5,emissive:0xff5ab5,emissiveIntensity:0.5}));
+    cherry.position.y=0.78;g.add(cherry);
+    return g;
+  }
+  function makeCandy(){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,0.4,8),
+      new THREE.MeshStandardMaterial({color:theme.cellColors.question,emissive:theme.cellColors.question,emissiveIntensity:0.4,roughness:0.4}));
+    body.position.y=0.4;body.rotation.z=Math.PI/2;body.castShadow=true;g.add(body);
+    [-1,1].forEach(dir=>{
+      const wrap=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.2,8),
+        new THREE.MeshStandardMaterial({color:theme.cellColors.trap,roughness:0.5}));
+      wrap.position.set(dir*0.3,0.4,0);
+      wrap.rotation.z=dir*Math.PI/2;
+      g.add(wrap);
+    });
+    return g;
+  }
+  function makeCoral(){
+    const g=new THREE.Group();
+    const baseMat=new THREE.MeshStandardMaterial({color:theme.treeLeaf,roughness:0.9,flatShading:true});
+    for(let i=0;i<5;i++){
+      const a=(i/5)*Math.PI*2;
+      const h=0.4+Math.random()*0.5;
+      const branch=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.06,h,6),baseMat);
+      branch.position.set(Math.cos(a)*0.12,h/2,Math.sin(a)*0.12);
+      branch.rotation.z=Math.cos(a)*0.3;branch.rotation.x=-Math.sin(a)*0.3;
+      branch.castShadow=true;g.add(branch);
+    }
+    return g;
+  }
+  function makeShell(){
+    const g=new THREE.Group();
+    const mat=new THREE.MeshStandardMaterial({color:theme.cellColors.start,emissive:theme.cellColors.start,emissiveIntensity:0.3,roughness:0.5,metalness:0.2});
+    const shell=new THREE.Mesh(new THREE.SphereGeometry(0.3,16,8,0,Math.PI*2,0,Math.PI/2),mat);
+    shell.position.y=0.05;shell.castShadow=true;g.add(shell);
+    const pearl=new THREE.Mesh(new THREE.SphereGeometry(0.1,10,8),
+      new THREE.MeshStandardMaterial({color:0xfff5e0,emissive:0xfff5e0,emissiveIntensity:0.9}));
+    pearl.position.y=0.22;g.add(pearl);
+    return g;
+  }
+  function makeBush(){
+    const g=new THREE.Group();
+    const mat=new THREE.MeshStandardMaterial({color:theme.treeLeaf,roughness:0.9,flatShading:true});
+    for(let i=0;i<3;i++){
+      const s=0.2+Math.random()*0.15;
+      const b=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),mat);
+      b.position.set((Math.random()-0.5)*0.3,s,(Math.random()-0.5)*0.3);
+      b.castShadow=true;g.add(b);
+    }
+    return g;
+  }
+  function makeLantern(color){
+    const g=new THREE.Group();
+    const pillar=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.07,0.75,6),
+      new THREE.MeshStandardMaterial({color:theme.groundRock,roughness:0.9}));
+    pillar.position.y=0.375;pillar.castShadow=true;g.add(pillar);
+    const shade=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.22,4),
+      new THREE.MeshStandardMaterial({color:theme.groundRock,roughness:0.85,flatShading:true}));
+    shade.position.y=0.85;shade.rotation.y=Math.PI/4;g.add(shade);
+    const bulbMat=new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:1.6,transparent:true,opacity:0.95});
+    const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.1,10,8),bulbMat);
+    bulb.position.y=0.72;g.add(bulb);
+    const halo=new THREE.Mesh(new THREE.SphereGeometry(0.22,10,8),
+      new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.15}));
+    halo.position.y=0.72;g.add(halo);
+    return g;
+  }
+  function makeGhostFigure(){
+    const g=new THREE.Group();
+    const mat=new THREE.MeshStandardMaterial({
+      color:0xe0f0ff,emissive:theme.fillLight,emissiveIntensity:0.5,
+      transparent:true,opacity:0.85,roughness:0.5
+    });
+    const body=new THREE.Mesh(new THREE.SphereGeometry(0.28,14,12),mat);
+    body.scale.set(1,1.15,1);g.add(body);
+    const skirt=new THREE.Mesh(new THREE.ConeGeometry(0.28,0.32,8,1,true),mat);
+    skirt.position.y=-0.28;skirt.rotation.x=Math.PI;g.add(skirt);
+    const eyeMat=new THREE.MeshBasicMaterial({color:0x1a0b2e});
+    const e1=new THREE.Mesh(new THREE.SphereGeometry(0.04,6,5),eyeMat);
+    e1.position.set(-0.08,0.06,0.24);g.add(e1);
+    const e2=e1.clone();e2.position.x=0.08;g.add(e2);
+    return g;
+  }
+  function makeCastle(){
+    const g=new THREE.Group();
+    const towerMat=new THREE.MeshStandardMaterial({color:theme.castleBody,roughness:0.8,metalness:0.1});
+    const tower=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.65,1.8,12),towerMat);
+    tower.position.y=0.9;tower.castShadow=true;g.add(tower);
+    const roofMat=new THREE.MeshStandardMaterial({color:theme.castleRoof,roughness:0.75,flatShading:true});
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(0.75,0.85,12),roofMat);
+    roof.position.y=2.25;roof.castShadow=true;g.add(roof);
+    const flagPole=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.35,4),
+      new THREE.MeshStandardMaterial({color:0x1a0a2e}));
+    flagPole.position.y=2.85;g.add(flagPole);
+    const flag=new THREE.Mesh(new THREE.PlaneGeometry(0.32,0.2),
+      new THREE.MeshStandardMaterial({color:theme.cellColors.start,emissive:theme.cellColors.start,emissiveIntensity:0.8,side:THREE.DoubleSide}));
+    flag.position.set(0.16,2.92,0);g.add(flag);
+    [-1,1].forEach(dir=>{
+      const t=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.38,1.2,10),towerMat);
+      t.position.set(dir*0.75,0.6,0);t.castShadow=true;g.add(t);
+      const r=new THREE.Mesh(new THREE.ConeGeometry(0.46,0.6,10),roofMat);
+      r.position.set(dir*0.75,1.5,0);r.castShadow=true;g.add(r);
+    });
+    const winMat=new THREE.MeshStandardMaterial({color:theme.cellColors.start,emissive:theme.pointLight,emissiveIntensity:1.4});
+    for(let i=0;i<2;i++){
+      const w=new THREE.Mesh(new THREE.PlaneGeometry(0.14,0.2),winMat);
+      w.position.set(0,0.9+i*0.55,0.66);g.add(w);
+    }
+    for(let i=0;i<8;i++){
+      const a=(i/8)*Math.PI*2;
+      const cren=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.16,0.1),
+        new THREE.MeshStandardMaterial({color:theme.castleBody2,roughness:0.8}));
+      cren.position.set(Math.cos(a)*0.6,1.7,Math.sin(a)*0.6);g.add(cren);
+    }
+    g.scale.setScalar(1.1);return g;
+  }
+
+  function buildCells(){
+    for(let i=0;i<BOARD_SIZE;i++){
+      const p=getRingPosition(i);
+      const type=getCellType(i);
+      const color=getCellColor(type);
+
+      const stoneMat=new THREE.MeshStandardMaterial({color:theme.groundRock,roughness:0.9,metalness:0.05});
+      const base=new THREE.Mesh(new THREE.CylinderGeometry(0.86,0.92,0.28,16),stoneMat);
+      base.position.set(p.x,0.14,p.z);base.receiveShadow=true;boardGroup.add(base);
+      for(let j=0;j<6;j++){
+        const a=(j/6)*Math.PI*2;
+        const bit=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.1,0.14),stoneMat);
+        bit.position.set(p.x+Math.cos(a)*0.82,0.28,p.z+Math.sin(a)*0.82);
+        bit.rotation.y=a;boardGroup.add(bit);
+      }
+      const top=new THREE.Mesh(new THREE.CylinderGeometry(0.78,0.78,0.06,16),
+        new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:0.55,roughness:0.45,metalness:0.25}));
+      top.position.set(p.x,0.3,p.z);top.castShadow=true;boardGroup.add(top);
+
+      let building;
+      if(type==='start')building=makeGate();
+      else if(type==='bonus')building=makePumpkinHouse();
+      else if(type==='trap')building=makeGrave();
+      else{
+        const variants=theme.buildColors.question;
+        const v=variants[i%variants.length];
+        building=makeHouse(v[0],v[1],v[2]);
+      }
+      building.position.set(p.x,0.32,p.z);boardGroup.add(building);
+
+      const ring=new THREE.Mesh(new THREE.RingGeometry(0.92,1.12,32),
+        new THREE.MeshBasicMaterial({color:theme.cellColors.start,side:THREE.DoubleSide,transparent:true,opacity:0.9}));
+      ring.rotation.x=-Math.PI/2;ring.position.set(p.x,0.32,p.z);ring.visible=false;boardGroup.add(ring);
+      cells3D.push({ring,index:i,building});
+    }
+  }
+
+  function buildDecorations(){
+    const castle=makeCastle();
+    castle.position.set(0,0.6,0);boardGroup.add(castle);
+
+    for(let i=0;i<6;i++){
+      const a=(i/6)*Math.PI*2;
+      const ghost=makeGhostFigure();
+      ghost.position.set(Math.cos(a)*2.2,1.6,Math.sin(a)*2.2);
+      ghost.userData={baseY:1.6,phase:i*1.1,radius:2.2,angle:a};
+      ghosts.push(ghost);boardGroup.add(ghost);
+    }
+
+    const flavor=theme.decorFlavor;
+    // 内圈装饰
+    for(let i=0;i<12;i++){
+      const a=(i/12)*Math.PI*2+Math.PI/12;
+      const r=5.4;
+      let obj;
+      if(flavor==='pumpkin'){
+        obj=Math.random()>0.55?makeDeadTree():makeTree(0.7+Math.random()*0.4);
+      }else if(flavor==='candy'){
+        obj=Math.random()>0.5?makeLollipop():makeCupcake();
+      }else if(flavor==='coral'){
+        obj=Math.random()>0.5?makeCoral():makeShell();
+      }else{
+        obj=Math.random()>0.5?makeBush():makeTree(0.6+Math.random()*0.3);
+      }
+      obj.position.set(Math.cos(a)*r,0.05,Math.sin(a)*r);
+      obj.rotation.y=Math.random()*Math.PI*2;boardGroup.add(obj);
+    }
+    // 外圈装饰
+    for(let i=0;i<8;i++){
+      const a=(i/8)*Math.PI*2+0.3;
+      const r=8.7;
+      let obj;
+      if(flavor==='pumpkin'){
+        obj=Math.random()<0.5?makeTree(1.0):(Math.random()<0.7?makeDeadTree():makeLantern(theme.lampColors[i%4]));
+      }else if(flavor==='candy'){
+        obj=Math.random()<0.5?makeLollipop():makeCandy();
+      }else if(flavor==='coral'){
+        obj=Math.random()<0.5?makeCoral():makeShell();
+      }else{
+        obj=Math.random()<0.5?makeTree(1.0):makeBush();
+      }
+      obj.position.set(Math.cos(a)*r,0.05,Math.sin(a)*r);
+      obj.rotation.y=Math.random()*Math.PI*2;boardGroup.add(obj);
+    }
+    // 路灯
+    for(let i=0;i<BOARD_SIZE;i+=3){
+      const a2=((i+0.5)/BOARD_SIZE)*Math.PI*2-Math.PI/2;
+      const r=8.4;
+      const l=makeLantern(theme.lampColors[i%4]);
+      l.position.set(Math.cos(a2)*r,0.05,Math.sin(a2)*r);
+      boardGroup.add(l);
+    }
+  }
+
+  function makeDiceFaceCanvas(n){
+    const c=document.createElement('canvas');c.width=c.height=256;
+    const ctx=c.getContext('2d');
+    const bg=`#${theme.cellColors.start.toString(16).padStart(6,'0')}`;
+    ctx.fillStyle='#fffaf0';ctx.fillRect(0,0,256,256);
+    ctx.strokeStyle=bg;ctx.lineWidth=12;ctx.strokeRect(6,6,244,244);
+    const dots={1:[[128,128]],2:[[70,70],[186,186]],3:[[70,70],[128,128],[186,186]],4:[[70,70],[186,70],[70,186],[186,186]],5:[[70,70],[186,70],[128,128],[70,186],[186,186]],6:[[70,70],[186,70],[70,128],[186,128],[70,186],[186,186]]}[n];
+    const dotColor=`#${theme.castleRoof.toString(16).padStart(6,'0')}`;
+    ctx.fillStyle=dotColor;
+    dots.forEach(([x,y])=>{ctx.beginPath();ctx.arc(x,y,24,0,Math.PI*2);ctx.fill();});
+    return new THREE.CanvasTexture(c);
+  }
+  function buildDice(){
+    const geo=new THREE.BoxGeometry(1.2,1.2,1.2);
+    const mats=[1,6,2,5,3,4].map(n=>new THREE.MeshStandardMaterial({map:makeDiceFaceCanvas(n),roughness:0.55,metalness:0.15}));
+    diceMesh=new THREE.Mesh(geo,mats);
+    diceMesh.position.set(3.8,2.6,3.8);diceMesh.castShadow=true;boardGroup.add(diceMesh);
+  }
+
+  function buildParticles(){
+    for(let i=0;i<60;i++){
+      const a=Math.random()*Math.PI*2;
+      const r=4+Math.random()*6;
+      const p={
+        baseX:Math.cos(a)*r,baseZ:Math.sin(a)*r,
+        baseY:1+Math.random()*5,
+        amp:0.3+Math.random()*0.6,
+        speed:0.4+Math.random()*0.8,
+        phase:Math.random()*Math.PI*2
+      };
+      const geo=new THREE.SphereGeometry(0.05+Math.random()*0.05,6,5);
+      const c=theme.particleColors[Math.floor(Math.random()*theme.particleColors.length)];
+      const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0.75}));
+      m.position.set(p.baseX,p.baseY,p.baseZ);
+      m.userData=p;
+      floatParticles.push(m);scene.add(m);
+    }
+    for(let i=0;i<5;i++){
+      const bat=makeBat();
+      const a=(i/5)*Math.PI*2;
+      const r=7+Math.random()*3;
+      bat.position.set(Math.cos(a)*r,4+Math.random()*2,Math.sin(a)*r);
+      bat.userData={radius:r,angle:a,speed:0.15+Math.random()*0.15,baseY:4+Math.random()*2,phase:Math.random()*Math.PI*2};
+      bats.push(bat);scene.add(bat);
+    }
+  }
+  function makeBat(){
+    const g=new THREE.Group();
+    const mat=new THREE.MeshStandardMaterial({color:0x1a0a2e,emissive:theme.fillLight,emissiveIntensity:0.4,roughness:0.7});
+    const body=new THREE.Mesh(new THREE.SphereGeometry(0.12,10,8),mat);
+    body.scale.set(1,0.9,1.2);g.add(body);
+    const wingMat=new THREE.MeshStandardMaterial({color:0x1a0a2e,emissive:theme.fillLight,emissiveIntensity:0.3,roughness:0.8,side:THREE.DoubleSide,transparent:true,opacity:0.95});
+    [-1,1].forEach(dir=>{
+      const wing=new THREE.Mesh(new THREE.PlaneGeometry(0.45,0.28),wingMat);
+      wing.position.set(dir*0.22,0.02,0);wing.rotation.y=dir*0.3;g.add(wing);
+      g.userData['wing'+dir]=wing;
+    });
+    const eyeMat=new THREE.MeshBasicMaterial({color:0xffd166});
+    const e1=new THREE.Mesh(new THREE.SphereGeometry(0.025,6,5),eyeMat);
+    e1.position.set(-0.05,0.03,0.12);g.add(e1);
+    const e2=e1.clone();e2.position.x=0.05;g.add(e2);
+    return g;
+  }
+
+  function buildTokens(){
+    tokens.forEach(t=>boardGroup.remove(t.group));
+    tokens=[];
+    const colors=theme.tokenColors;
+    state.teams.forEach((team,i)=>{
+      const color=colors[i%colors.length];
+      const g=new THREE.Group();
+      const halo=new THREE.Mesh(new THREE.SphereGeometry(0.5,14,10),
+        new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.25}));
+      g.add(halo);
+      const body=new THREE.Mesh(new THREE.SphereGeometry(0.28,16,12),
+        new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:0.75,roughness:0.4,metalness:0.1}));
+      body.position.y=0.15;body.castShadow=true;g.add(body);
+      const skirt=new THREE.Mesh(new THREE.ConeGeometry(0.28,0.32,8,1,true),
+        new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:0.5,roughness:0.5,transparent:true,opacity:0.9,side:THREE.DoubleSide}));
+      skirt.position.y=-0.16;skirt.rotation.x=Math.PI;g.add(skirt);
+      const eyeMat=new THREE.MeshBasicMaterial({color:0x1a0b2e});
+      const e1=new THREE.Mesh(new THREE.SphereGeometry(0.05,6,5),eyeMat);
+      e1.position.set(-0.09,0.18,0.24);g.add(e1);
+      const e2=e1.clone();e2.position.x=0.09;g.add(e2);
+      const p=getRingPosition(0);
+      g.position.set(p.x,0.85,p.z);
+      boardGroup.add(g);
+      tokens.push({group:g,baseY:0.85});
+    });
+    updateTokenOffsets();
+  }
+  function updateTokenOffsets(){
+    const byPos={};
+    state.teams.forEach((t,i)=>{
+      if(!byPos[t.pos])byPos[t.pos]=[];
+      byPos[t.pos].push(i);
+    });
+    Object.keys(byPos).forEach(k=>{
+      const arr=byPos[k];
+      if(arr.length<=1)return;
+      arr.forEach((idx,j)=>{
+        const a=(j/arr.length)*Math.PI*2;
+        const r=0.32;
+        const token=tokens[idx];
+        if(token){
+          const p=getRingPosition(state.teams[idx].pos);
+          token.group.position.x=p.x+Math.cos(a)*r;
+          token.group.position.z=p.z+Math.sin(a)*r;
+        }
+      });
+    });
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    const now=performance.now()/1000;
+    const dt=clock.getDelta();
+
+    if(pumpkinLight)pumpkinLight.intensity=1.4+Math.sin(now*2.5)*0.5;
+    scene.traverse(o=>{
+      if(o.isPointLight&&o.userData.baseY!==undefined){
+        o.intensity=0.5+Math.sin(now*1.5+o.userData.phase)*0.35;
+      }
+    });
+    ghosts.forEach(g=>{
+      g.position.y=g.userData.baseY+Math.sin(now*1.8+g.userData.phase)*0.25;
+      g.userData.angle+=dt*0.15;
+      g.position.x=Math.cos(g.userData.angle)*g.userData.radius;
+      g.position.z=Math.sin(g.userData.angle)*g.userData.radius;
+    });
+    floatParticles.forEach(p=>{
+      const ud=p.userData;
+      p.position.y=ud.baseY+Math.sin(now*ud.speed+ud.phase)*ud.amp;
+      p.position.x=ud.baseX+Math.sin(now*ud.speed*0.7+ud.phase)*0.3;
+      p.position.z=ud.baseZ+Math.cos(now*ud.speed*0.8+ud.phase)*0.3;
+    });
+    bats.forEach(b=>{
+      const ud=b.userData;
+      ud.angle+=dt*ud.speed;
+      b.position.x=Math.cos(ud.angle)*ud.radius;
+      b.position.z=Math.sin(ud.angle)*ud.radius;
+      b.position.y=ud.baseY+Math.sin(now*2+ud.phase)*0.4;
+      b.rotation.y=-ud.angle+Math.PI/2;
+      const w1=b.userData['wing-1'],w2=b.userData['wing1'];
+      if(w1&&w2){const flap=Math.sin(now*8)*0.5;w1.rotation.z=flap;w2.rotation.z=-flap;}
+    });
+    if(diceRolling&&diceMesh){
+      diceMesh.rotation.x+=dt*8;diceMesh.rotation.y+=dt*6;diceMesh.rotation.z+=dt*5;
+    }
+    tokens.forEach((t,i)=>{
+      const isCurrent=(i===state.currentIdx&&state.playing);
+      if(isCurrent&&!state.rolling){
+        t.group.position.y=t.baseY+Math.sin(now*3)*0.15+0.05;
+        t.group.scale.setScalar(1+Math.sin(now*2.5)*0.05);
+      }else{
+        t.group.position.y=t.baseY+Math.sin(now*1.8+i)*0.04;
+        t.group.scale.setScalar(1);
+      }
+      t.group.children[1].rotation.y=now*0.8+i;
+    });
+    cells3D.forEach(c=>{
+      if(c.ring.visible){
+        const s=1+Math.sin(now*4)*0.08;
+        c.ring.scale.set(s,s,s);
+        c.ring.material.opacity=0.7+Math.sin(now*4)*0.25;
+      }
+    });
+    renderer.render(scene,camera);
+  }
+
+  function moveToken3D(idx,fromPos,toPos,onDone){
+    const token=tokens[idx];
+    if(!token){onDone&&onDone();return;}
+    const from=getRingPosition(fromPos);
+    const to=getRingPosition(toPos);
+    const dur=340;const start=performance.now();
+    const baseY=0.85;
+    function step(){
+      const t=Math.min((performance.now()-start)/dur,1);
+      const e=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+      token.group.position.x=from.x+(to.x-from.x)*e;
+      token.group.position.z=from.z+(to.z-from.z)*e;
+      token.group.position.y=baseY+Math.sin(t*Math.PI)*0.8;
+      if(t<1)requestAnimationFrame(step);
+      else{token.group.position.y=baseY;onDone&&onDone();}
+    }
+    requestAnimationFrame(step);
+  }
+  function highlightCell(pos){
+    cells3D.forEach(c=>c.ring.visible=false);
+    if(cells3D[pos])cells3D[pos].ring.visible=true;
+  }
+  function rollDiceAnimation(value){
+    return new Promise(resolve=>{
+      diceRolling=true;sfxRoll();
+      const startPos=diceMesh.position.clone();
+      const targetPos=new THREE.Vector3(0,5,0);
+      const dur=750;const t0=performance.now();
+      function moveUp(){
+        const t=Math.min((performance.now()-t0)/dur,1);
+        const e=1-Math.pow(1-t,3);
+        diceMesh.position.lerpVectors(startPos,targetPos,e);
+        if(t<1)requestAnimationFrame(moveUp);
+        else{
+          diceRolling=false;
+          const faceRot={1:[0,0,0],2:[0,-Math.PI/2,0],3:[0,Math.PI,0],4:[0,Math.PI/2,0],5:[-Math.PI/2,0,0],6:[Math.PI/2,0,0]}[value];
+          diceMesh.rotation.set(faceRot[0],faceRot[1],faceRot[2]);
+          sfxReveal();
+          setTimeout(()=>{
+            const startPos2=diceMesh.position.clone();
+            const backPos=new THREE.Vector3(3.8,2.6,3.8);
+            const t1=performance.now();const dur2=520;
+            function moveBack(){
+              const tt=Math.min((performance.now()-t1)/dur2,1);
+              const ee=1-Math.pow(1-tt,3);
+              diceMesh.position.lerpVectors(startPos2,backPos,ee);
+              if(tt<1)requestAnimationFrame(moveBack);
+              else{diceMesh.rotation.set(0,0,0);resolve();}
+            }
+            requestAnimationFrame(moveBack);
+          },520);
+        }
+      }
+      requestAnimationFrame(moveUp);
+    });
+  }
+
+  /* ---------- DOM ---------- */
+  const lobbyScreen=document.getElementById('lobbyScreen');
+  const gameScreen=document.getElementById('gameScreen');
+  const mapsRow=document.getElementById('mapsRow');
+  const mapCurrent=document.getElementById('mapCurrent');
+  const lobbyQr=document.getElementById('lobbyQr');
+  const lobbyRoomCode=document.getElementById('lobbyRoomCode');
+  const playersList=document.getElementById('playersList');
+  const playerCount=document.getElementById('playerCount');
+  const questionsInput=document.getElementById('questionsInput');
+  const qCount=document.getElementById('qCount');
+  const startGameBtn=document.getElementById('startGameBtn');
+  const teamsPanel=document.getElementById('teamsPanel');
+  const turnBanner=document.getElementById('turnBanner');
+  const rollBtn=document.getElementById('rollBtn');
+  const logBox=document.getElementById('logBox');
+  const chipMap=document.getElementById('chipMap');
+  const chipRound=document.getElementById('chipRound');
+  const chipRoom=document.getElementById('chipRoom');
+  const onlineList=document.getElementById('onlineList');
+  const onlineCount=document.getElementById('onlineCount');
+  const questionModal=document.getElementById('questionModal');
+  const qTag=document.getElementById('qTag');
+  const qTimer=document.getElementById('qTimer');
+  const qProgressFill=document.getElementById('qProgressFill');
+  const qText=document.getElementById('qText');
+  const judgeRightBtn=document.getElementById('judgeRightBtn');
+  const judgeWrongBtn=document.getElementById('judgeWrongBtn');
+  const qrModal=document.getElementById('qrModal');
+  const qrImg=document.getElementById('qrImg');
+  const qrRoomCode=document.getElementById('qrRoomCode');
+  const copyUrl=document.getElementById('copyUrl');
+  const resultModal=document.getElementById('resultModal');
+  const rankList=document.getElementById('rankList');
+  const winnerModal=document.getElementById('winnerModal');
+  const winnerAvatar=document.getElementById('winnerAvatar');
+  const winnerName=document.getElementById('winnerName');
+  const winnerScore=document.getElementById('winnerScore');
+  const winnerSub=document.getElementById('winnerSub');
+
+  /* ---------- 大厅地图渲染 ---------- */
+  function renderMaps(){
+    mapsRow.innerHTML='';
+    MAP_ORDER.forEach(id=>{
+      const t=THEMES[id];
+      const card=document.createElement('div');
+      card.className='map-card'+(state.currentTheme.id===id?' selected':'');
+      card.dataset.map=id;
+      card.innerHTML=`
+        <div class="preview" style="background:${t.previewGradient}">
+          ${t.previewEmojis.map(e=>`<span class="preview-emoji">${e}</span>`).join('')}
+        </div>
+        <div class="shade"></div>
+        <div class="info">
+          <div class="name">${t.name}</div>
+          <div class="desc">${t.desc}</div>
+        </div>
+        <div class="check">✓</div>
+      `;
+      card.onclick=()=>{
+        sfxClick();
+        state.currentTheme=t;
+        theme=t;
+        mapCurrent.textContent=t.name;
+        renderMaps();
+        if(renderer){ // 重绘3D
+          renderer.domElement.remove();
+          renderer=null;
+        }
+      };
+      mapsRow.appendChild(card);
+    });
+  }
+
+  /* ---------- 房间 ---------- */
+  function generateRoomId(){return String(Math.floor(1000+Math.random()*9000));}
+  function paintLobbyQr(){
+    try{
+      lobbyQr.innerHTML='';
+      const url=location.origin+location.pathname+'?room='+state.roomId;
+      new QRCode(lobbyQr,{text:url,width:160,height:160,colorDark:'#3a1560',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+    }catch(e){ lobbyQr.innerHTML='<div style="font-size:12px;color:#bbb">二维码生成失败</div>'; }
+  }
+  function initRoom(){
+    if(state.peer)return;
+    state.roomId=generateRoomId();
+    chipRoom.textContent='房间：'+state.roomId;
+    lobbyRoomCode.textContent=state.roomId;
+    paintLobbyQr();                      /* 先出码，不等联机 */
+    const peer=new Peer(PEER_PREFIX+state.roomId,{debug:0});
+    state.peer=peer;
+    setTimeout(()=>{ const st=document.getElementById('peerState');
+      if(st && !peer.open) st.textContent='⚠️ 联机服务没连上：学生可能加不进来。老师端照样能掷骰子、出题、计分。'; },8000);
+    peer.on('open',()=>{
+      logMessage('📡 房间已开启：<b>'+state.roomId+'</b>');
+      paintLobbyQr();
+      const st=document.getElementById('peerState'); if(st) st.textContent='✅ 联机已开启，学生可以扫码加入了。';
+    });
+    peer.on('connection',(conn)=>{
+      conn.on('data',(data)=>{
+        if(!data||data.type!=='join')return;
+        const name=String(data.name||'').slice(0,16);
+        const avatar=String(data.avatar||'🎃');
+        const exists=state.connections.find(c=>c.conn===conn);
+        if(exists)return;
+        let team=state.teams.find(t=>t.name===name&&!t.taken);
+        if(!team){
+          team=state.teams.find(t=>!t.taken);
+          if(!team){conn.send({type:'kicked',reason:'房间已满'});conn.close();return;}
+          team.taken=true;team.name=name;team.avatar=avatar;team.members=name;
+        }else{team.taken=true;team.avatar=avatar;}
+        state.connections.push({conn,name,avatar,team});
+        conn.on('close',()=>{
+          state.connections=state.connections.filter(c=>c.conn!==conn);
+          renderOnlineList();renderPlayersList();renderTeamsGrid();
+          if(team.taken)team.taken=false;
+          logMessage('👋 '+escapeHtml(name)+' 已离开');
+        });
+        conn.on('error',()=>{});
+        renderOnlineList();renderPlayersList();renderTeamsGrid();
+        logMessage('👋 <b>'+escapeHtml(name)+'</b> 加入了房间');
+        updateStartBtn();
+        broadcastState();
+      });
+      conn.on('error',()=>{});
+    });
+    peer.on('error',(err)=>{
+      if(err.type==='unavailable-id'){
+        state.peer=null;
+        state.roomId=generateRoomId();
+        chipRoom.textContent='房间：'+state.roomId;
+        lobbyRoomCode.textContent=state.roomId;
+        initRoom();
+      }
+    });
+  }
+
+  function renderOnlineList(){
+    if(state.connections.length===0){
+      onlineList.innerHTML='<div class="online-empty">等待学生扫码…</div>';
+    }else{
+      onlineList.innerHTML='';
+      state.connections.forEach(c=>{
+        const item=document.createElement('div');
+        item.className='online-item';
+        item.innerHTML='<span class="dot"></span><span>'+c.avatar+' '+escapeHtml(c.name)+'</span>';
+        onlineList.appendChild(item);
+      });
+    }
+    onlineCount.textContent='('+state.connections.length+')';
+  }
+
+  function renderPlayersList(){
+    if(state.connections.length===0){
+      playersList.innerHTML='<div class="empty-players"><span class="big">🎃</span>等待学生扫码加入…</div>';
+    }else{
+      playersList.innerHTML='';
+      state.connections.forEach(c=>{
+        const card=document.createElement('div');
+        card.className='player-card';
+        card.innerHTML=`
+          <div class="p-av">${c.avatar}</div>
+          <div class="p-info">
+            <div class="p-nm">${escapeHtml(c.name)}</div>
+            <div class="p-status">已连接</div>
+          </div>
+        `;
+        playersList.appendChild(card);
+      });
+    }
+    playerCount.textContent='('+state.connections.length+')';
+  }
+
+  function broadcastState(){
+    const s=buildStatePayload();
+    state.connections.forEach(c=>{
+      try{c.conn.send({type:'state',state:s});}catch(e){}
+    });
+  }
+  function buildStatePayload(){
+    const team=state.teams[state.currentIdx];
+    return {
+      phase:state.phase,
+      currentTeamName:team?team.name:'',
+      question:state.waitingQuestion?state.currentQuestion:null,
+      teams:state.teams.map(t=>({name:t.name,avatar:t.avatar,score:t.score,pos:t.pos}))
+    };
+  }
+  function broadcastResult(correct,team){
+    state.connections.forEach(c=>{
+      try{c.conn.send({type:'result',correct,targetAvatar:team?team.avatar:''});}catch(e){}
+    });
+  }
+  function broadcastWinner(winner){
+    state.connections.forEach(c=>{
+      try{
+        const me=state.teams.find(t=>t.avatar===c.avatar&&t.name===c.name);
+        c.conn.send({type:'winner',winner:{name:winner.name,avatar:winner.avatar,score:winner.score},myScore:me?me.score:0});
+      }catch(e){}
+    });
+  }
+  function showQrModal(){
+    const url=location.origin+location.pathname+'?room='+state.roomId;
+    qrRoomCode.textContent=state.roomId;
+    copyUrl.textContent=url;
+    qrImg.innerHTML='';
+    try{
+      new QRCode(qrImg,{text:url,width:220,height:220,colorDark:'#3a1560',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+    }catch(e){
+      qrImg.innerHTML='<div style="width:220px;height:220px;display:flex;align-items:center;justify-content:center;color:#666;font-size:12px">二维码生成失败</div>';
+    }
+    qrModal.classList.remove('hidden');
+  }
+  document.getElementById('qrBtn').addEventListener('click',()=>{sfxClick();showQrModal();});
+  document.getElementById('closeQrBtn').addEventListener('click',()=>{qrModal.classList.add('hidden');});
+
+  /* ---------- 队伍设置（自动根据玩家数量） ---------- */
+  function createDefaultTeams(){
+    return ['第1组','第2组','第3组','第4组','第5组','第6组'].map((name,i)=>({
+      name,members:'',avatar:TEAM_EMOJIS[i],score:0,pos:0,laps:0,taken:false
+    }));
+  }
+  function renderTeamsGrid(){
+    // 不需要 UI，直接看玩家是否已加入
+    renderPlayersList();
+  }
+
+  function updateStartBtn(){
+    const qs=questionsInput.value.split('\n').map(s=>s.trim()).filter(Boolean);
+    /* 课堂投屏模式：只要有题目就能开，不强制先有 2 名学生连上 */
+    startGameBtn.disabled = qs.length === 0;
+  }
+
+  function updateQCount(){
+    const arr=questionsInput.value.split('\n').map(s=>s.trim()).filter(Boolean);
+    qCount.textContent=`${arr.length} 道题目`;
+    updateStartBtn();
+  }
+  questionsInput.addEventListener('input',updateQCount);
+
+  /* ---------- 题库按钮 ---------- */
+  document.getElementById('importBtn').addEventListener('click',()=>{
+    sfxClick();
+    const input=document.createElement('input');
+    input.type='file';
+    input.accept='.txt,.csv';
+    input.onchange=(e)=>{
+      const f=e.target.files[0];
+      if(!f)return;
+      const reader=new FileReader();
+      reader.onload=(ev)=>{
+        questionsInput.value=ev.target.result;
+        updateQCount();
+      };
+      reader.readAsText(f);
+    };
+    input.click();
+  });
+
+  document.getElementById('templateBtn').addEventListener('click',()=>{
+    sfxClick();
+    const blob=new Blob(['万圣节是几月几日？\n"不给糖就捣蛋"用英文怎么说？\n南瓜灯的英文是什么？'],{type:'text/plain'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='题库模板.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  /* ---------- 开始游戏 ---------- */
+  startGameBtn.addEventListener('click',()=>{
+    if(state.teams.length<2 && state.connections.length<2){
+      /* 没有学生连进来时：自动建两组，老师端直接开局（投屏模式） */
+      state.teams = createDefaultTeams().slice(0,2);
+      try{ renderTeamsGrid(); }catch(e){}
+      try{ if(typeof updateTeamsUI==='function') updateTeamsUI(); }catch(e){}
+    }
+    const qs=questionsInput.value.split('\n').map(s=>s.trim()).filter(Boolean);
+    if(qs.length===0){alert('请至少输入一道题目');return;}
+    state.questions=qs;
+    startGame();
+  });
+
+  function startGame(){
+    state.teams.forEach(t=>{t.score=0;t.pos=0;t.laps=0;});
+    state.currentIdx=0;
+    state.round=1;
+    state.playing=true;
+    state.rolling=false;
+    state.waitingQuestion=false;
+    state.phase='idle';
+    state.currentQuestion=null;
+    state.gameEnded=false;
+    theme=state.currentTheme;
+
+    winnerModal.classList.add('hidden');
+    resultModal.classList.add('hidden');
+
+    lobbyScreen.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
+
+    // 更新顶栏主题
+    chipMap.textContent=theme.emoji+' '+theme.short;
+
+    initThree();
+    buildTokens();
+    renderTeamsPanel();
+    updateTurnBanner();
+    updateChips();
+    highlightCell(0);
+    renderOnlineList();
+    logMessage('🎮 开始！地图：<b>'+theme.name+'</b>');
+
+    if(!state.peer)initRoom();
+
+    setTimeout(resize3D,50);
+    resumeAudio();
+    startMusic();
+    sfxReveal();
+    broadcastState();
+  }
+
+  function updateChips(){
+    chipRound.textContent='第 '+state.round+' 回合';
+  }
+  function updateTurnBanner(){
+    const team=state.teams[state.currentIdx];
+    if(!team)return;
+    turnBanner.querySelector('.av').textContent=team.avatar;
+    turnBanner.querySelector('.txt').textContent='轮到 '+team.name;
+  }
+  function renderTeamsPanel(){
+    const sorted=state.teams.map((t,i)=>({...t,idx:i})).sort((a,b)=>b.score-a.score);
+    teamsPanel.innerHTML='';
+    sorted.forEach(t=>{
+      const card=document.createElement('div');
+      card.className='team-card'+(t.idx===state.currentIdx?' active':'');
+      const near=t.score>=WIN_SCORE-30&&t.score<WIN_SCORE;
+      card.innerHTML=`
+        <span class="av">${t.avatar}</span>
+        <div class="info">
+          <div class="nm">${escapeHtml(t.name)}</div>
+          <div class="members">${t.members?escapeHtml(t.members):(t.taken?'已连接':'未加入')}</div>
+        </div>
+        <div class="sc ${t.score<0?'neg':''} ${near?'near':''}">${t.score}</div>
+      `;
+      teamsPanel.appendChild(card);
+    });
+  }
+  function logMessage(msg){
+    const line=document.createElement('div');
+    line.className='line';
+    line.innerHTML=msg;
+    logBox.appendChild(line);
+    logBox.scrollTop=logBox.scrollHeight;
+    while(logBox.children.length>30)logBox.removeChild(logBox.firstChild);
+  }
+  function checkWinner(){
+    if(state.gameEnded)return null;
+    return state.teams.find(t=>t.score>=WIN_SCORE)||null;
+  }
+
+  /* ---------- 掷骰子 ---------- */
+  rollBtn.addEventListener('click',async()=>{
+    if(!state.playing||state.rolling||state.waitingQuestion||state.gameEnded)return;
+    await doRoll();
+  });
+
+  async function doRoll(){
+    state.rolling=true;
+    state.phase='rolling';
+    rollBtn.disabled=true;
+    const team=state.teams[state.currentIdx];
+    const value=1+Math.floor(Math.random()*6);
+    logMessage('🎲 <b>'+escapeHtml(team.name)+'</b> 掷出 <b>'+value+'</b> 点');
+    broadcastState();
+
+    await rollDiceAnimation(value);
+    await sleep(280);
+
+    state.phase='moving';
+    broadcastState();
+
+    let fromPos=team.pos;
+    for(let s=0;s<value;s++){
+      fromPos=team.pos;
+      team.pos=(team.pos+1)%BOARD_SIZE;
+      if(team.pos===0&&s>0)team.laps++;
+      await new Promise(res=>moveToken3D(state.currentIdx,fromPos,team.pos,res));
+      sfxStep();
+      await sleep(90);
+    }
+    setTimeout(updateTokenOffsets,300);
+    highlightCell(team.pos);
+    await sleep(320);
+    await triggerCell(team);
+  }
+
+  async function triggerCell(team){
+    const type=getCellType(team.pos);
+    if(type==='start'){
+      logMessage('🏠 '+escapeHtml(team.name)+' 回到起点');
+      await sleep(500);
+      await nextTurn();
+    }else if(type==='bonus'){
+      team.score+=20;sfxBonus();showFloatScore(team,20);
+      logMessage('⭐ '+escapeHtml(team.name)+' 幸运格 <b>+20 分</b>');
+      renderTeamsPanel();broadcastState();
+      const w=checkWinner();
+      if(w){await sleep(500);triggerWinner(w);return;}
+      await sleep(700);await nextTurn();
+    }else if(type==='trap'){
+      team.score-=10;sfxTrap();showFloatScore(team,-10);
+      logMessage('💀 '+escapeHtml(team.name)+' 陷阱格 <b>-10 分</b>');
+      renderTeamsPanel();broadcastState();
+      await sleep(700);await nextTurn();
+    }else{
+      state.waitingQuestion=true;
+      state.phase='waiting';
+      renderTeamsPanel();
+      await askQuestion(team);
+    }
+  }
+
+  function showFloatScore(team,delta){
+    const card=[...teamsPanel.children].find(c=>c.querySelector('.nm')&&c.querySelector('.nm').textContent===team.name);
+    let x=window.innerWidth/2,y=window.innerHeight/2;
+    if(card){const r=card.getBoundingClientRect();x=r.left+r.width/2;y=r.top+r.height/2;}
+    const el=document.createElement('div');
+    el.className='float-score';
+    el.textContent=(delta>0?'+':'')+delta;
+    el.style.color=delta>0?'#7fffb0':'#ff9c9c';
+    el.style.left=x+'px';el.style.top=y+'px';
+    document.body.appendChild(el);setTimeout(()=>el.remove(),1200);
+  }
+
+  let qTimerInterval=null;
+  function askQuestion(team){
+    return new Promise(resolve=>{
+      const q=state.questions[Math.floor(Math.random()*state.questions.length)];
+      state.currentQuestion=q;
+      qTag.textContent='⚡ '+team.avatar+' '+team.name+' 请回答';
+      qText.textContent=q;
+      broadcastState();
+
+      let timeLeft=TURN_TIME;
+      qTimer.textContent=timeLeft;
+      qTimer.classList.remove('warn');
+      qProgressFill.style.width='100%';
+      clearInterval(qTimerInterval);
+      qTimerInterval=setInterval(()=>{
+        timeLeft--;
+        qTimer.textContent=Math.max(0,timeLeft);
+        qProgressFill.style.width=(Math.max(0,timeLeft)/TURN_TIME*100)+'%';
+        if(timeLeft<=5)qTimer.classList.add('warn');
+        if(timeLeft<=0)clearInterval(qTimerInterval);
+      },1000);
+
+      let answered=false;
+      function judge(correct){
+        if(answered)return;answered=true;
+        clearInterval(qTimerInterval);
+        judgeRightBtn.disabled=true;judgeWrongBtn.disabled=true;
+        if(correct){
+          sfxRight();team.score+=10;showFloatScore(team,10);
+          logMessage('✅ '+escapeHtml(team.name)+' 答对 <b>+10 分</b>');
+        }else{
+          sfxWrong();team.score-=5;showFloatScore(team,-5);
+          logMessage('❌ '+escapeHtml(team.name)+' 答错 <b>-5 分</b>');
+        }
+        renderTeamsPanel();broadcastResult(correct,team);
+        const winner=checkWinner();
+        setTimeout(()=>{
+          questionModal.classList.add('hidden');
+          judgeRightBtn.disabled=false;judgeWrongBtn.disabled=false;
+          state.waitingQuestion=false;state.currentQuestion=null;
+          if(winner)triggerWinner(winner);
+          else nextTurn();
+          resolve();
+        },900);
+      }
+      judgeRightBtn.onclick=()=>judge(true);
+      judgeWrongBtn.onclick=()=>judge(false);
+      questionModal.classList.remove('hidden');
+      sfxReveal();
+    });
+  }
+
+  async function nextTurn(){
+    if(state.gameEnded)return;
+    state.currentIdx++;
+    if(state.currentIdx>=state.teams.length){
+      state.currentIdx=0;state.round++;updateChips();
+    }
+    state.phase='idle';
+    updateTurnBanner();renderTeamsPanel();
+    highlightCell(state.teams[state.currentIdx].pos);
+    updateTokenOffsets();
+    state.rolling=false;rollBtn.disabled=false;
+    broadcastState();
+  }
+
+  async function triggerWinner(winner){
+    if(state.gameEnded)return;
+    state.gameEnded=true;state.playing=false;state.rolling=false;state.phase='over';
+    rollBtn.disabled=true;
+    stopMusic();sfxWin();setTimeout(sfxCheer,900);
+    questionModal.classList.add('hidden');
+    logMessage('🏆 <b>'+escapeHtml(winner.name)+'</b> 率先达到 '+WIN_SCORE+' 分！');
+    broadcastWinner(winner);
+    winnerAvatar.textContent=winner.avatar;
+    winnerName.textContent=winner.name;
+    winnerScore.textContent=winner.score+' 分';
+    const others=[...state.teams].filter(t=>t!==winner).sort((a,b)=>b.score-a.score);
+    winnerSub.textContent=others.length>0?'第二名：'+others[0].name+'（'+others[0].score+'分）':'率先达到 '+WIN_SCORE+' 分，赢得比赛！';
+    startCelebration();
+    setTimeout(()=>{winnerModal.classList.remove('hidden');},400);
+  }
+
+  /* ---------- 结算/重开 ---------- */
+  document.getElementById('winnerAgainBtn').addEventListener('click',()=>{winnerModal.classList.add('hidden');startGame();});
+  document.getElementById('winnerBackBtn').addEventListener('click',()=>{winnerModal.classList.add('hidden');backToLobby();});
+  document.getElementById('rankAgainBtn').addEventListener('click',()=>{resultModal.classList.add('hidden');startGame();});
+  document.getElementById('rankBackBtn').addEventListener('click',()=>{resultModal.classList.add('hidden');backToLobby();});
+  document.getElementById('musicBtn').addEventListener('click',(e)=>{
+    state.musicOn=!state.musicOn;
+    if(state.musicOn){resumeAudio();startMusic();e.target.textContent='🔊 音乐';}
+    else{stopMusic();e.target.textContent='🔇 音乐';}
+  });
+  document.getElementById('restartBtn').addEventListener('click',()=>{
+    if(!confirm('确定要重新开始吗？'))return;
+    startGame();
+  });
+  document.getElementById('backBtn').addEventListener('click',()=>{
+    if(!confirm('确定要返回大厅吗？当前进度会丢失。'))return;
+    backToLobby();
+  });
+
+  function backToLobby(){
+    state.playing=false;state.gameEnded=false;
+    stopMusic();
+    winnerModal.classList.add('hidden');
+    resultModal.classList.add('hidden');
+    gameScreen.classList.add('hidden');
+    lobbyScreen.classList.remove('hidden');
+    if(renderer&&renderer.domElement)renderer.domElement.style.display='none';
+  }
+
+  function resize3D(){
+    if(!renderer)return;
+    const wrap=document.getElementById('canvasWrap');
+    const W=wrap.clientWidth,H=wrap.clientHeight;
+    if(W===0||H===0)return;
+    camera.aspect=W/H;camera.updateProjectionMatrix();
+    renderer.setSize(W,H);
+  }
+  window.addEventListener('resize',()=>setTimeout(resize3D,80));
+
+  /* ---------- 初始化 ---------- */
+  function init(){
+    state.teams=createDefaultTeams();
+    questionsInput.value=DEFAULT_QUESTIONS;
+    renderMaps();
+    updateQCount();
+    renderOnlineList();
+    renderPlayersList();
+    mapCurrent.textContent=state.currentTheme.name;
+
+    setTimeout(()=>{
+      document.getElementById('loading').classList.add('hidden');
+      lobbyScreen.classList.remove('hidden');
+      initRoom();
+    },400);
+
+    document.addEventListener('pointerdown',function kick(){
+      resumeAudio();document.removeEventListener('pointerdown',kick);
+    },{once:true});
+  }
+
+  if(typeof THREE==='undefined'){
+    document.getElementById('loading').innerHTML='⚠️ 3D 引擎加载失败，请检查网络后刷新';
+  }else{
+    init();
+  }
+}
+</script>
+
+<script>
+/* ===== 知微加：离线学生名单（老师手动输入，不用扫码） ===== */
+(function(){
+  const AV=['🎃','👻','🦇','🕷️','🧛','🧟','🧙','🧚','🐈','🦉','🐺','💀','🍬','🌙','⭐','🕸️'];
+  const KEY='zw_monopoly_students';
+  let list=[];
+  try{ list = JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ list=[]; }
+  const $=s=>document.querySelector(s);
+  const nameEl=()=>document.getElementById('stuName');
+  const listEl=()=>document.getElementById('playersList');
+  const avEl=()=>document.getElementById('stuAvatars');
+  let pendingAvatar=AV[0];
+
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(list)); }catch(e){} }
+  function syncGame(){
+    if(typeof state!=='undefined' && state && Array.isArray(state.connections)) { /* 不用联机 */ }
+    if(typeof state!=='undefined' && state){
+      state.teams = list.map((s,i)=>({ name:s.name, members:'', avatar:s.av, score:0, pos:0, laps:0, taken:false }));
+    }
+    try{ if(typeof renderPlayersList==='function') renderPlayersList(); }catch(e){}
+    try{ if(typeof updateQCount==='function') updateQCount(); }catch(e){}
+    try{ if(typeof updateStartBtn==='function') updateStartBtn(); }catch(e){}
+  }
+  function render(){
+    const n=list.length;
+    const c=$('#playerCount'); if(c) c.textContent='('+n+')';
+    const box=listEl(); if(!box) return;
+    if(n===0){ box.innerHTML='<div class="empty-players"><span class="big">🎃</span>还没有学生，先在上面输入名字</div>'; }
+    else{
+      box.innerHTML = list.map((s,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 9px;margin-bottom:6px;border-radius:10px;background:rgba(255,255,255,.07)">
+          <span style="font-size:22px">${s.av}</span>
+          <span style="flex:1">${s.name}</span>
+          <button data-i="${i}" class="del" style="background:none;border:0;color:#ff9a9a;font-size:17px">✕</button>
+        </div>`).join('');
+      box.querySelectorAll('button.del').forEach(b=>b.onclick=()=>{ list.splice(+b.dataset.i,1); save(); render(); syncGame(); });
+    }
+    const av=avEl();
+    if(av && !av.dataset.done){
+      av.dataset.done='1';
+      av.innerHTML = AV.map((a,i)=>`<span data-a="${a}" style="cursor:pointer;font-size:24px;padding:3px 6px;border-radius:9px;background:${i===0?'rgba(255,255,255,.22)':'transparent'}">${a}</span>`).join('');
+      av.querySelectorAll('span').forEach(s=>s.onclick=()=>{
+        pendingAvatar=s.dataset.a;
+        av.querySelectorAll('span').forEach(x=>x.style.background='transparent');
+        s.style.background='rgba(255,255,255,.22)';
+      });
+    }
+  }
+  function add(name){
+    name=(name||'').trim(); if(!name) return;
+    list.push({name:name.slice(0,12), av:pendingAvatar});
+    save(); render(); syncGame();
+  }
+  const b=$('#stuAdd'); if(b) b.onclick=()=>{ add(nameEl().value); nameEl().value=''; nameEl().focus(); };
+  const n=nameEl(); if(n) n.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); add(n.value); n.value=''; }});
+  const d=$('#stuDemo'); if(d) d.onclick=()=>{ ['小明','小红','小刚','小美'].forEach((x,i)=>list.push({name:x,av:AV[i]})); save(); render(); syncGame(); };
+  const c=$('#stuClear'); if(c) c.onclick=()=>{ if(confirm('清空学生名单？')){ list=[]; save(); render(); syncGame(); } };
+  document.addEventListener('click',e=>{
+    if(e.target && /开始游戏|重开|再来一局/.test(e.target.innerText||'')) setTimeout(syncGame,80);
+  });
+  render(); setTimeout(syncGame,600);
+})();
+</script>
+
+</body>
+</html>

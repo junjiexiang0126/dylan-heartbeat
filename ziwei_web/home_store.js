@@ -33,9 +33,9 @@ function createHomeStore(dir) {
   let state = load(file, { revision: 0, user: { nickname: '你', avatar: null }, ziwei: { nickname: '知微', avatar: null }, preferences: { theme: 'system', background: 'rose' }, profileHistory: [] });
   if (!Number.isInteger(state.revision) || !state.user || !state.ziwei || !state.preferences || !Array.isArray(state.profileHistory)) throw Error('invalid_home_store');
   return {
-    read() { return { ...state, memorial: MEMORIAL, namedOn: '2026-10-07', metOn: null, daysTogether: null, todayStatus: null }; },
+    read() { const metOn=state.relationship?.metOn||null,today=new Date(Date.now()+7*3600000).toISOString().slice(0,10);return { ...state, memorial: MEMORIAL, namedOn: '2026-10-07', metOn, daysTogether:metOn?Math.floor((Date.parse(today)-Date.parse(metOn))/86400000)+1:null,todayStatus:null }; },
     update(body) {
-      if (!body || Array.isArray(body) || Object.keys(body).some(k => !['revision','user','ziwei','preferences'].includes(k))) throw Error('invalid_input');
+      if (!body || Array.isArray(body) || Object.keys(body).some(k => !['revision','user','ziwei','preferences','relationship'].includes(k))) throw Error('invalid_input');
       if (body.revision !== state.revision) return null;
       const next = structuredClone(state);
       for (const who of ['user','ziwei']) if (body[who] !== undefined) {
@@ -53,6 +53,11 @@ function createHomeStore(dir) {
         if (!p || Array.isArray(p) || Object.keys(p).some(k => !['theme','background'].includes(k))) throw Error('invalid_preferences');
         if (p.theme !== undefined) { if (!['system','light','dark'].includes(p.theme)) throw Error('invalid_theme'); next.preferences.theme = p.theme; }
         if (p.background !== undefined) { if (!['rose','sage','sky'].includes(p.background)) throw Error('invalid_background'); next.preferences.background = p.background; }
+      }
+      if(body.relationship!==undefined){
+        const r=body.relationship,v=r?.metOn,today=new Date(Date.now()+7*3600000).toISOString().slice(0,10);
+        if(!r||Array.isArray(r)||Object.keys(r).some(k=>k!=='metOn')||v!==null&&(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(Date.parse(v))||new Date(v).toISOString().slice(0,10)!==v||v>today))throw Error('invalid_met_date');
+        next.relationship={metOn:v};
       }
       // Preserve history rather than silently dropping old profile changes.
       if (next.profileHistory.length > 500) throw Error('profile_history_full');

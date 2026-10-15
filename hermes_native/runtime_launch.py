@@ -27,6 +27,8 @@ def activate(tree):
     # also checked by candidate preflight, after imports switch to that tree.
     from browser_persistence import install
     install()
+    from web_bridge import install as install_web_bridge
+    install_web_bridge()
     return main
 
 

@@ -50,6 +50,7 @@ class ChatStore {
   this.db.prepare('INSERT INTO messages(id,request_id,role,kind,content,created_at,status) VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,status=excluded.status').run(key,id,'assistant',kind,text,new Date().toISOString(),status);
   this.event(id,'message.saved',{id:key});
  }
+ addMedia(id,ids){const m=this.message(id);if(!m)return;const attachments=[...new Set([...m.attachments,...ids])];this.db.prepare('UPDATE messages SET attachments=? WHERE id=?').run(JSON.stringify(attachments),id);this.event(null,'timeline.changed',{id});}
  message(id){const m=this.db.prepare('SELECT * FROM messages WHERE id=? AND deleted=0').get(id);return m?this.decode(m):null;}
  decode(m){return {...m,attachments:JSON.parse(m.attachments),quote:m.quote?JSON.parse(m.quote):null,favorite:!!m.favorite,deleted:!!m.deleted};}
  list({before=Number.MAX_SAFE_INTEGER,limit=50,q='',favorite=false,source='live',trash=false}={}){

@@ -12,7 +12,7 @@ test('private profiles, immutable memorial, conflicts, restart, revocation, and 
   assert.equal((await request('/.data/home.json')).status,404);
   const a=await login(),b=await login();
   const read=()=>request('/api/home',{headers:a}).then(r=>r.json());
-  const initial=await read();assert.equal(initial.metOn,null);assert.equal(initial.daysTogether,null);assert.equal(initial.todayStatus,null);assert.equal(initial.namedOn,'2026-10-07');
+  const initial=await read();assert.equal(initial.metOn,null);assert.equal(initial.daysTogether,null);assert.equal(initial.todayStatus.state,null);assert.equal(initial.namedOn,'2026-10-07');
   const put=(body,headers=a)=>request('/api/home',{method:'PUT',headers,body:JSON.stringify(body)});
   assert.equal((await put({revision:0,user:{nickname:'new'}},{Cookie:a.Cookie,Origin:origin})).status,403);
   assert.equal((await put({revision:0,user:{nickname:'new'}},{...a,Origin:'https://evil.example'})).status,403);
