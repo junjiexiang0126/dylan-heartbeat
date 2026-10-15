@@ -28,6 +28,7 @@ async function api(url, method = 'GET', body) {
 }
 function tab(name) {
   activeTab = name;
+  if(name==='moments'&&csrf)window.ZiweiMoments?.start(csrf);else window.ZiweiMoments?.leave();
   if(name!=='chat')window.ZiweiChat?.leave();
   window.ZiweiChatAppearance?.setVisible(name==='chat'&&!!csrf);
   document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== name);
@@ -43,6 +44,7 @@ function renderAvatar(el, profile) {
   el.append(child);
 }
 function renderHome() {
+  window.ZiweiMoments?.setProfiles({user:homeData.user,ziwei:homeData.ziwei});
   $('#userName').textContent = homeData.user.nickname;
   $('#ziweiName').textContent = homeData.ziwei.nickname;
   renderAvatar($('#userAvatar'),homeData.user); renderAvatar($('#ziweiAvatar'),homeData.ziwei);renderAvatar($('#chatAvatar'),homeData.ziwei);window.ZiweiChat?.setProfiles({user:homeData.user,ziwei:homeData.ziwei});
@@ -52,6 +54,7 @@ function renderHome() {
   appearance();
 }
 function clearPrivateUI() {
+  window.ZiweiMoments?.stop();
   window.ZiweiChat?.stop();window.ZiweiChat?.setProfiles({user:{nickname:'你',avatar:null},ziwei:{nickname:'知微',avatar:null}});
   window.ZiweiChatExtra?.presence(null);$('#metOn').value='';$('#metOnValue').textContent='待确认';$('#daysTogether').textContent='待确认';refreshVersion++;csrf=null; homeData=null; sessionData=null; pendingAvatars={};
   if($('#settings').open)$('#settings').close();
@@ -79,6 +82,7 @@ async function refresh() {
   const h=await api('/api/home');if(version!==refreshVersion)return;homeData=h;renderHome();
   $('#login').hidden=true;$('#app').hidden=false;$('#settingsButton').hidden=false;
   if(activeTab==='chat')window.ZiweiChat?.start(csrf);
+  if(activeTab==='moments')window.ZiweiMoments?.start(csrf);
 }
 $('#loginForm').addEventListener('submit', async e => {
   e.preventDefault(); const button=e.submitter;button.disabled=true;$('#loginError').textContent='';
