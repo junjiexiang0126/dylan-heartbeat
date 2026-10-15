@@ -44,7 +44,7 @@ test('recording sends original audio with empty text and supports playback after
  const payload=(await sent).postDataJSON();expect(payload.message).toBe('');expect(payload.attachments).toHaveLength(1);
  await expect(page.locator('.voice-message')).toHaveCount(1);await expect(page.locator('#chatMessages')).toContainText('协议测试回复');
  await page.reload();await page.locator('[data-tab=chat]').click();await expect(page.locator('.voice-message')).toHaveCount(1);
- await page.locator('.voice-play').click();await expect(page.locator('.voice-play')).toHaveAttribute('aria-pressed','true');
+ const audio=page.locator('#chatMessages audio').first();await expect(audio).toHaveAttribute('controls','');await audio.click({position:{x:22,y:20}});await expect.poll(()=>audio.evaluate(a=>a.paused)).toBe(false);
  await page.locator('[data-tab=home]').click();expect(await page.locator('#chatMessages audio').evaluate(a=>a.paused)).toBe(true);
 });
 test('cancel and leave discard recordings; delayed permission cannot restart microphone',async({page})=>{
