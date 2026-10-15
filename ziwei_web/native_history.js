@@ -10,7 +10,7 @@ class NativeHistory {
   while(!this.closed){
    const page=await this.client.json('/api/sessions?limit=200&offset='+offset);if(!Array.isArray(page.data))throw Error('invalid_history');
    if(this.closed)return;for(const session of page.data){
-    if(typeof session.id!=='string'||ids.has(session.id))continue;ids.add(session.id);
+    if(typeof session.id!=='string'||session.id.endsWith('-moments')||ids.has(session.id))continue;ids.add(session.id);
     if(/^(?:security-probe|isolated-|browser-protocol-fixture|ziwei-home-phase2-validation-)/.test(session.id))continue;
     const sid=encodeURIComponent(session.id);let pos=0;
     for(;;){
