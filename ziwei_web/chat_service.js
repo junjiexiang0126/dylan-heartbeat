@@ -111,7 +111,7 @@ function createChatService(dir,{authorized=()=>true}={}){
  let pokeSyncing=false,pokeSyncError=null;
  async function syncPokes(){if(pokeSyncing||closing||!client.configured())return;pokeSyncing=true;try{let cursor=store.db.prepare("SELECT value FROM meta WHERE key='poke_cursor'").get()?.value||null;for(let page=0;page<5;page++){const o=await client.json('/ziwei/web/pokes'+(cursor?'?cursor='+encodeURIComponent(cursor):''));if(!Array.isArray(o.data)||o.data.length>100)throw Error('poke_manifest_invalid');if(closing)return;let changes=0;for(const p of o.data){if(!uuid(p.id)||p.author!=='ziwei'||p.target!=='user'||!Number.isFinite(Date.parse(p.at)))throw Error('poke_manifest_invalid');changes+=Number(store.db.prepare("INSERT OR IGNORE INTO messages(id,role,kind,content,created_at,status) VALUES(?,'assistant','poke','知微拍了拍你',?,'recorded')").run('poke-native-'+p.id,p.at).changes);} if(changes)store.event(null,'timeline.changed',{});pokeSyncError=null;if(!o.next_cursor)break;cursor=o.next_cursor;store.db.prepare("INSERT INTO meta VALUES('poke_cursor',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(cursor);}}catch{pokeSyncError='poke_sync_unavailable';}finally{pokeSyncing=false;}}
  const pokeTimer=setInterval(()=>{void syncPokes();},15000);pokeTimer.unref();timers.add(pokeTimer);queueMicrotask(()=>{void syncPokes();});
- const historyTimer=setInterval(()=>{if(!closing&&client.configured())void history.sync();},60000);historyTimer.unref();timers.add(historyTimer);
+ const historyTimer=setInterval(()=>{if(!closing&&client.configured())void history.sync();},300000);historyTimer.unref();timers.add(historyTimer);
  const recoveryTimer=setInterval(()=>work().catch(()=>{}),10000);recoveryTimer.unref();timers.add(recoveryTimer);
  function status(){return client.configured();}
  async function proxy(req,res,pathname,url){
@@ -152,7 +152,7 @@ function createChatService(dir,{authorized=()=>true}={}){
     const limit=Number(url.searchParams.get('limit')||50),before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER),q=url.searchParams.get('q')||'',source=url.searchParams.get('source')||'live';
     if(!Number.isSafeInteger(limit)||limit<1||limit>100||!Number.isSafeInteger(before)||before<1||q.length>200||!['live','archive'].includes(source))throw Error('invalid_pagination');
     const data=store.list({limit,before,q,source,favorite:url.searchParams.get('favorite')==='true',trash:url.searchParams.get('trash')==='true'});
-    return json(res,200,{data,before:data[0]?.seq||null,hasMore:data.length===limit});
+    return json(res,200,{data,before:data[0]?.seq||null,hasMore:data.length===limit,requests:store.db.prepare("SELECT id,state FROM requests WHERE state NOT IN ('completed','failed','cancelled','interrupted') ORDER BY seq").all(),eventCursor:store.db.prepare('SELECT coalesce(max(seq),0) seq FROM events').get().seq});
    }
    const requestIdMatch=/^\/api\/chat\/requests\/([a-f0-9-]{36})$/.exec(pathname);if(requestIdMatch&&req.method==='GET'){const r=store.request(requestIdMatch[1]);if(!r)return json(res,404,{error:'request_not_found'});return json(res,200,{requestId:r.id,state:r.state,error:r.error});}
    if(pathname==='/api/chat/requests'&&req.method==='GET')return json(res,200,{data:store.db.prepare("SELECT id,state,run_id,error,created_at FROM requests WHERE state NOT IN ('completed','failed','cancelled','interrupted') ORDER BY seq").all()});
@@ -167,8 +167,8 @@ function createChatService(dir,{authorized=()=>true}={}){
     json(res,result.replayed?200:202,{requestId:b.requestId,state:result.request.state,replayed:result.replayed});void work();return;
    }
    if(pathname==='/api/chat/events'&&req.method==='GET'){
-    let after=Number(req.headers['last-event-id']||url.searchParams.get('after')||0);if(!Number.isSafeInteger(after)||after<0)throw Error('invalid_event_cursor');
-    res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'});res.write(': connected\n\n');let ticks=0;
+    const supplied=req.headers['last-event-id']||url.searchParams.get('after');let after=Number(supplied||(url.searchParams.get('tail')==='true'?store.db.prepare('SELECT coalesce(max(seq),0) seq FROM events').get().seq:0));if(!Number.isSafeInteger(after)||after<0)throw Error('invalid_event_cursor');
+    res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'});res.write('id: '+after+'\nevent: cursor\ndata: {}\n\n');let ticks=0;
     const timer=setInterval(()=>{
      if(!authorized(req)){res.end();return;}
      for(const e of store.events(after)){after=e.seq;if(!res.write('id: '+e.seq+'\nevent: '+e.kind+'\ndata: '+JSON.stringify({requestId:e.request_id,...e.data})+'\n\n')){res.end();return;}}

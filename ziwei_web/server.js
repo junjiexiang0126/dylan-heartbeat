@@ -17,7 +17,7 @@ if (originURL && (originURL.origin !== ORIGIN || (originURL.protocol !== 'https:
 const SESSION_FILE = path.join(DATA_DIR, 'sessions.json'), AUTH_FILE = path.join(DATA_DIR, 'auth.json');
 const SESSION_DAYS = 30, MAX_BODY = 400000, COOKIE = 'ziwei_sid';
 const publicDir = path.join(__dirname, 'public');
-const files = {'/':'index.html','/index.html':'index.html','/app.js':'app.js','/chat.js':'chat.js','/chat-extra.js':'chat-extra.js','/chat-call.js':'chat-call.js','/workbench.js':'workbench.js','/moments.js':'moments.js','/moments.css':'moments.css','/style.css':'style.css','/chat.css':'chat.css','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png'};
+const files = {'/records.js':'records.js','/records.css':'records.css','/':'index.html','/index.html':'index.html','/app.js':'app.js','/chat.js':'chat.js','/chat-extra.js':'chat-extra.js','/chat-call.js':'chat-call.js','/workbench.js':'workbench.js','/moments.js':'moments.js','/moments.css':'moments.css','/style.css':'style.css','/chat.css':'chat.css','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png'};
 const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json','.mp3':'audio/mpeg'};
 const headers = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"};
 if (SECURE) headers['Strict-Transport-Security'] = 'max-age=31536000';
@@ -57,6 +57,7 @@ const bridge=createChatService(DATA_DIR,{authorized:req=>!!session(req)});
 const home = createHomeStore(DATA_DIR);
 const moments = createMomentsService(DATA_DIR);
 const workbench=require('./workbench').createWorkbench({bridge,moments});
+const records=require('./records').createRecords();
 const sessions = new Map(), attempts = new Map(), challenges = new Map();
 let authEpoch = 0;
 const authenticating = new Set();
@@ -193,6 +194,7 @@ const server=http.createServer(async(req,res)=>{try{
       if(session(req)!==s)return json(res,401,{error:'unauthorized'});
       attempts.delete(k);authEpoch++;auth.credentials=[];atomicWrite(AUTH_FILE,auth);challenges.clear();return json(res,200,{ok:true});
     }
+    if(pathname.startsWith('/api/records/'))return records(req,res,url);
     if(pathname.startsWith('/api/workbench'))return workbench(req,res,url);
     if(pathname==='/api/moments'||pathname.startsWith('/api/moments/'))return moments.proxy(req,res,pathname,url);
     return bridge.proxy(req,res,pathname,url);
