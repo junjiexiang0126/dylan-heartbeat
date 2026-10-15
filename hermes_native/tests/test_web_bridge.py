@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 import json
 import os
@@ -74,7 +75,7 @@ class ToolRegistration(unittest.TestCase):
         bridge.install_status_tool(registry,toolsets)
         for registration,snapshot in registrations:
             self.assertEqual(registration['toolset'],'ziwei_web')
-            self.assertEqual(snapshot['ziwei_web']['tools'],['ziwei_status','ziwei_moment','ziwei_poke'])
+            self.assertEqual(snapshot['ziwei_web']['tools'],['ziwei_status','ziwei_moment','ziwei_poke','ziwei_briefing'])
             self.assertEqual(snapshot['ziwei_web']['includes'],[])
             for bundle in ('hermes-api-server','hermes-cron'):
                 self.assertEqual(snapshot[bundle]['tools'].count('ziwei_status'),1)
@@ -261,5 +262,64 @@ class MemoryFactoryTests(unittest.TestCase):
             finally:bridge.MOMENT_SESSION.reset(token)
             module.AIAgent(memory_manager='ordinary')
         self.assertEqual(calls,[(True,True,None),(False,False,'ordinary')])
+
+class MemoryAndLogs(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name)
+        (self.root/'workspace').mkdir();(self.root/'memories').mkdir()
+        self.old=bridge.home;bridge.home=lambda:self.root
+        self.body='## 正常条目\n可以改的内容。\n§\n## 硬规则（受保护）\n这条不许修改。\n'
+        (self.root/'memories/MEMORY.md').write_text(self.body,encoding='utf-8')
+        (self.root/'memories/USER.md').write_text('## 她\n语。\n',encoding='utf-8')
+    def tearDown(self):
+        bridge.home=self.old;self.tmp.cleanup()
+    def audit_lines(self):
+        p=self.root/'workspace/memory_operations.jsonl'
+        return [json.loads(l) for l in p.read_text(encoding='utf-8').splitlines()] if p.exists() else []
+    def test_snapshot_reports_real_numbers_and_marks_protected(self):
+        snap=bridge.memory_snapshot()
+        mem=[f for f in snap['files'] if f['name']=='MEMORY.md'][0]
+        self.assertEqual(mem['chars'],len(self.body));self.assertEqual(mem['lines'],len(self.body.splitlines()))
+        self.assertEqual(mem['budget'],6000);self.assertEqual(len(mem['entries']),2)
+        self.assertEqual([e['index'] for e in mem['entries'] if e['protected']],[1])
+        self.assertEqual(mem['sha256'],hashlib.sha256(self.body.encode()).hexdigest())
+        self.assertEqual(snap['errors'],[]);self.assertEqual(snap['protected_files'],['SOUL.md','care_rules'])
+    def test_edit_audits_and_reports_occupancy_but_refuses_protected(self):
+        refused=json.loads(bridge.edit_memory({'file':'MEMORY.md','op':'remove','old_text':'这条不许修改'}))
+        self.assertEqual(refused['error'],'memory_entry_protected');self.assertEqual(self.audit_lines(),[])
+        self.assertEqual((self.root/'memories/MEMORY.md').read_text(encoding='utf-8'),self.body)
+        ok=json.loads(bridge.edit_memory({'file':'MEMORY.md','op':'replace','old_text':'可以改的内容','content':'## 正常条目\n改过了。'}))
+        self.assertTrue(ok['ok']);self.assertEqual(ok['budget'],6000);self.assertEqual(ok['chars'],len((self.root/'memories/MEMORY.md').read_text(encoding='utf-8')))
+        lines=self.audit_lines();self.assertEqual(len(lines),2)
+        self.assertEqual(lines[0]['verified'],'pending');self.assertTrue(lines[1]['verified'].startswith('ok,'))
+        self.assertIn('改过了',(self.root/'memories/MEMORY.md').read_text(encoding='utf-8'))
+    def test_edit_rejects_bad_inputs(self):
+        cases=[({'file':'SOUL.md','op':'add','content':'x'},'memory_file_not_allowed'),
+               ({'file':'MEMORY.md','op':'nuke','content':'x'},'memory_op_not_allowed'),
+               ({'file':'MEMORY.md','op':'remove','old_text':'没有任何一条包含这段'},'memory_match_not_found'),
+               ({'file':'MEMORY.md','op':'remove','old_text':'\n'},'memory_match_not_unique'),
+               ({'file':'MEMORY.md','op':'add','content':'   '},'memory_content_empty')]
+        for args,code in cases:
+            self.assertEqual(json.loads(bridge.edit_memory(args))['error'],code,args)
+    def test_briefing_and_logs_page_are_truthful(self):
+        self.assertEqual(json.loads(bridge.append_briefing({'did':'   '}))['error'],'briefing_text_empty')
+        self.assertEqual(json.loads(bridge.append_briefing({'did':'x','choice':'nap'}))['error'],'briefing_choice_not_allowed')
+        bridge.append_briefing({'did':'挑了第一件真事。','choice':'self_directed_task','opportunity':1,
+                                'at':'2026-10-15T08:05:00+07:00','evidence':['workspace/diary/2026-10-15.md']})
+        bridge.append_briefing({'did':'休息了一次。','choice':'rest','opportunity':2,'at':'2026-10-15T10:00:00+07:00'})
+        (self.root/'workspace/memory_operations.jsonl').write_text(json.dumps({'time':'2026-10-15T08:10:00+07:00','source':'wecom DM','op':'replace','target':'MEMORY.md 补一条','verified':'ok'},ensure_ascii=False)+'\n',encoding='utf-8')
+        page=bridge.logs_page(limit=10)
+        self.assertEqual(page['errors'],[]);self.assertEqual([r['kind'] for r in page['data']],['briefing','briefing','memory_audit'])
+        self.assertEqual(page['data'][0]['refs'],['workspace/diary/2026-10-15.md'])
+        self.assertFalse(page['has_more'])
+        first=bridge.logs_page(limit=2);self.assertTrue(first['has_more']);self.assertEqual(len(first['data']),2)
+        rest=bridge.logs_page(cursor=first['next_cursor'],limit=2)
+        self.assertEqual([r['kind'] for r in rest['data']],['memory_audit']);self.assertFalse(rest['has_more'])
+        today=bridge.logs_page(date='2026-10-15',limit=10)
+        self.assertEqual(len(today['data']),3)
+    def test_logs_report_a_broken_store_instead_of_an_empty_page(self):
+        (self.root/'workspace/briefings.jsonl').write_text('{ not json',encoding='utf-8')
+        with self.assertRaises(bridge.MemoryError) as caught:bridge.logs_page()
+        self.assertEqual(caught.exception.code,'log_store_corrupt')
 
 if __name__=='__main__':unittest.main()

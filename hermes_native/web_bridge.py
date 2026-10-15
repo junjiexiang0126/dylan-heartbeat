@@ -451,6 +451,277 @@ def install_moment_session_guard(adapter):
     return True
 
 
+MEMORY_FILES = ('MEMORY.md', 'USER.md')
+MEMORY_BUDGETS = {'MEMORY.md': 6000, 'USER.md': 2000}
+PROTECTED_MARKERS = ('受保护', '不许修改', '不得修改', '受保护规则', '硬规则')
+BRIEFING_CHOICES = ('contact_user', 'rest', 'self_directed_task', 'publish_moment', 'write_diary')
+BRIEFING_KINDS = ('briefing', 'memory_audit')
+
+
+class MemoryError(Exception):
+    def __init__(self, code, detail=''):
+        super().__init__(code)
+        self.code = code
+        self.detail = detail
+
+
+def _entry_protected(text):
+    return any(marker in text for marker in PROTECTED_MARKERS)
+
+
+def memory_entries(text):
+    """Split a memory file into its §-separated entries, keeping the file shape."""
+    blocks, current = [], []
+    for line in text.splitlines():
+        if line.strip() == '§':
+            blocks.append('\n'.join(current).strip())
+            current = []
+        else:
+            current.append(line)
+    if '\n'.join(current).strip():
+        blocks.append('\n'.join(current).strip())
+    out = []
+    for index, block in enumerate(b for b in blocks if b):
+        heading = block.splitlines()[0].lstrip('# ').strip()[:60] or '（无标题）'
+        out.append({'index': index, 'heading': heading, 'text': block,
+                    'chars': len(block), 'protected': _entry_protected(block)})
+    return out
+
+
+def memory_snapshot():
+    """Read both memory files as the Web needs them: real numbers, real protections."""
+    root = home() / 'memories'
+    files, errors = [], []
+    for name in MEMORY_FILES:
+        try:
+            data = read_beneath(root, name, 262144)
+        except FileNotFoundError:
+            errors.append({'code': 'memory_file_missing', 'file': name})
+            continue
+        except (OSError, ValueError):
+            errors.append({'code': 'memory_file_unreadable', 'file': name})
+            continue
+        text = data.decode('utf-8')
+        entries = memory_entries(text)
+        files.append({'name': name, 'sha256': hashlib.sha256(data).hexdigest(),
+                      'chars': len(text), 'lines': len(text.splitlines()),
+                      'entries': entries,
+                      'protected_entries': [e['index'] for e in entries if e['protected']],
+                      'updated_at': int((root / name).stat().st_mtime),
+                      'budget': MEMORY_BUDGETS[name]})
+    return {'files': files, 'errors': errors,
+            'limits': {name: {'budget': MEMORY_BUDGETS[name]} for name in MEMORY_FILES},
+            'protected_files': ['SOUL.md', 'care_rules']}
+
+
+def _write_memory_file(fd_mem, name, text):
+    tmp = '.' + name + '.' + os.urandom(6).hex()
+    try:
+        out = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd_mem)
+        with os.fdopen(out, 'w', encoding='utf-8') as stream:
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.rename(tmp, name, src_dir_fd=fd_mem, dst_dir_fd=fd_mem)
+        os.fsync(fd_mem)
+    except OSError as exc:
+        raise MemoryError('memory_write_failed', str(exc)[:120])
+    finally:
+        try:
+            os.unlink(tmp, dir_fd=fd_mem)
+        except FileNotFoundError:
+            pass
+
+
+def _audit(line):
+    """Append to the same audit trail the agent's own memory writes use."""
+    try:
+        directory = os.open(home() / 'workspace', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError:
+        return
+    try:
+        name = 'memory_operations-' + os.urandom(6).hex() + '.tmp'
+        try:
+            out = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=directory)
+            with os.fdopen(out, 'w', encoding='utf-8') as stream:
+                stream.write(json.dumps(line, ensure_ascii=False) + '\n')
+                stream.flush()
+                os.fsync(stream.fileno())
+            target = os.open('memory_operations.jsonl', os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600, dir_fd=directory)
+            try:
+                os.write(target, json.dumps(line, ensure_ascii=False).encode() + b'\n')
+                os.fsync(target)
+            finally:
+                os.close(target)
+        finally:
+            try:
+                os.unlink(name, dir_fd=directory)
+            except FileNotFoundError:
+                pass
+    finally:
+        os.close(directory)
+
+
+def edit_memory(args):
+    """Controlled memory edit: audited, protected-aware, and it reports real occupancy."""
+    name = str(args.get('file') or '').strip()
+    op = str(args.get('op') or '').strip()
+    old_text = str(args.get('old_text') or '')
+    content = str(args.get('content') or '')
+    if name not in MEMORY_FILES:
+        return _error('memory_file_not_allowed')
+    if op not in ('replace', 'remove', 'add'):
+        return _error('memory_op_not_allowed')
+    root = home() / 'memories'
+    try:
+        fd_mem = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError:
+        return _error('memory_dir_unreadable')
+    try:
+        try:
+            text = read_beneath(root, name, 262144).decode('utf-8')
+        except FileNotFoundError:
+            return _error('memory_file_missing')
+        except (OSError, ValueError):
+            return _error('memory_file_unreadable')
+        if op == 'add':
+            block = content.strip()
+            if not block:
+                return _error('memory_content_empty')
+            if len(text) + len(block) + 4 > MEMORY_BUDGETS[name]:
+                return _error('memory_budget_exceeded')
+            new_text = text.rstrip('\n') + '\n§\n' + block + '\n'
+        else:
+            matches = [e for e in memory_entries(text) if old_text and old_text in e['text']]
+            if len(matches) != 1:
+                return _error('memory_match_not_unique' if matches else 'memory_match_not_found')
+            entry = matches[0]
+            if entry['protected']:
+                return _error('memory_entry_protected')
+            if op == 'replace':
+                if not content.strip():
+                    return _error('memory_content_empty')
+                if len(text) - len(entry['text']) + len(content) > MEMORY_BUDGETS[name]:
+                    return _error('memory_budget_exceeded')
+                new_text = text.replace(entry['text'], content.strip(), 1)
+            else:
+                new_text = text.replace(entry['text'], '', 1)
+                new_text = new_text.replace('\n\n\n', '\n\n')
+        _write_memory_file(fd_mem, name, new_text)
+        record = {'time': datetime.now(timezone.utc).astimezone().isoformat(timespec='seconds'),
+                  'source': 'web memory page', 'op': op,
+                  'target': f'memories/{name}: {old_text[:60] or content[:60]}', 'verified': 'pending'}
+        _audit(record)
+        after = memory_snapshot()
+        mine = next((f for f in after['files'] if f['name'] == name), None)
+        record['verified'] = f"ok, {mine['chars']}/{MEMORY_BUDGETS[name]} chars, {len(mine['entries'])} entries" if mine else 'unreadable_after_write'
+        _audit(record)
+        return json.dumps({'ok': True, 'file': name, 'op': op,
+                           'chars': mine['chars'] if mine else None,
+                           'budget': MEMORY_BUDGETS[name],
+                           'entries': len(mine['entries']) if mine else None}, ensure_ascii=False)
+    except MemoryError as exc:
+        return _error(exc.code, exc.detail)
+    finally:
+        os.close(fd_mem)
+
+
+def append_briefing(args):
+    """One line per wake-up: what the opportunity was used for, with evidence."""
+    choice = str(args.get('choice') or '').strip()
+    if choice and choice not in BRIEFING_CHOICES:
+        return _error('briefing_choice_not_allowed')
+    text = str(args.get('did') or '').strip()
+    if not text:
+        return _error('briefing_text_empty')
+    record = {'at': _moment_at(args.get('at')).isoformat(), 'kind': 'briefing',
+              'opportunity': args.get('opportunity'), 'choice': choice, 'did': text[:2000],
+              'evidence': [str(e) for e in (args.get('evidence') or [])][:10],
+              'failed': bool(args.get('failed'))}
+    fd = _open_workspace()
+    try:
+        with _moment_lock(fd):
+            path = 'briefings.jsonl'
+            try:
+                existing = read_beneath(home() / 'workspace', path, 4 * 1024 * 1024).decode('utf-8')
+            except FileNotFoundError:
+                existing = ''
+            except (OSError, ValueError):
+                return _error('briefing_store_unreadable')
+            tmp = 'briefings-' + os.urandom(6).hex() + '.tmp'
+            try:
+                out = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd)
+                with os.fdopen(out, 'w', encoding='utf-8') as stream:
+                    stream.write(existing + json.dumps(record, ensure_ascii=False) + '\n')
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.rename(tmp, path, src_dir_fd=fd, dst_dir_fd=fd)
+                os.fsync(fd)
+            except OSError as exc:
+                return _error('write_failed', str(exc)[:120])
+            finally:
+                try:
+                    os.unlink(tmp, dir_fd=fd)
+                except FileNotFoundError:
+                    pass
+    finally:
+        os.close(fd)
+    return json.dumps({'record': record}, ensure_ascii=False)
+
+
+def _read_jsonl(relative, limit=4 * 1024 * 1024):
+    try:
+        raw = read_beneath(home() / 'workspace', relative, limit).decode('utf-8')
+    except FileNotFoundError:
+        return []
+    except (OSError, ValueError) as exc:
+        raise MemoryError('log_store_unreadable', str(exc)[:120])
+    rows = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            value = json.loads(line)
+        except ValueError:
+            raise MemoryError('log_store_corrupt')
+        if isinstance(value, dict):
+            rows.append(value)
+    return rows
+
+
+def logs_page(date=None, cursor=None, limit=None):
+    """The Logs page holds exactly two things: my briefings and the memory audit."""
+    try:
+        size = int(limit) if limit not in (None, '') else MOMENT_PAGE_DEFAULT
+    except (TypeError, ValueError):
+        raise MemoryError('invalid_limit')
+    size = max(1, min(size, MOMENT_PAGE_MAX))
+    after = _decode_cursor(cursor) if cursor not in (None, '') else None
+    rows = []
+    for record in _read_jsonl('briefings.jsonl'):
+        rows.append({'kind': 'briefing', 'at': record.get('at', ''),
+                     'title': str(record.get('choice') or '自主机会')[:60],
+                     'body': str(record.get('did') or ''), 'refs': record.get('evidence') or [],
+                     'failed': bool(record.get('failed')), 'opportunity': record.get('opportunity')})
+    for record in _read_jsonl('memory_operations.jsonl'):
+        rows.append({'kind': 'memory_audit', 'at': record.get('time', ''),
+                     'title': f"{record.get('op','')} · {str(record.get('source',''))[:40]}".strip(' ·'),
+                     'body': str(record.get('target') or ''), 'refs': [],
+                     'failed': record.get('verified') == 'pending'})
+    if date:
+        rows = [r for r in rows if _bangkok_day(r['at']).isoformat() == str(date)] if all(
+            r['at'] for r in rows) else rows
+    rows = [r for r in rows if r['at']]
+    rows.sort(key=lambda r: (r['at'], r['kind'], r['title']))
+    if after is not None:
+        rows = [r for r in rows if (r['at'], r['kind']) > after]
+    page = rows[:size]
+    has_more = len(rows) > size
+    return {'data': page, 'errors': [], 'has_more': has_more,
+            'next_cursor': _encode_cursor({'at': page[-1]['at'], 'id': page[-1]['kind']}) if page and has_more else None}
+
+
 MOMENT_SCHEMA = {
     'name': 'ziwei_moment',
     'description': (
@@ -486,7 +757,7 @@ def install_status_tool(registry, toolsets):
     definition = toolsets.TOOLSETS.setdefault('ziwei_web', {
         'description':'Voluntary status and private Moments feed written by 知微 to the Web UI',
         'tools':[], 'includes':[]})
-    names = ('ziwei_status', 'ziwei_moment', 'ziwei_poke')
+    names = ('ziwei_status', 'ziwei_moment', 'ziwei_poke', 'ziwei_briefing')
     for name in names:
         if name not in definition['tools']:
             definition['tools'].append(name)
@@ -506,6 +777,21 @@ def install_status_tool(registry, toolsets):
         return publish(args, sys.modules[__name__])
     registry.register(name='ziwei_poke', toolset='ziwei_web', schema={'name':'ziwei_poke','description':'Voluntarily pat the user in the private Web chat. Optional; not required after every pat. Persist the real event and reuse the same UUID on retry.','parameters':{'type':'object','properties':{'id':{'type':'string'}},'required':['id'],'additionalProperties':False}}, handler=poke_handler)
     registry.register(name='ziwei_moment', toolset='ziwei_web', schema=MOMENT_SCHEMA, handler=publish_moment)
+    registry.register(name='ziwei_briefing', toolset='ziwei_web', schema={
+        'name': 'ziwei_briefing',
+        'description': (
+            'Write one line into the Logs page for the wake-up you just used: what you chose, what you '
+            'actually did and the files that prove it. Call it at the end of every autonomous '
+            'opportunity, including the ones you spend resting. Never describe a plan as done work.'),
+        'parameters': {'type': 'object', 'properties': {
+            'choice': {'type': 'string', 'enum': list(BRIEFING_CHOICES)},
+            'did': {'type': 'string', 'description': '1-2000 characters; what really happened.'},
+            'opportunity': {'type': 'integer', 'description': 'Which of the six daily opportunities this was.'},
+            'at': {'type': 'string', 'description': 'ISO8601 with timezone; defaults to now (UTC).'},
+            'evidence': {'type': 'array', 'items': {'type': 'string'},
+                         'description': 'Paths or ids a reader could check.'},
+            'failed': {'type': 'boolean', 'description': 'True when this attempt did not succeed.'}},
+            'required': ['did'], 'additionalProperties': False}}, handler=append_briefing)
 
 
 def install():
@@ -538,6 +824,41 @@ def install():
                                      status=code, headers={'Cache-Control': 'no-store'})
         return web.json_response(value, headers={'Cache-Control': 'no-store'})
 
+    async def memory(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        try:
+            value = await asyncio.to_thread(memory_snapshot)
+        except MemoryError as exc:
+            return web.json_response({'files': [], 'errors': [{'code': exc.code}]}, status=500,
+                                     headers={'Cache-Control': 'no-store'})
+        return web.json_response(value, headers={'Cache-Control': 'no-store'})
+
+    async def memory_edit(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        try:
+            payload = await request.json()
+        except Exception:
+            return web.json_response({'error': 'invalid_body'}, status=400)
+        result = await asyncio.to_thread(edit_memory, payload if isinstance(payload, dict) else {})
+        body = json.loads(result)
+        status = 200 if body.get('ok') else 409 if body.get('error') in (
+            'memory_entry_protected', 'memory_budget_exceeded', 'memory_match_not_unique') else 400
+        return web.json_response(body, status=status, headers={'Cache-Control': 'no-store'})
+
+    async def logs(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        try:
+            value = await asyncio.to_thread(logs_page, request.query.get('date'),
+                                            request.query.get('cursor'), request.query.get('limit'))
+        except MemoryError as exc:
+            code = 400 if exc.code == 'invalid_limit' else 500
+            return web.json_response({'data': [], 'errors': [{'code': exc.code}],
+                                      'next_cursor': None, 'has_more': False},
+                                     status=code, headers={'Cache-Control': 'no-store'})
+        return web.json_response(value, headers={'Cache-Control': 'no-store'})
     async def media(self, request):
         _, run, _, _, err = _load_owned_run(self, request, _api_server=api, permission='status', active_fallback=False)
         if err is not None: return err
@@ -594,6 +915,6 @@ def install():
 
     original = adapter._http_route_table
     def routes(self):
-        return original(self) + [('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
+        return original(self) + [('GET','/ziwei/web/memory',lambda request:memory(self,request)), ('POST','/ziwei/web/memory/edit',lambda request:memory_edit(self,request)), ('GET','/ziwei/web/logs',lambda request:logs(self,request)), ('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
     adapter._http_route_table = routes
     adapter._ziwei_web_installed = True
