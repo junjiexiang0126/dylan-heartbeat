@@ -1,1 +1,41 @@
-.records-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.records-heading .text-button{font-size:13px;flex-shrink:0}.records-intro{font-size:13px;line-height:1.9;margin:-10px 0 20px}.record-tabs{display:flex;padding:5px;gap:6px;border-radius:18px;margin-bottom:18px}.record-tabs button{flex:1;background:transparent;color:var(--muted);border:0;padding:12px;border-radius:14px;font-size:14px}.record-tabs button.active{background:var(--accent-soft);color:var(--ink)}.record-search-row{display:flex;gap:10px;align-items:center;margin-bottom:12px}.record-search-row input{flex:1}.record-search-row select{max-width:145px;font-size:13px}.records-list{display:grid;gap:20px;margin-top:20px}.record-card{padding:26px 28px;overflow:hidden;border-radius:26px}.diary-card{border-left:3px solid var(--accent)}.record-date{display:flex;gap:18px;align-items:center;color:var(--muted);font-size:11px;letter-spacing:.08em;margin-bottom:20px}.record-date-line{height:1px;flex:1;background:var(--accent-soft)}.record-author{font-size:13px;margin-bottom:17px;color:var(--accent)}.record-title{font-family:"Songti SC",serif;font-size:19px;font-weight:500;line-height:1.8;margin-bottom:16px;overflow-wrap:anywhere}.record-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:2.05;font-size:15px;color:var(--ink)}.diary-card .record-body{font-family:"Songti SC",serif;font-size:17px;line-height:2.15;letter-spacing:.015em}.record-body.collapsed{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;max-height:11em}.record-actions{display:flex;gap:24px;align-items:center;margin-top:14px}.record-actions .text-button{font-size:13px;padding:10px 0}.record-provenance{font-size:10px;margin-top:12px;overflow-wrap:anywhere}.record-provenance summary{color:var(--muted)}.record-provenance p{font-size:10px;line-height:1.8;margin-top:5px}.record-state{display:inline-block;border-radius:10px;background:var(--accent-soft);padding:3px 10px;font-size:11px;margin-bottom:8px}.record-basis{font-size:11px;line-height:1.8;margin:5px 0 12px}.record-evidence{border-top:1px solid var(--border);margin-top:15px;padding-top:12px}.record-evidence p{font-size:11px;line-height:1.8}.record-artifact{display:block;font-size:12px;color:var(--accent);text-decoration:underline;margin:9px 0;overflow-wrap:anywhere}.record-pagination{display:flex;justify-content:space-between;gap:20px;margin-top:20px}.records-empty{padding:45px 20px;text-align:center;font-size:14px}.records-status{min-height:20px;font-size:11px;margin-top:10px}.memory-card .record-body{font-size:14px}.record-card .error{margin:10px 0}.record-scope{font-size:11px;line-height:1.8;margin:12px 0;color:var(--muted)}@media(max-width:550px){.record-card{padding:23px 22px}.record-title{font-size:18px}.diary-card .record-body{font-size:16px}.record-date{font-size:10px;letter-spacing:.04em}.record-search-row select{max-width:125px}}
+.records-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--ui-space-16)}
+.records-heading .text-button{font-size:var(--ui-font-13);flex-shrink:0}
+.records-intro{font-size:var(--ui-font-13);line-height:var(--ui-leading-1_9);margin:calc(-1 * var(--ui-space-10)) 0 var(--ui-space-20)}
+.record-tabs{display:flex;padding:var(--ui-space-5);gap:var(--ui-space-6);border-radius:var(--ui-radius-18);margin-bottom:var(--ui-space-18)}
+.record-tabs button{flex:1;background:transparent;color:var(--muted);border:0;padding:var(--ui-space-12);border-radius:var(--ui-radius-14);font-size:var(--ui-font-14)}
+.record-tabs button.active{background:var(--accent-soft);color:var(--ink)}
+.record-search-row{display:flex;gap:var(--ui-space-10);align-items:center;margin-bottom:var(--ui-space-12)}
+.record-search-row input{flex:1}
+.record-search-row select{max-width:var(--records-filter-width);font-size:var(--ui-font-13)}
+.records-list{display:grid;gap:var(--records-card-gap);margin-top:var(--records-card-gap)}
+.record-card{padding:var(--records-card-padding-block) var(--records-card-padding-inline);overflow:hidden;border-radius:var(--records-card-radius)}
+.diary-card{border-left:var(--ui-size-3) solid var(--accent)}
+.record-date{display:flex;gap:var(--ui-space-18);align-items:center;color:var(--muted);font-size:var(--ui-font-11);letter-spacing:var(--ui-tracking-_08);margin-bottom:var(--ui-space-20)}
+.record-date-line{height:var(--ui-size-1);flex:1;background:var(--accent-soft)}
+.record-author{font-size:var(--ui-font-13);margin-bottom:var(--ui-space-17);color:var(--accent)}
+.record-title{font-family:var(--records-reading-font);font-size:var(--records-title-size);font-weight:var(--ui-weight-medium);line-height:var(--ui-leading-1_8);margin-bottom:var(--ui-space-16);overflow-wrap:anywhere}
+.record-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:var(--ui-leading-2_05);font-size:var(--records-body-size);color:var(--ink)}
+.diary-card .record-body{font-family:var(--records-reading-font);font-size:var(--records-diary-size);line-height:var(--ui-leading-2_15);letter-spacing:var(--ui-tracking-_015)}
+.record-body.collapsed{display:-webkit-box;-webkit-line-clamp:var(--records-preview-lines);-webkit-box-orient:vertical;overflow:hidden;max-height:var(--records-preview-height)}
+.record-actions{display:flex;gap:var(--ui-space-24);align-items:center;margin-top:var(--ui-space-14)}
+.record-actions .text-button{font-size:var(--ui-font-13);padding:var(--ui-space-10) 0}
+.record-provenance{font-size:var(--ui-font-10);margin-top:var(--ui-space-12);overflow-wrap:anywhere}
+.record-provenance summary{color:var(--muted)}
+.record-provenance p{font-size:var(--ui-font-10);line-height:var(--ui-leading-1_8);margin-top:var(--ui-space-5)}
+.record-state{display:inline-block;border-radius:var(--ui-radius-10);background:var(--accent-soft);padding:var(--ui-space-3) var(--ui-space-10);font-size:var(--ui-font-11);margin-bottom:var(--ui-space-8)}
+.record-basis{font-size:var(--ui-font-11);line-height:var(--ui-leading-1_8);margin:var(--ui-space-5) 0 var(--ui-space-12)}
+.record-evidence{border-top:var(--ui-size-1) solid var(--border);margin-top:var(--ui-space-15);padding-top:var(--ui-space-12)}
+.record-evidence p{font-size:var(--ui-font-11);line-height:var(--ui-leading-1_8)}
+.record-artifact{display:block;font-size:var(--ui-font-12);color:var(--accent);text-decoration:underline;margin:var(--ui-space-9) 0;overflow-wrap:anywhere}
+.record-pagination{display:flex;justify-content:space-between;gap:var(--ui-space-20);margin-top:var(--ui-space-20)}
+.records-empty{padding:var(--ui-space-45) var(--ui-space-20);text-align:center;font-size:var(--ui-font-14)}
+.records-status{min-height:var(--ui-size-20);font-size:var(--ui-font-11);margin-top:var(--ui-space-10)}
+.memory-card .record-body{font-size:var(--records-memory-size)}
+.record-card .error{margin:var(--ui-space-10) 0}
+.record-scope{font-size:var(--ui-font-11);line-height:var(--ui-leading-1_8);margin:var(--ui-space-12) 0;color:var(--muted)}
+@media(max-width:550px){.record-card{padding:var(--records-card-padding-block) var(--records-card-padding-inline)}
+.record-title{font-size:var(--records-title-size)}
+.diary-card .record-body{font-size:var(--records-diary-size)}
+.record-date{font-size:var(--ui-font-10);letter-spacing:var(--ui-tracking-_04)}
+.record-search-row select{max-width:var(--records-filter-width)}
+}

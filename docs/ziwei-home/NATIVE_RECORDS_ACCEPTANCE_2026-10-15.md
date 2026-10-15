@@ -51,3 +51,11 @@ Web 语法检查、49项 Web 自动测试及相关 Chromium 手机用例通过�
 仅发布 Web，以 PR 最终 HEAD 为准，不要求重新部署知微后端。记忆/工作日志连接已知接口；个人日记等待知微对齐上述只读契约，不让用户改代码。
 
 此前仍有旧的 Railway STAGED patch 3bb3a708-c8b1-4df8-a98a-0a719b9dbc0d 指向231b4e5，不可直接应用整个环境补丁发布本轮 Web。上次自动部署被审批层拒绝，本轮未重试该动作，也未继续检查或修改平台。由知微部署 Web 并核 commitHash；原生部署由他管理。
+
+## 样式变量重构（用户随后授权，合并在同一轮 Web 发布）
+
+新增 public/tokens.css，集中管理颜色、间距、字号、圆角、尺寸标尺和组件语义参数。已迁移日志/记忆/日记、朋友圈及其弹窗、工作台、拍一拍和互动提示。朋友圈换图遮罩也使用变量。首页和旧聊天样式没有整站重画；后续新增组件依照 [STYLE_GUIDE.md](../../ziwei_web/STYLE_GUIDE.md) 使用变量。
+
+可调整 --ui-font-scale / --ui-spacing-scale / --ui-radius-scale，也可只覆盖 --records-card-radius、--records-diary-size、--moments-body-size、--workbench-text-size 等组件参数。局部覆盖在明暗主题与响应式断点下有效。保留原默认视觉，媒体断点和布局结构零值不做变量替换。
+
+验证：19 项 Chromium 用例通过（包含3项变量真实覆盖、日记/记忆、朋友圈、拍一拍与工作台回归），另一次临时对照在320/390/900px、明暗两种主题下比较迁移前后计算样式，全部一致。Web 语法检查通过，未定义 CSS 变量为0。临时对照文件已删除；可重复的变量覆盖用例保留在 e2e/design-tokens.spec.js。此轮未检查/修改知微后端，未部署，由用户统一安排 Web 发布。
