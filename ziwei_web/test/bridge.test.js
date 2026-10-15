@@ -85,10 +85,10 @@ test('approval cards resolve one exact owned native request and expired choices 
 });
 
 test('native history imports incrementally without duplicate rows or writes to Hermes',async t=>{
- const history=[{id:'real-history-fixture',messages:[{id:1,role:'user',content:'older user',timestamp:1700000000},{id:2,role:'assistant',content:'older reply',timestamp:1700000001}]}],s=await setup(t,{history});
+ const history=[{id:'real-history-fixture',messages:[{id:1,role:'user',content:'older user',timestamp:1700000000},{id:2,role:'assistant',content:'older reply',timestamp:1700000001},{id:1,role:'user',content:'older user',timestamp:1700000000}]}],s=await setup(t,{history});
  assert.equal((await s.api('/api/chat/history/sync',{})).status,202);await until(async()=> (await (await s.api('/api/chat/history')).json()).state==='completed');
  let archive=await (await s.api('/api/chat/messages?source=archive')).json();assert.equal(archive.data.length,2);assert.ok(archive.data[0].source_ref.startsWith('native:'));
- history[0].messages.push({id:3,role:'user',content:'new increment',timestamp:1700000002});await s.api('/api/chat/history/sync',{});await until(async()=> (await (await s.api('/api/chat/history')).json()).messages===3);
+ history[0].messages.push({id:3,role:'user',content:'new increment',timestamp:1700000002});await s.api('/api/chat/history/sync',{});await until(async()=>{const state=await (await s.api('/api/chat/history')).json();return state.state==='completed'&&state.messages===3;});
  archive=await (await s.api('/api/chat/messages?source=archive')).json();assert.equal(archive.data.length,3);assert.equal(s.fake.executions,0);assert.equal(s.fake.seen.some(r=>r.method!=='GET'),false);
  await s.stop();await s.start();assert.equal((await (await s.api('/api/chat/history')).json()).messages,3);
 });

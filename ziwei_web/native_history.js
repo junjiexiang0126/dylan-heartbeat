@@ -28,7 +28,7 @@ class NativeHistory {
    }
    if(page.has_more===false||page.data.length<200)break;offset+=200;if(offset>100000)throw Error('history_limit');
   }
-  this.snapshot={...this.status(),state:'completed',sessions,messages,at:new Date().toISOString()};
+  messages=this.store.db.prepare("SELECT count(*) n FROM messages WHERE source='archive' AND source_ref LIKE 'native:%'").get().n;this.snapshot={...this.status(),state:'completed',sessions,messages,at:new Date().toISOString()};
   this.store.db.prepare("INSERT INTO meta(key,value) VALUES('native_history_sync',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(JSON.stringify(this.snapshot));
   this.store.event(null,'timeline.changed',{source:'archive'});if(process.env.NODE_ENV==='production')console.log('NATIVE_HISTORY_SYNC '+JSON.stringify({sessions,messages,state:'completed'}));
  }

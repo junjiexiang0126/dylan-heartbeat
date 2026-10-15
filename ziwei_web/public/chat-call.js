@@ -1,9 +1,9 @@
 'use strict';
 // Half-duplex voice turns using the same private, durable chat requests.
 window.ZiweiChatCall=(()=>{
- const $=s=>document.querySelector(s),audio=$('#chatCallAudio');let api=null,stopVoice=null,refresh=null,epoch=0,active=false,stream=null,context=null,analyser=null,recorder=null,tick=null,timeout=null,urls=[],round=0,started=0;
+ const $=s=>document.querySelector(s),audio=$('#chatCallAudio');let api=null,stopVoice=null,refresh=null,sendVoice=null,ready=null,epoch=0,active=false,stream=null,context=null,analyser=null,recorder=null,tick=null,timeout=null,urls=[],round=0,started=0;
  const state=text=>$('#chatCallState').textContent=text;
- function configure(deps){api=deps.request;stopVoice=deps.stopVoice;refresh=deps.load;}
+ function configure(deps){api=deps.request;stopVoice=deps.stopVoice;refresh=deps.load;sendVoice=deps.sendVoice;ready=deps.ready;}
  function end(close=true){epoch++;active=false;clearInterval(tick);clearTimeout(timeout);tick=timeout=null;const old=recorder;recorder=null;try{if(old?.state==='recording')old.stop();}catch{}stream?.getTracks().forEach(t=>t.stop());stream=null;context?.close().catch(()=>{});context=null;analyser=null;audio.pause();audio.removeAttribute('src');for(const url of urls)URL.revokeObjectURL(url);urls=[];$('#chatCallStart').disabled=false;$('#chatCallRetry').hidden=true;if(close&&$('#chatCallDialog').open){$('#chatCallDialog').close();void window.ZiweiChatExtra?.approvals().catch(()=>{});}}
  function listen(v){
   if(!active||v!==epoch)return;if(round>=20||Date.now()-started>15*60000){state('已达到本次通话时长或轮次上限。');end(false);return;}
@@ -23,7 +23,7 @@ window.ZiweiChatCall=(()=>{
   const valid=()=>active&&v===epoch;round++;state('已听到，正在发送语音…');
   try{
    const ext=type.includes('mp4')?'m4a':type.includes('ogg')?'ogg':'weba',a=await api('/api/chat/attachments','POST',null,{headers:{'X-Filename':encodeURIComponent('call-'+crypto.randomUUID()+'.'+ext),'Content-Type':'application/octet-stream'},body:blob});if(!valid())return;
-   const id=crypto.randomUUID();await api('/api/chat/send','POST',{requestId:id,message:'',attachments:[a.id]});if(!valid())return;state('等待知微回应…');void refresh().catch(()=>{});
+   const id=await sendVoice(a);if(!valid())return;state('等待知微回应…');void refresh().catch(()=>{});
    let done;const deadline=Date.now()+6*60000;
    while(valid()&&Date.now()<deadline){const o=await api('/api/chat/requests/'+id);if(!valid())return;if(['completed','failed','cancelled','interrupted'].includes(o.state)){done=o;break;}await new Promise(resolve=>{timeout=setTimeout(resolve,1000);});}
    if(!valid())return;if(!done||done.state!=='completed')throw Error('本轮回复未完成，原录音已保存在聊天记录中。');
@@ -35,7 +35,7 @@ window.ZiweiChatCall=(()=>{
   }catch(e){if(valid()){state(e.message||'本轮通话未完成，请在聊天记录中核对。');end(false);}}
  }
  async function begin(){
-  if(active||!api)return;if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder||!(window.AudioContext||window.webkitAudioContext)){state('当前浏览器不支持语音通话，请使用支持录音的 Safari 或 Chrome。');return;}
+  if(active||!api)return;if(!ready?.()){state('请先返回我们的对话，并处理输入区中尚未发送或待核对的消息。');return;}if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder||!(window.AudioContext||window.webkitAudioContext)){state('当前浏览器不支持语音通话，请使用支持录音的 Safari 或 Chrome。');return;}
   stopVoice();end(false);active=true;const v=epoch;round=0;started=Date.now();$('#chatCallStart').disabled=true;state('正在连接麦克风…');
   try{
    context=new (window.AudioContext||window.webkitAudioContext)();await context.resume();if(!active||v!==epoch)return;

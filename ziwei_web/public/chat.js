@@ -256,6 +256,11 @@ window.ZiweiChat=(()=>{
   catch(e){if(epoch!==version)return;if(!pending){$('#chatError').textContent='消息已被接收，但聊天记录未能刷新。请重新加载记录。';}else if([400,403,404,413].includes(e.status)||['queue_full','hermes_not_configured'].includes(e.code)){pending=null;$('#chatSendStatus').textContent='发送失败';$('#chatError').textContent=e.message;}else $('#chatError').textContent=e.message+' 发送状态尚未确认，请用同一编号核对；确认前请保持页面打开。';}
   finally{if(epoch===version){busy=false;controls();}}
  }
+ async function callSend(a){
+  if(pending||busy||attachments.length||$('#chatInput').value.trim())throw Error('请先处理当前输入区中的消息。');
+  attachments=[a];chips();pending={requestId:crypto.randomUUID(),message:'',attachments:[a.id]};lastRequest=pending.requestId;const id=pending.requestId;
+  await deliver();if(pending)throw Error('发送状态尚未确认。结束通话后，请点“确认发送状态”核对；原录音已保留。');return id;
+ }
  function submitMessage(){if(!token||pending||listening||voiceUploading)return;if(uploading){queuedSend=true;$('#chatError').textContent='附件还在上传，完成后会自动发送。';return;}if(busy)return;if(voiceDraft){void uploadVoice();return;}const message=$('#chatInput').value;if(!message.trim()&&!attachments.length)return;pending={requestId:crypto.randomUUID(),message,attachments:attachments.map(a=>a.id),...(quote?{replyTo:quote.id}:{})};lastRequest=pending.requestId;void deliver();}
  $('#chatForm').onsubmit=e=>{e.preventDefault();submitMessage();};
  // 移动端 WebKit 在输入区被重排时可能不派发 form submit；直接绑定发送控件作为第二条路径，重复提交由 pending 兜底。
@@ -278,7 +283,7 @@ window.ZiweiChat=(()=>{
  window.addEventListener('online',()=>{if(token){void start(token);if(pending)void deliver();}});window.addEventListener('offline',()=>{$('#chatConnection').textContent='已离线';});
  function stop(){window.ZiweiChatCall?.end();window.ZiweiChatExtra?.stop();stopVoice();clearInterval(connectionTimer);connectionTimer=null;$('#chatServiceNotice').hidden=true;$('#chatServiceNotice').textContent='';window.ZiweiChatAppearance?.setVisible(false);version++;loadVersion++;token=null;startPromise=null;loadError='';lastRequest=null;$('#chatVoiceHint').textContent='';$('#chatSendStatus').textContent='';events?.close();events=null;clearTimeout(reloadTimer);attachments=[];quote=null;pending=null;before=null;favorite=false;trash=false;source='live';busy=false;uploading=0;queuedSend=false;uploadFailed=false;active.clear();buffers.clear();$('#chatMessages').replaceChildren();$('#chatInput').value='';$('#chatSearch').value='';$('#chatSource').value='live';$('#chatFavorites').setAttribute('aria-pressed','false');$('#chatTrash').setAttribute('aria-pressed','false');$('#chatQuote').hidden=true;$('#chatError').textContent='';$('#chatStreaming').textContent='';$('#chatProgress').hidden=true;$('#chatEmpty').hidden=false;$('#chatEmpty').textContent='这里，留给我们慢慢说。';$('#chatRetry').hidden=true;$('#chatOlder').hidden=true;$('#chatTimeline').setAttribute('aria-busy','false');chips();controls();}
  async function start(csrf){
-  if(!csrf)return;if(token!==csrf){stop();token=csrf;}window.ZiweiChatAppearance?.setVisible(true);syncPeer();compose();pollConnection();window.ZiweiChatExtra?.start(request);window.ZiweiChatCall?.configure({request,stopVoice,load});if(startPromise)return startPromise;
+  if(!csrf)return;if(token!==csrf){stop();token=csrf;}window.ZiweiChatAppearance?.setVisible(true);syncPeer();compose();pollConnection();window.ZiweiChatExtra?.start(request);window.ZiweiChatCall?.configure({request,stopVoice,load,sendVoice:callSend,ready:()=>source==='live'&&!pending&&!busy&&!uploading&&!attachments.length&&!voiceDraft&&!$('#chatInput').value.trim()});if(startPromise)return startPromise;
   const epoch=version;
   // History must remain usable even when status checking or SSE is unavailable.
   const job=(async()=>{
