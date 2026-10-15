@@ -19,7 +19,7 @@ RUN cp /opt/hermes/bin/hermes /opt/ziwei-native/hermes-original \
  && chmod 755 /opt/hermes/bin/hermes /opt/ziwei-native/hermes-original
 # Only the missing free speech dependency, isolated from Hermes's managed env.
 RUN /opt/hermes/tools/uv-*/uv pip install --python /opt/hermes/.venv/bin/python \
-    --target /opt/ziwei-extras edge-tts==7.2.8
+    --target /opt/ziwei-extras edge-tts==7.3.1
 ENV ZIWEI_RUNTIME_GUARD=1 PYTHONDONTWRITEBYTECODE=1
 ENTRYPOINT ["python", "/opt/ziwei-native/entrypoint.py"]
 # Preserve the official entrypoint, privilege drop and supervision.
