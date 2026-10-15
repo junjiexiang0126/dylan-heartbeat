@@ -97,6 +97,7 @@ class RouteBoundary(unittest.TestCase):
         from aiohttp import web
         class Adapter:
             def _http_route_table(self):return []
+            def _create_agent(self,*args,**kwargs):return 'agent'
             def _check_auth(self, request):
                 return None if request.headers.get('Authorization')=='Bearer fixture' else web.json_response({'error':'unauthorized'},status=401)
         api=types.ModuleType('gateway.platforms.api_server');api.APIServerAdapter=Adapter
@@ -197,5 +198,45 @@ class MomentFeed(unittest.TestCase):
         self.assertEqual(caught.exception.code,'moments_corrupt')
         (self.root/'workspace/web-moments.json').write_text('{"version":1,"records":{}}',encoding='utf-8')
         with self.assertRaises(bridge.MomentError):bridge.moments_page()
+
+class MomentSessionIsolation(unittest.TestCase):
+    def test_only_moments_sessions_are_recognised(self):
+        for value in ('zw-moments','agent:main:web:abc-moments','MOMENTS-7'):
+            self.assertTrue(bridge.is_moment_session(value))
+        for value in ('agent:main:wecom:dm:YongHu3599','ziwei-home-web',None,'',123):
+            self.assertFalse(bridge.is_moment_session(value))
+    def test_moments_allowlist_excludes_memory_and_shell(self):
+        allow=bridge.moment_toolsets_for('zw-abc-moments')
+        self.assertEqual(allow,set(bridge.MOMENT_SESSION_TOOLSETS))
+        self.assertNotIn('memory',allow);self.assertNotIn('terminal',allow)
+        self.assertIsNone(bridge.moment_toolsets_for('ziwei-home-web'))
+    def test_resolver_swaps_the_allowlist_only_for_moments_runs(self):
+        calls=[]
+        def fallback(config,platform,*args,**kwargs):
+            calls.append((config,platform));return {'hermes-api-server','kanban','tts'}
+        token=bridge.MOMENT_SESSION.set(None)
+        try:
+            self.assertEqual(bridge.moment_platform_tools({},'api_server',fallback),{'hermes-api-server','kanban','tts'})
+        finally:
+            bridge.MOMENT_SESSION.reset(token)
+        token=bridge.MOMENT_SESSION.set('zw-abc-moments')
+        try:
+            self.assertEqual(bridge.moment_platform_tools({},'api_server',fallback),set(bridge.MOMENT_SESSION_TOOLSETS))
+            self.assertEqual(bridge.moment_platform_tools({},'cli',fallback),{'hermes-api-server','kanban','tts'})
+        finally:
+            bridge.MOMENT_SESSION.reset(token)
+        self.assertEqual(len(calls),2)
+    def test_guard_marks_the_session_only_while_the_agent_is_built(self):
+        import types
+        seen=[]
+        class Adapter:
+            def _create_agent(self,ephemeral_system_prompt=None,session_id=None,*args,**kwargs):
+                seen.append((session_id,bridge.MOMENT_SESSION.get()));return 'agent'
+        self.assertTrue(bridge.install_moment_session_guard(Adapter))
+        self.assertEqual(Adapter()._create_agent(None,'zw-abc-moments',1,2),'agent')
+        Adapter()._create_agent(session_id='ziwei-home-web')
+        self.assertEqual(seen,[('zw-abc-moments','zw-abc-moments'),('ziwei-home-web',None)])
+        self.assertIsNone(bridge.MOMENT_SESSION.get())
+        self.assertFalse(bridge.install_moment_session_guard(types.SimpleNamespace()))
 
 if __name__=='__main__':unittest.main()

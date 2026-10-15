@@ -5,8 +5,10 @@ No identity, memory, model, scheduler or approval policy is changed.
 """
 import asyncio
 import base64
+import contextvars
 import hashlib
 import json
+import logging
 import os
 import re
 import stat
@@ -358,6 +360,65 @@ def moments_page(since=None, cursor=None, limit=None):
             'has_more': has_more}
 
 
+MOMENT_SESSION_TOOLSETS = ('ziwei_web', 'file')
+MOMENT_SESSION_KEY = 'ziwei_moment_session'
+
+# Set while a Web Moments run builds its agent, so toolset resolution can see
+# which session it is serving without threading the id through the call chain.
+MOMENT_SESSION = contextvars.ContextVar(MOMENT_SESSION_KEY, default=None)
+
+
+def is_moment_session(session_id):
+    """True for the Web's dedicated ``*-moments`` sessions.
+
+    A line in the prompt is not an isolation boundary. These sessions must not be
+    *able* to write long-term memory or reach a shell, so they get an allowlist
+    instead of the full api_server toolset.
+    """
+    return isinstance(session_id, str) and 'moments' in session_id.lower()
+
+
+def moment_toolsets_for(session_id):
+    """Allowlist for a Moments session, or None when the session is an ordinary one."""
+    return set(MOMENT_SESSION_TOOLSETS) if is_moment_session(session_id) else None
+
+
+def moment_platform_tools(config, platform, fallback, *args, **kwargs):
+    """Resolve toolsets, substituting the Moments allowlist for a Moments run.
+
+    ``fallback`` is the real resolver, so every ordinary session keeps the exact
+    behaviour it had before this guard existed.
+    """
+    if platform == 'api_server' and MOMENT_SESSION.get():
+        return set(MOMENT_SESSION_TOOLSETS)
+    return fallback(config, platform, *args, **kwargs)
+
+
+def install_moment_session_guard(adapter):
+    """Mark which session is being served while its agent is built. Returns True when wired.
+
+    A missing hook is reported loudly rather than silently skipped: an isolation
+    control that is not installed must never look installed.
+    """
+    original = getattr(adapter, '_create_agent', None)
+    if original is None:
+        logging.getLogger(__name__).error(
+            'ziwei web bridge: APIServerAdapter._create_agent is missing; the Moments toolset '
+            'allowlist is NOT installed on this gateway')
+        return False
+
+    def create_agent(self, *args, **kwargs):
+        session_id = args[1] if len(args) > 1 else kwargs.get('session_id')
+        token = MOMENT_SESSION.set(session_id if is_moment_session(session_id) else None)
+        try:
+            return original(self, *args, **kwargs)
+        finally:
+            MOMENT_SESSION.reset(token)
+
+    adapter._create_agent = create_agent
+    return True
+
+
 MOMENT_SCHEMA = {
     'name': 'ziwei_moment',
     'description': (
@@ -451,6 +512,24 @@ def install():
         if not index.isdigit() or int(index) >= len(files): raise web.HTTPNotFound()
         item = files[int(index)]
         return web.Response(body=item['data'], content_type=item['mime'], headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Content-Sha256':item['sha256']})
+
+    # --- Moments sessions: strict toolset allowlist -------------------------
+    # The Web's *-moments runs must not be able to write long-term memory or open
+    # a shell. Prompt wording cannot enforce that, so those sessions are built
+    # from an allowlist instead of the full api_server toolset.
+    import hermes_cli.tools_config as tools_config
+    if not getattr(tools_config, '_ziwei_moment_toolsets_installed', False):
+        tools_config._ziwei_original_platform_tools = tools_config._get_platform_tools
+
+        def platform_tools(config, platform, *args, **kwargs):
+            return moment_platform_tools(config, platform,
+                                         tools_config._ziwei_original_platform_tools,
+                                         *args, **kwargs)
+
+        tools_config._get_platform_tools = platform_tools
+        tools_config._ziwei_moment_toolsets_installed = True
+
+    install_moment_session_guard(adapter)
 
     original = adapter._http_route_table
     def routes(self):
