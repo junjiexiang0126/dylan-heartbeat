@@ -13,8 +13,8 @@ test('personal diaries expand actual original text, respond through a draft, and
 });
 test('memory is live, searchable, read-only, and source text is never executed as HTML',async({page})=>{
  let content='# 原生长期记忆\n真实内容 FIRST\n<script>window.RECORD_XSS=true</script>';
- await page.route('**/api/records/memory?*',r=>r.fulfill({json:response([{id:'native-memory',source:'memories/MEMORY.md',title:'长期记忆',category:'memory',content,at:now,savedAt:now,revision:content}])}));
- await login(page);await page.locator('[data-tab=memory]').click();await expect(page.locator('#memoryRecords')).toContainText('FIRST');expect(await page.evaluate(()=>window.RECORD_XSS)).toBeUndefined();expect(await page.locator('#memoryRecords textarea,#memoryRecords input').count()).toBe(0);
+ await page.route('**/api/records/memory?*',r=>r.fulfill({json:response([{id:'native-memory',source:'memories/MEMORY.md',title:'知微的身份',categories:['self'],classificationBasis:'后台分类标记',content,at:now,savedAt:now,revision:content}])}));
+ await login(page);await page.locator('[data-tab=memory]').click();await page.locator('[data-memory-category=self]').click();await expect(page.locator('#memoryRecords')).toContainText('FIRST');expect(await page.evaluate(()=>window.RECORD_XSS)).toBeUndefined();expect(await page.locator('#memoryRecords textarea,#memoryRecords input').count()).toBe(0);
  await page.locator('#memoryRecords button').filter({hasText:'展开'}).click();await expect(page.locator('#memoryRecords .record-body')).not.toHaveClass(/collapsed/);
  content='后台真实修改 SECOND';await page.locator('#memoryRefresh').click();await expect(page.locator('#memoryRecords')).toContainText('SECOND');await expect(page.locator('#memoryRecords')).not.toContainText('FIRST');
  const search=page.waitForRequest(r=>r.url().includes('/api/records/memory?')&&new URL(r.url()).searchParams.get('q')==='SECOND');await page.locator('#memorySearch').fill('SECOND');await search;

@@ -39,3 +39,18 @@
 .record-date{font-size:var(--ui-font-10);letter-spacing:var(--ui-tracking-_04)}
 .record-search-row select{max-width:var(--records-filter-width)}
 }
+
+/* Four memory doors: geometry and type remain adjustable from tokens.css. */
+.memory-entry-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--memory-entry-gap);margin-block:var(--memory-entry-gap)}
+.memory-entry{display:flex;flex-direction:column;text-align:left;position:relative;min-width:0;min-height:var(--memory-entry-height);padding:var(--memory-entry-padding);border-radius:var(--memory-entry-radius);color:var(--ink);background:var(--memory-entry-fill);border:var(--ui-size-1) solid var(--border)}
+.memory-entry-top{display:flex;align-items:center;justify-content:space-between;gap:var(--ui-space-8);margin-bottom:var(--ui-space-18)}
+.memory-entry-icon{width:var(--memory-entry-icon-size);height:var(--memory-entry-icon-size);display:grid;place-items:center;border-radius:var(--memory-entry-icon-radius);background:var(--accent-soft);color:var(--accent)}
+.memory-entry-icon svg{width:var(--memory-entry-glyph-size);height:var(--memory-entry-glyph-size);fill:none;stroke:currentColor;stroke-width:var(--memory-entry-stroke);stroke-linecap:round;stroke-linejoin:round}
+.memory-entry-count{font-size:var(--memory-entry-meta-size);color:var(--muted);white-space:nowrap}
+.memory-entry strong{font:var(--ui-weight-medium) var(--memory-entry-title-size)/var(--ui-leading-1_5) var(--ui-serif);margin-bottom:var(--ui-space-8)}
+.memory-entry-description{font-size:var(--memory-entry-description-size);line-height:var(--ui-leading-1_8);color:var(--muted);overflow-wrap:anywhere}
+.memory-entry-link{display:flex;align-items:center;justify-content:space-between;font-size:var(--memory-entry-meta-size);color:var(--accent);padding-top:var(--ui-space-18);margin-top:auto}
+.memory-entry-link>span{font-size:var(--ui-font-16)}
+.memory-detail-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--ui-space-12);margin-top:var(--ui-space-16)}
+.memory-detail-heading h2{font:var(--ui-weight-medium) var(--records-title-size)/var(--ui-leading-1_8) var(--ui-serif)}
+@media(hover:hover){.memory-entry:hover{border-color:var(--accent)}}

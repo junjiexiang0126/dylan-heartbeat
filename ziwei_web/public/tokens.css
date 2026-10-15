@@ -122,6 +122,19 @@
   --interaction-dot-color: #e74858;
   --interaction-toast-shadow-color: #0002;
 
+  --memory-entry-gap: var(--ui-space-12);
+  --memory-entry-height: 202px;
+  --memory-entry-padding: var(--ui-space-18);
+  --memory-entry-radius: var(--ui-radius-24);
+  --memory-entry-icon-size: var(--ui-size-40);
+  --memory-entry-icon-radius: var(--ui-radius-12);
+  --memory-entry-glyph-size: var(--ui-size-22);
+  --memory-entry-stroke: 1.4;
+  --memory-entry-meta-size: var(--ui-font-10);
+  --memory-entry-title-size: var(--ui-font-18);
+  --memory-entry-description-size: var(--ui-font-12);
+  --memory-entry-fill: linear-gradient(var(--glass),var(--input));
+
   /* Component controls: these may also be overridden on #logs/#memory/#moments. */
   --records-card-padding-block: var(--ui-space-26);
   --records-card-padding-inline: var(--ui-space-28);

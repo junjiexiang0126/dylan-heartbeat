@@ -4,6 +4,17 @@ window.ZiweiRecords=(()=>{
  let token=null,epoch=0,visible=null,kind='work',timer=null,busy=false,sequence=0,onReply=null,searchTimer=null;
  const state=Object.fromEntries(['work','diary','memory'].map(k=>[k,{offset:0,next:null,q:'',category:'all',data:[],expanded:new Set()}]));
  const documents=new Map();
+ const memoryTitles={user:'关于你',self:'关于知微',protected:'长期记忆',work:'工作记忆',uncategorized:'待归类的原生记忆'};
+ const memoryHints={user:'你的资料、偏好，以及与你有关的记忆。',self:'知微对自身身份、性格与经历的记忆。',protected:'后端设定的受保护记忆；保护规则由后端执行。',work:'代码、项目和实际工作中保存的记忆。',uncategorized:'这些原生记录没有明确分类，保留原文，等待补充分类标记。'};
+ function memoryChrome(value){
+  const category=state.memory.category,overview=category==='all';$('#memoryOverview').hidden=!overview;$('#memoryDetail').hidden=overview;
+  if(!overview){$('#memoryDetailTitle').textContent=memoryTitles[category]||'记忆';$('#memoryDetailHint').textContent=memoryHints[category]||'';}
+  if(value?.counts)for(const b of document.querySelectorAll('[data-memory-count]')){const count=value.counts[b.dataset.memoryCount];b.textContent=Number.isSafeInteger(count)?count+' 条':'待同步';}
+  if(value?.counts){const count=value.counts.uncategorized;$('#memoryUncategorized').hidden=!Number.isSafeInteger(count)||count===0;$('#memoryUncategorized').textContent=count?'还有 '+count+' 条尚未标注分类 · 查看原文':'';}
+  const sources=value?.protectedSources||[];$('#memoryProtectedSources').hidden=category!=='protected'||!sources.length;$('#memoryProtectedSources').textContent=sources.length?'后端另标记了受保护文件：'+sources.join('、')+'。当前接口未提供这些文件的原文。':'';
+ }
+ function openMemory(category){state.memory.category=category;state.memory.offset=0;state.memory.q='';state.memory.data=[];$('#memorySearch').value='';$('#memoryRecords').replaceChildren();$('#memoryEmpty').hidden=true;memoryChrome();sequence++;busy=false;void load();}
+
  const labels={pending:'待执行',in_progress:'执行中',completed:'已完成（后台记录）',failed:'失败',waiting_user:'等待你处理',deferred:'暂缓',saved:'已保存原文',admitted:'已放行一次机会',skipped:'未放行',delivery_failed:'执行后送达失败',recorded:'已记录',unknown:'状态未确认'};
  const bases={agent_task_state:'知微的任务当前状态',system_gate:'系统唤醒检查',cron_execution:'原生 Cron 执行记录',agent_activity_record:'知微保存的活动记录',saved_file:'知微保存的原文',agent_briefing:'知微自主简报 · 本人记录',memory_audit:'原生记忆维护审计'};
  function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;}
@@ -23,13 +34,14 @@ window.ZiweiRecords=(()=>{
  async function full(k,row){const value=await api('/api/records/'+k+'?id='+encodeURIComponent(row.id));documents.set(k+':'+row.id,value);return value;}
  function updateBody(node,content){node.textContent=content;}
  function render(k){
-  const s=state[k],list=panels[k];const top=window.scrollY;list.replaceChildren();
+  const s=state[k],list=panels[k];const top=window.scrollY;list.replaceChildren();if(k==='memory'&&s.category==='all')return;
   for(const row of s.data){
    const card=el('article','glass record-card '+(k==='diary'?'diary-card':k==='memory'?'memory-card':'work-card'));card.dataset.id=row.id;
    const date=el('div','record-date');date.append(el('time','',k==='diary'&&row.date?row.date.replaceAll('-','.'):time(row.at||row.savedAt)),el('span','record-date-line'));card.append(date);
    if(k==='diary'){const author=el('p','record-author');author.textContent=($('#ziweiName').textContent||'知微')+' · 个人日记';card.append(author);}
    card.append(el('h2','record-title',row.title));
    if(k==='work'){card.append(el('span','record-state',row.basis==='memory_audit'&&row.state==='pending'?'等待核验':row.basis==='agent_task_state'&&row.state==='completed'?'标记完成':labels[row.state]||'状态未确认'),el('p','record-basis',bases[row.basis]||'后台原始记录'));if(row.recordedState)card.append(el('p','record-basis','原始状态：'+row.recordedState));if(row.opportunity!==null&&row.opportunity!==undefined)card.append(el('p','record-basis','第 '+row.opportunity+' 次自主机会'));}
+   if(k==='memory'&&row.protected===true)card.append(el('span','record-state','后端受保护'));else if(k==='memory'&&row.categories?.includes('protected'))card.append(el('p','record-basis','保护状态尚未由后端确认'));
    if(k==='memory'&&Number.isSafeInteger(row.chars))card.append(el('p','record-basis',row.chars+' 字符 · '+row.lines+' 行'));
    const content=el('div','record-body');let doc=documents.get(k+':'+row.id);if(k==='memory')doc=row;
    const expanded=s.expanded.has(row.id);content.classList.toggle('collapsed',!expanded);updateBody(content,expanded&&doc?doc.content:row.preview??row.content??'');card.append(content);
@@ -43,20 +55,20 @@ window.ZiweiRecords=(()=>{
    if(row.references?.length)card.append(el('p','record-basis','记录中的引用：'+row.references.join('、')));
    if(row.evidence?.length){const box=el('div','record-evidence');box.append(el('p','',row.evidenceVerified?'成果文件已落盘；文件存在不代表外部任务结果已核实。':'部分成果文件缺失或无法读取。'));for(const item of row.evidence){if(item.saved&&item.id){const a=el('a','record-artifact',item.source+' · '+item.bytes+' B');a.href='/api/records/artifact?id='+encodeURIComponent(item.id);a.download='';box.append(a);}else box.append(el('p','error',item.source+' · 未找到有效成果'));}card.append(box);}
    if(k==='work'&&row.basis==='agent_task_state'&&row.state==='completed'&&!row.evidence?.length)card.append(el('p','record-basis','没有可核对的成果文件，当前只能确认任务被标记完成。'));
-   card.append(actions);const provenance=el('details','record-provenance');provenance.append(el('summary','','来源与保存时间'),el('p','',row.source),el('p','','保存于 '+time(row.savedAt||row.at)));if(row.revision)provenance.append(el('p','','内容指纹 '+row.revision.slice(0,12)));card.append(provenance);list.append(card);
+   card.append(actions);const provenance=el('details','record-provenance');provenance.append(el('summary','','来源与保存时间'),el('p','',row.source),el('p','','保存于 '+time(row.savedAt||row.at)));if(row.revision)provenance.append(el('p','','内容指纹 '+row.revision.slice(0,12)));if(k==='memory'&&row.classificationBasis)provenance.append(el('p','','分类依据：'+row.classificationBasis));card.append(provenance);list.append(card);
   }
-  const empty=$(k==='memory'?'#memoryEmpty':'#logEmpty');empty.hidden=s.data.length>0;empty.textContent=s.q?'没有找到符合条件的原始记录。':k==='diary'?'知微还没有在当前日记目录保存日记。':k==='memory'?'当前没有可读取的原生记忆文档。':'当前没有可读取的工作记录。';
+  const empty=$(k==='memory'?'#memoryEmpty':'#logEmpty');empty.hidden=s.data.length>0;empty.textContent=s.q?'没有找到符合条件的原始记录。':k==='diary'?'知微还没有在当前日记目录保存日记。':k==='memory'?'这个分类还没有可读取的原生记忆。':'当前没有可读取的工作记录。';
   $(k==='memory'?'#memoryPrevious':'#logPrevious').disabled=s.offset===0;$(k==='memory'?'#memoryNext':'#logNext').disabled=s.next===null;
   if(top>0)window.scrollTo({top});
  }
  async function load(){
   if(!token||!visible)return;const k=current(),s=state[k],v=epoch,run=++sequence;busy=true;const status=statusNode(k);status.textContent=s.data.length?'正在核对后台更新…':'正在读取知微后台…';errorNode(k).textContent='';
-  try{const params=new URLSearchParams({limit:'20',offset:String(s.offset),q:s.q,...(k==='memory'?{category:s.category}:{})}),value=await api('/api/records/'+k+'?'+params);if(v!==epoch||run!==sequence||current()!==k)return;if(!Array.isArray(value.data)||value.source!=='hermes_native')throw Error('未收到可核对的原生记录。');s.data=value.data;s.next=value.nextOffset??null;render(k);status.textContent='后台核对于 '+time(value.checkedAt)+' · '+value.total+(k==='memory'?' 份原生文档':' 条记录');if(value.errors?.length)errorNode(k).textContent='部分来源缺失或读取失败：'+value.errors.map(x=>x.source).join('、')+'。现有列表可能不完整。';if(k==='work'&&value.workLogWindow)$('#workLogScope').textContent='展示知微的自主简报与记忆维护记录，以原生后台实际返回为准。每次刷新最多读取 2,000 条，不补写历史。';}
+  try{const params=new URLSearchParams({limit:'20',offset:String(s.offset),q:s.q,...(k==='memory'?{category:s.category}:{})}),value=await api('/api/records/'+k+'?'+params);if(v!==epoch||run!==sequence||current()!==k)return;if(!Array.isArray(value.data)||value.source!=='hermes_native')throw Error('未收到可核对的原生记录。');s.data=value.data;s.next=value.nextOffset??null;if(k==='memory')memoryChrome(value);render(k);status.textContent='后台核对于 '+time(value.checkedAt)+' · '+value.total+(k==='memory'?' 条原生记忆':' 条记录');if(value.errors?.length)errorNode(k).textContent='部分来源缺失或读取失败：'+value.errors.map(x=>x.source).join('、')+'。现有列表可能不完整。';if(k==='work'&&value.workLogWindow)$('#workLogScope').textContent='展示知微的自主简报与记忆维护记录，以原生后台实际返回为准。每次刷新最多读取 2,000 条，不补写历史。';}
   catch(e){if(v===epoch&&run===sequence){status.textContent=s.data.length?'后台更新未确认，以下保留上次读取结果。':'尚未读到真实后台记录。';errorNode(k).textContent=e.message;$(k==='memory'?'#memoryEmpty':'#logEmpty').hidden=true;}}
   finally{if(v===epoch&&run===sequence)busy=false;}
  }
- function show(name,csrf,reply){if(token!==csrf){stop();token=csrf;}onReply=reply;visible=['memory','logs'].includes(name)?name:null;clearInterval(timer);timer=null;if(!visible)return;void load();timer=setInterval(()=>{if(!document.hidden&&!busy)void load();},30000);}
- function stop(){epoch++;sequence++;token=null;visible=null;onReply=null;busy=false;clearInterval(timer);clearTimeout(searchTimer);timer=null;documents.clear();for(const s of Object.values(state)){s.data=[];s.offset=0;s.next=null;s.q='';s.category='all';s.expanded.clear();}$('#logRecords').replaceChildren();$('#memoryRecords').replaceChildren();for(const id of ['logStatus','logError','memoryStatus','memoryError'])$('#'+id).textContent='';$('#logSearch').value='';$('#memorySearch').value='';$('#memoryCategory').value='all';}
+ function show(name,csrf,reply){if(token!==csrf){stop();token=csrf;}onReply=reply;if(name==='memory'&&visible!=='memory'){state.memory.category='all';state.memory.q='';state.memory.offset=0;$('#memorySearch').value='';memoryChrome();}visible=['memory','logs'].includes(name)?name:null;clearInterval(timer);timer=null;if(!visible)return;void load();timer=setInterval(()=>{if(!document.hidden&&!busy)void load();},30000);}
+ function stop(){epoch++;sequence++;token=null;visible=null;onReply=null;busy=false;clearInterval(timer);clearTimeout(searchTimer);timer=null;documents.clear();for(const s of Object.values(state)){s.data=[];s.offset=0;s.next=null;s.q='';s.category='all';s.expanded.clear();}$('#logRecords').replaceChildren();$('#memoryRecords').replaceChildren();for(const id of ['logStatus','logError','memoryStatus','memoryError'])$('#'+id).textContent='';$('#logSearch').value='';$('#memorySearch').value='';memoryChrome();for(const b of document.querySelectorAll('[data-memory-count]'))b.textContent='待同步';$('#memoryUncategorized').hidden=true;$('#memoryUncategorized').textContent='';}
  for(const b of document.querySelectorAll('[data-log-kind]'))b.onclick=()=>{kind=b.dataset.logKind;sequence++;busy=false;document.querySelectorAll('[data-log-kind]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-selected',String(x===b));});$('#logSearch').value=state[kind].q;$('#workLogScope').hidden=kind!=='work';panels[kind].replaceChildren();void load();};
  for(const k of ['logs','memory']){
   const prefix=k==='logs'?'log':'memory';$('#'+prefix+'Refresh').onclick=()=>{void load();};
@@ -64,7 +76,7 @@ window.ZiweiRecords=(()=>{
   $('#'+prefix+'Previous').onclick=()=>{state[current()].offset=Math.max(0,state[current()].offset-20);void load();};
   $('#'+prefix+'Next').onclick=()=>{if(state[current()].next!==null){state[current()].offset=state[current()].next;void load();}};
  }
- $('#memoryCategory').onchange=e=>{state.memory.category=e.target.value;state.memory.offset=0;void load();};
+ for(const b of document.querySelectorAll('[data-memory-category]'))b.onclick=()=>openMemory(b.dataset.memoryCategory);$('#memoryBack').onclick=()=>openMemory('all');$('#memoryUncategorized').onclick=()=>openMemory('uncategorized');
  document.addEventListener('visibilitychange',()=>{if(visible&&!document.hidden&&!busy)void load();});
  return {show,stop};
 })();

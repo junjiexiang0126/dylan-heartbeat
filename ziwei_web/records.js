@@ -2,7 +2,7 @@
 // Web-only adapter for Ziwei's native APIs. Never edits or scans native files.
 const {HermesClient}=require('./hermes_client'),{createHash}=require('node:crypto');
 const digest=x=>createHash('sha256').update(x).digest('hex');
-const fileId=name=>Buffer.from(name).toString('base64url');
+const {memoryView}=require('./memory_view');
 const date=value=>{if(typeof value==='number')value=value<1e12?value*1000:value;return value!==null&&value!==undefined&&Number.isFinite(new Date(value).getTime())?new Date(value).toISOString():null;};
 function createRecords(){
  const client=new HermesClient();let cachedWork=null,pendingWork=null;
@@ -29,7 +29,7 @@ function createRecords(){
   if(req.method!=='GET')return json(405,{error:'read_only'});
   const kind=url.pathname.slice('/api/records/'.length),q=url.searchParams.get('q')||'',category=url.searchParams.get('category')||'all',offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||20),id=url.searchParams.get('id');
   if(!['diary','work','memory','artifact'].includes(kind))return json(404,{error:'not_found'});
-  if([...url.searchParams.keys()].some(k=>!['q','category','offset','limit','id'].includes(k))||url.search.length>2400||q.length>200||!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>50||!['all','user','memory'].includes(category))return json(400,{error:'invalid_query'});
+  if([...url.searchParams.keys()].some(k=>!['q','category','offset','limit','id'].includes(k))||url.search.length>2400||q.length>200||!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>50||!['all','user','self','protected','work','uncategorized','memory'].includes(category))return json(400,{error:'invalid_query'});
   try{
    if(kind==='artifact'){
     // Only a future explicit, authenticated native artifact endpoint may serve
@@ -52,11 +52,13 @@ function createRecords(){
    let rows=[],errors=[];
    if(kind==='memory'){
     const value=await client.json('/ziwei/web/memory',{signal:AbortSignal.timeout(10000)});
-    if(!Array.isArray(value.files))throw Error('invalid_native_records');
-    for(const file of value.files){if(!['MEMORY.md','USER.md'].includes(file.name)||!Array.isArray(file.entries))throw Error('invalid_native_records');const content=file.entries.map(e=>{if(typeof e.text!=='string')throw Error('invalid_native_records');return e.text;}).join('\n\n§\n\n');rows.push({id:fileId(file.name),source:'memories/'+file.name,title:file.name==='USER.md'?'关于你':'长期记忆',category:file.name==='USER.md'?'user':'memory',content,at:date(file.updated_at),savedAt:date(file.updated_at),revision:/^[a-f0-9]{64}$/.test(file.sha256)?file.sha256:null,chars:Number.isSafeInteger(file.chars)?file.chars:null,lines:Number.isSafeInteger(file.lines)?file.lines:null,protectedEntries:file.protected_entries||[],readOnly:true});}
-    errors=(value.errors||[]).map(e=>({source:e.file||'原生记忆接口',code:e.code||'source_unavailable'}));
+    const view=memoryView(value);rows=view.rows;errors=view.errors;
     if(id){const row=rows.find(r=>r.id===id);return row?json(200,row):json(404,{error:'record_not_found'});}
-    rows=rows.filter(row=>category==='all'||row.category===category);
+    const counts=view.counts,protectedSources=view.protectedSources;
+    rows=rows.filter(row=>category==='all'||category==='memory'&&row.sourceFile==='MEMORY.md'||row.categories.includes(category));
+    if(q)rows=rows.filter(row=>[row.title,row.source,row.content].some(x=>x.toLocaleLowerCase().includes(q.toLocaleLowerCase())));
+    rows.sort((a,b)=>(b.at||'').localeCompare(a.at||'')||a.sourceFile.localeCompare(b.sourceFile)||a.entryIndex-b.entryIndex);
+    return json(200,{data:rows.slice(offset,offset+limit),total:rows.length,nextOffset:offset+limit<rows.length?offset+limit:null,counts,protectedSources,source:'hermes_native',readOnly:true,checkedAt:new Date().toISOString(),errors,unit:'entries'});
    }else{
     if(id)return json(404,{error:'record_not_found'});
     const value=await work();errors=value.errors;

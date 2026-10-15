@@ -137,7 +137,7 @@ test('records use authenticated read-only native sources; updates stay live and 
  assert.equal((await s.api('/api/records/memory',{})).status,405);
  assert.equal((await s.api('/api/records/private')).status,404);
  assert.equal((await s.api('/api/records/work?path=../secret')).status,400);
- const first=await (await s.api('/api/records/memory')).json();assert.equal(first.data[0].content,'first');
+ const first=await (await s.api('/api/records/memory')).json();assert.equal(first.data[0].content,'first');assert.equal(first.counts.uncategorized,1);assert.equal(first.counts.protected,0);assert.deepEqual((await (await s.api('/api/records/memory?category=protected')).json()).data,[]);assert.equal((await (await s.api('/api/records/memory?id='+first.data[0].id)).json()).content,'first');
  revision='second';assert.equal((await (await s.api('/api/records/memory?q=second')).json()).data[0].content,'second');
  for(const kind of ['diary','work'])assert.equal((await s.api('/api/records/'+kind)).status,200);const work=await (await s.api('/api/records/work')).json();assert.equal(work.data.find(r=>r.basis==='memory_audit').state,'pending');assert.equal(work.data.find(r=>r.basis==='agent_briefing').state,'recorded');
  assert.equal(s.fake.executions,0);assert.equal(s.fake.seen.filter(x=>/^\/ziwei\/web\/(memory|logs|diary)/.test(x.url)).every(x=>x.method==='GET'),true);
