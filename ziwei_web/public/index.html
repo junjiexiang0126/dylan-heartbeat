@@ -16,7 +16,7 @@
 <section id="login" class="login glass">
   <span class="eyebrow">OUR LITTLE WORLD</span><h1>回到我们的小世界</h1><p>留一盏灯，等你回家。</p>
   <form id="loginForm"><label for="password">访问密码</label><input id="password" type="password" autocomplete="current-password" maxlength="512" required placeholder="输入你的访问密码"><button class="primary" type="submit">进入知微之家 <span aria-hidden="true">→</span></button></form>
-  <button id="unlockButton" class="secondary" hidden>用设备解锁</button><p class="hint">首次使用密码登录。之后保持登录，可在设置中开启设备解锁。</p><p id="loginError" class="error" role="alert"></p>
+  <button id="unlockButton" class="secondary" type="button" disabled>用 Face ID / 设备解锁</button><p id="unlockHint" class="hint" role="status">首次请用访问密码登录，再到右上角设置顶部开启 Face ID / 设备解锁。</p><p id="loginError" class="error" role="alert"></p>
 </section>
 <section id="app" hidden>
   <section class="panel home" id="home" aria-labelledby="homeTitle">
@@ -65,6 +65,7 @@
 </section>
 </main>
 <dialog id="settings" class="glass"><div class="dialog-heading"><div><span class="eyebrow">MAKE IT YOURS</span><h2>设置与资料</h2></div><button id="closeSettings" class="icon-button" aria-label="关闭设置">×</button></div>
+<fieldset class="security" id="deviceSecurity"><legend>Face ID / 设备解锁</legend><p class="hint">先确认访问密码，再创建通行密钥。下次锁定后可用 Face ID、指纹或设备密码解锁。</p><label for="verifyPassword">确认密码（开启或移除设备解锁时使用）</label><input id="verifyPassword" type="password" autocomplete="current-password" maxlength="512"><button id="registerPasskey" class="secondary" type="button">开启 Face ID / 设备解锁</button><button id="removePasskeys" class="text-button" type="button">移除所有设备解锁凭据</button><p class="hint">面容验证由系统选择；添加到主屏幕不会自动开启。登录保留 30 天，需验证时请点“锁定 / 退出此设备”。</p><p id="passkeyMessage" class="hint" role="status"></p><div class="logout-actions"><button id="logout" type="button" class="secondary">锁定 / 退出此设备</button><button id="logoutAll" type="button" class="secondary">退出全部设备</button></div></fieldset>
 <form id="profileForm">
   <fieldset><legend>我们的资料</legend><label for="userNickname">你的昵称</label><input id="userNickname" maxlength="24" required><label for="userAvatarFile">你的头像</label><input id="userAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" id="clearUserAvatar" class="text-button">恢复默认头像</button><label for="ziweiNickname">知微的昵称</label><input id="ziweiNickname" maxlength="24" required><label for="ziweiAvatarFile">知微的头像</label><input id="ziweiAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><button type="button" id="clearZiweiAvatar" class="text-button">恢复默认头像</button><label for="metOn">相识日期（由你确认）</label><input id="metOn" type="date"><p class="hint">这里保存首页展示资料与变更历史。知微的原生身份与人格由 Hermes 管理。</p></fieldset>
   <fieldset><legend>空间外观</legend><label for="theme">主题</label><select id="theme"><option value="system">跟随设备</option><option value="light">白昼</option><option value="dark">夜晚</option></select><label for="background">背景色调</label><select id="background"><option value="rose">暖玫瑰</option><option value="sage">青苔绿</option><option value="sky">雾蓝</option></select>
@@ -76,7 +77,7 @@
   <button class="primary" type="submit" id="saveProfile">保存设置</button><p id="settingsMessage" role="status"></p>
 </form>
 <details id="profileHistory"><summary>资料变更历史</summary><ol id="historyList"></ol></details>
-<fieldset class="security"><legend>登录与设备</legend><p class="hint">登录保留 30 天。设备解锁使用 Passkey；面容、指纹或 PIN 由设备系统验证。</p><label for="verifyPassword">确认密码（开启或移除设备解锁时使用）</label><input id="verifyPassword" type="password" autocomplete="current-password" maxlength="512"><button id="registerPasskey" class="secondary" type="button">开启设备解锁</button><button id="removePasskeys" class="text-button" type="button">移除所有设备解锁凭据</button><p id="passkeyMessage" class="hint" role="status"></p><div class="logout-actions"><button id="logout" type="button" class="secondary">锁定 / 退出此设备</button><button id="logoutAll" type="button" class="secondary">退出全部设备</button></div></fieldset>
+
 </dialog>
 <dialog id="chatImageViewer" class="glass chat-image-viewer" aria-label="图片预览"><div class="viewer-toolbar"><button id="chatImageClose" type="button" aria-label="关闭图片">×</button><button id="chatImagePrevious" type="button" aria-label="上一张图片">‹</button><button id="chatImageNext" type="button" aria-label="下一张图片">›</button><button id="chatImageZoomOut" type="button" aria-label="缩小图片">−</button><button id="chatImageZoomIn" type="button" aria-label="放大图片">＋</button><button id="chatImageRetry" type="button" hidden>重试读取</button><a id="chatImageSave" download>保存原图</a></div><p id="chatImageName"></p><div id="chatImageCanvas"><img id="chatImageFull" alt=""></div></dialog>
 <dialog id="chatCallDialog" class="chat-call-dialog" aria-labelledby="chatCallName" aria-describedby="chatCallMode" data-phase="idle">
