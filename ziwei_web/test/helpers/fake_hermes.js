@@ -1,7 +1,7 @@
 'use strict';
 // Protocol fixture only: never considered evidence of a live Agent reply.
 const http=require('node:http'),crypto=require('node:crypto');
-function fakeHermes({delay=500,loseAdmission=false,interim=true,approval=false,media=null,presence=null,history=[],output='协议测试回复'}={}){
+function fakeHermes({delay=500,loseAdmission=false,interim=true,approval=false,media=null,presence=null,history=[],pokes=[],output='协议测试回复'}={}){
  const runs=new Map(),keys=new Map(),seen=[];let executions=0;
  const server=http.createServer(async(req,res)=>{
   seen.push({url:req.url,method:req.method,authorization:req.headers.authorization,sessionKey:req.headers['x-hermes-session-key']});
@@ -11,6 +11,7 @@ function fakeHermes({delay=500,loseAdmission=false,interim=true,approval=false,m
   if(req.url==='/api/sessions'&&req.method==='POST')return json(201,{object:'hermes.session'});
   if(req.url.startsWith('/api/sessions?'))return json(200,{data:history,has_more:false});
   const hm=/^\/api\/sessions\/([^/]+)\/messages/.exec(req.url);if(hm){const session=history.find(s=>s.id===decodeURIComponent(hm[1]));return json(200,{data:session?.messages||[]});}
+  if(req.url.startsWith('/ziwei/web/pokes'))return json(200,{data:pokes,next_cursor:null,has_more:false});
   if(req.url==='/ziwei/web/state')return json(200,presence||{state:null,source:null,updatedAt:null,stale:true});
   if(req.url.startsWith('/api/sessions/')&&req.method==='GET')return json(200,{session:{id:req.url.slice('/api/sessions/'.length)}});
   if(req.url==='/v1/runs'&&req.method==='POST'){

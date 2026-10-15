@@ -98,6 +98,10 @@ def main() -> None:
     user = pwd.getpwnam("hermes")
     repair_backup_ownership(home, user.pw_uid, user.pw_gid)
 
+    if os.environ.get("ZIWEI_PREFLIGHT_UPGRADE_SHA256"):
+        from preflight_upgrade import upgrade
+        upgrade(home)
+
     if os.environ.get("ZIWEI_RUNTIME_GUARD") == "1":
         from runtime_guard import initialize
         initialize()

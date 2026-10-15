@@ -31,7 +31,11 @@ class GateTests(unittest.TestCase):
             self.assertTrue(gate.evaluate(self.home, self.now)["wakeAgent"])
         self.assertFalse(gate.evaluate(self.home, self.now)["wakeAgent"])
         (self.home / "workspace/diary/2026-10-10.md").write_text("real diary")
-        self.assertFalse(gate.evaluate(self.home, datetime(2026, 10, 10, 10))["wakeAgent"])
+        result = gate.evaluate(self.home, datetime(2026, 10, 10, 10))
+        self.assertTrue(result["wakeAgent"])
+        self.assertTrue(result["idle"])
+        self.assertIn("rest", result["available_actions"])
+        self.assertEqual(result["opportunity"], 1)
 
     def test_completion_requires_real_scoped_artifact(self):
         self.write_tasks([{"status": "completed", "evidence": ["../config.yaml"]}])

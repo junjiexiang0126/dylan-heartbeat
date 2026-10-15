@@ -123,3 +123,8 @@ test('missing original file and corrupt download are visible and never falsely m
  const sync=await (await s.api('/api/chat/media/sync',{messageId})).json();assert.equal(sync.ok,false);const reply=(await s.rows()).find(m=>m.id===messageId);assert.equal(reply.mediaDelivery.state,'failed');assert.equal(reply.attachments.length,0);assert.equal(s.fake.executions,1);
  media.corrupt=false;assert.equal((await (await s.api('/api/chat/media/sync',{messageId})).json()).ok,true);
 });
+test('native pat is imported once and user pat replays one exact event and run',async t=>{
+ const nativeId=crypto.randomUUID(),s=await setup(t,{pokes:[{id:nativeId,author:'ziwei',target:'user',at:new Date().toISOString()}]});await until(async()=> (await s.rows()).some(m=>m.id==='poke-native-'+nativeId));const id=crypto.randomUUID(),payload={id,target:'ziwei'};
+ const one=await s.api('/api/chat/poke',payload),two=await s.api('/api/chat/poke',payload);assert.equal(one.status,200);assert.equal((await two.json()).replayed,true);await until(()=>s.fake.executions===1);const rows=await s.rows();assert.equal(rows.filter(m=>m.id==='poke-'+id).length,1);assert.equal(rows.filter(m=>m.id==='poke-native-'+nativeId).length,1);assert.ok(rows.every(m=>m.id!=='user-'+id));
+ assert.equal((await fetch(s.origin+'/api/chat/poke',{method:'POST',headers:{Cookie:s.cookie,Origin:s.origin},body:JSON.stringify(payload)})).status,403);
+});

@@ -112,6 +112,7 @@ window.ZiweiChat=(()=>{
  function paintMessageAvatar(el,role){const profile=role==='user'?profileData.user:role==='assistant'?profileData.ziwei:{nickname:'原始档案',avatar:null};el.replaceChildren();el.removeAttribute('role');el.removeAttribute('aria-label');if(profile.avatar){const img=element('img');img.src=profile.avatar;img.alt=profile.nickname+'的头像';el.append(img);}else{el.textContent=[...profile.nickname][0]||'微';el.setAttribute('role','img');el.setAttribute('aria-label',profile.nickname+'的头像');}}
  function setProfiles(profiles){for(const who of ['user','ziwei'])if(profiles?.[who])profileData[who]={nickname:profiles[who].nickname||(who==='user'?'你':'知微'),avatar:profiles[who].avatar||null};document.querySelectorAll('#chatMessages .message-avatar').forEach(el=>paintMessageAvatar(el,el.dataset.role));window.ZiweiChatCall?.setProfile(profileData.ziwei);}
  function renderMessage(m){
+  if(m.kind==='poke'){const card=element('article','chat-poke-event');card.dataset.id=m.id;card.append(element('p','message-label',timestamp(m.created_at)),element('p','',m.content));rememberMessage(card,m);return card;}
   const card=element('article','message '+m.role+(m.source==='archive'?' archive':''));card.dataset.id=m.id;
   const avatar=element('div','message-avatar'),body=element('div','message-body');avatar.dataset.role=m.role;paintMessageAvatar(avatar,m.role);card.append(avatar,body);
   body.append(element('p','message-label',messageLabel(m)));
@@ -127,6 +128,7 @@ window.ZiweiChat=(()=>{
    const retry=button('重试接收附件',async()=>{const epoch=version;retry.disabled=true;status.textContent='正在接收附件…';try{const o=await request('/api/chat/media/sync','POST',{messageId:m.id});if(epoch!==version)return;await load();if(!o.ok&&box.isConnected)status.textContent='附件尚未收到：'+(reasons[o.data?.[0]?.error||m.mediaDelivery?.error]||'文件回传未完成')+'。';}catch(e){if(epoch===version&&box.isConnected)status.textContent='附件接收失败，请稍后重试。';}finally{if(epoch===version)retry.disabled=false;}});box.append(status,retry);bubble.append(box);
   }
   const actions=element('div','message-actions');
+  if(m.source==='live'&&m.role==='assistant')actions.append(button('拍一拍',()=>window.ZiweiPoke?.send('ziwei')));
   if(m.source==='live'&&!m.deleted)actions.append(button('引用',()=>{quote=m;$('#chatQuote').hidden=false;$('#chatQuoteText').textContent=m.content.slice(0,120)||'附件消息';$('#chatInput').focus();}));
   actions.append(button('复制',async()=>{await copy(m.content);$('#chatError').textContent='已复制。';}),button(m.favorite?'取消收藏':'收藏',async()=>{await request('/api/chat/action','POST',{id:m.id,action:m.favorite?'unfavorite':'favorite'});await load();}));
   if(m.source==='live')actions.append(button(m.deleted?'恢复':'删除',async()=>{if(!m.deleted&&!confirm('将这条消息移入回收站？原始记录与知微已有上下文会保留。'))return;await request('/api/chat/action','POST',{id:m.id,action:m.deleted?'restore':'delete'});await load();}));
@@ -144,7 +146,7 @@ window.ZiweiChat=(()=>{
    if(!Array.isArray(o.data))throw Error('聊天记录格式异常，请重新加载。');
    // Reconnects and status events must not recreate an unchanged media player.
    const existing=new Map([...list.children].map(card=>[card.dataset.id,card]));
-   const cards=o.data.map(m=>{const card=existing.get(m.id),previous=card&&renderedMessages.get(card);if(previous?.full===JSON.stringify(m))return card;if(previous?.withoutStatus===JSON.stringify({...m,status:null})){card.querySelector('.message-label').textContent=messageLabel(m);rememberMessage(card,m);return card;}return renderMessage(m);});
+   const cards=o.data.map(m=>{const card=existing.get(m.id),previous=card&&renderedMessages.get(card);if(previous?.full===JSON.stringify(m))return card;if(previous?.withoutStatus===JSON.stringify({...m,status:null})){card.querySelector('.message-label').textContent=m.kind==='poke'?timestamp(m.created_at):messageLabel(m);rememberMessage(card,m);return card;}return renderMessage(m);});
    if(older){const fragment=document.createDocumentFragment();for(const card of cards)if(!existing.has(card.dataset.id))fragment.append(card);list.prepend(fragment);}
    else{let cursor=list.firstElementChild;for(const card of cards){if(card===cursor)cursor=cursor.nextElementSibling;else list.insertBefore(card,cursor);}while(cursor){const next=cursor.nextElementSibling;cursor.querySelectorAll('audio').forEach(a=>a.pause());cursor.remove();cursor=next;}}
 
@@ -158,6 +160,7 @@ window.ZiweiChat=(()=>{
    throw e;
   }finally{if(epoch===version&&loadEpoch===loadVersion)timeline.setAttribute('aria-busy','false');}
  }
+ window.addEventListener('ziwei-poke-saved',()=>{if(token)scheduleLoad();});
  function scheduleLoad(){clearTimeout(reloadTimer);const epoch=version;reloadTimer=setTimeout(()=>{if(epoch===version&&token)load().catch(()=>{});},150);}
  function progress(){const id=active.keys().next().value;$('#chatProgress').hidden=!pending&&!id;$('#chatProgressLabel').textContent=pending?'正在发送消息':'知微正在回应';$('#chatWork').textContent=pending?(busy?'正在发送…':'发送状态待确认，请勿重复发送'):states[active.get(id)]||'';$('#chatStreaming').textContent=id?buffers.get(id)||'':'';}
  function syncPeer(){const n=document.querySelector('#ziweiName');const t=document.querySelector('#chatPeer');if(n&&t&&n.textContent.trim())t.textContent=n.textContent.trim();}
