@@ -14,7 +14,7 @@ from pathlib import Path
 
 STATES = ('在工作', '在休息', '在思考', '在想你')
 MAX_BYTES = 20 * 1024 * 1024
-MIME = {'.mp3':'audio/mpeg', '.wav':'audio/wav', '.m4a':'audio/mp4', '.ogg':'audio/ogg', '.weba':'audio/webm', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.webp':'image/webp', '.gif':'image/gif', '.pdf':'application/pdf', '.txt':'text/plain', '.md':'text/plain', '.docx':'application/octet-stream', '.xlsx':'application/octet-stream'}
+MIME = {'.mp3':'audio/mpeg', '.wav':'audio/wav', '.m4a':'audio/mp4', '.ogg':'audio/ogg', '.weba':'audio/webm', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.webp':'image/webp', '.gif':'image/gif', '.pdf':'application/pdf', '.txt':'text/plain', '.md':'text/plain', '.csv':'text/csv', '.json':'application/json', '.docx':'application/octet-stream', '.xlsx':'application/octet-stream', '.pptx':'application/octet-stream', '.zip':'application/zip'}
 
 
 def home():
@@ -83,21 +83,43 @@ def status_record():
         return {'state':None, 'source':None, 'updatedAt':None, 'stale':True}
 
 
-def media_paths(output):
-    # Only explicit MEDIA tags in this owned run's final output authorize export.
+def media_manifest(output):
+    # MEDIA remains the normal protocol. Bare paths/Markdown links are accepted
+    # only in the dedicated outbox, never by scanning arbitrary workspace files.
     paths = re.findall(r'^\s*MEDIA:\s*[`"\']?(/[^\r\n`"\']+?)[`"\']?\s*$', output or '', re.M)
-    found = []
-    for raw in paths[:6]:
+    outbox = home() / 'workspace' / 'outbox'
+    root = re.escape(str(outbox))
+    text = output or ''
+    paths += re.findall(r'\]\((?:sandbox:)?(' + root + r'/[^\r\n<>]+?)\)', text)
+    extensions = '|'.join(re.escape(suffix[1:]) for suffix in MIME)
+    paths += re.findall(r'(?<![\w/:])(' + root + r'/[^\s<>`"\'，。；、（）()\[\]]+?\.(?:' + extensions + r'))(?=$|[\s<>`"\'，。；、（）()\[\].,;!！?？])', text, re.I)
+    found, errors, seen = [], [], set()
+    for raw in paths:
+        if raw in seen: continue
+        seen.add(raw)
+        if len(seen) > 6:
+            errors.append({'code':'media_count_limit'}); break
         p = Path(raw.strip())
-        if p.suffix.lower() not in MIME: continue
+        if p.suffix.lower() not in MIME:
+            errors.append({'code':'media_type_not_supported'}); continue
+        code = 'media_path_not_allowed'
         for root in (home() / 'workspace', home() / 'audio_cache'):
             try:
                 relative = p.relative_to(root)
                 data = read_beneath(root, relative)
-                found.append({'name':p.name, 'mime':MIME[p.suffix.lower()], 'size':len(data), 'sha256':hashlib.sha256(data).hexdigest(), 'data':data})
+                if not data: raise ValueError('empty_media')
+                found.append({'index':len(found), 'name':p.name, 'mime':MIME[p.suffix.lower()], 'size':len(data), 'sha256':hashlib.sha256(data).hexdigest(), 'data':data})
+                code = None
                 break
-            except (OSError, ValueError): continue
-    return found
+            except FileNotFoundError: code = 'media_file_missing'
+            except OSError: code = 'media_file_unreadable'
+            except ValueError: continue
+        if code: errors.append({'code':code})
+    return found, errors
+
+
+def media_paths(output):
+    return media_manifest(output)[0]
 
 
 def install():
@@ -127,10 +149,10 @@ def install():
         _, run, _, _, err = _load_owned_run(self, request, _api_server=api, permission='status', active_fallback=False)
         if err is not None: return err
         if run.get('status') not in ('completed', 'failed', 'interrupted'): return web.json_response({'data':[]})
-        files = await asyncio.to_thread(media_paths, run.get('output', ''))
+        files, errors = await asyncio.to_thread(media_manifest, run.get('output', ''))
         index = request.match_info.get('index')
         if index is None:
-            return web.json_response({'data':[{k:v for k,v in f.items() if k!='data'} for f in files]}, headers={'Cache-Control':'no-store'})
+            return web.json_response({'data':[{k:v for k,v in f.items() if k!='data'} for f in files], 'errors':errors}, headers={'Cache-Control':'no-store'})
         if not index.isdigit() or int(index) >= len(files): raise web.HTTPNotFound()
         item = files[int(index)]
         return web.Response(body=item['data'], content_type=item['mime'], headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Content-Sha256':item['sha256']})

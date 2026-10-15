@@ -101,3 +101,25 @@ test('native media is copied privately, verified and linked once; reply reading 
  const [one,two]=await Promise.all([s.api('/api/chat/speech',{messageId:reply.id}),s.api('/api/chat/speech',{messageId:reply.id})]);assert.equal(one.status,200);assert.equal(two.status,200);assert.equal((await one.json()).id,(await two.json()).id);
  assert.equal((await s.api('/api/chat/speech',{messageId:'user-'+id})).status,400);
 });
+
+test('outgoing text file downloads byte-for-byte, retries once without another model run and persists delivery',async t=>{
+ const bytes=Buffer.from('真实文件验收 ZW-FILE-729\n第二行：中文。\n'),media={name:'给小语-20261015.txt',mime:'text/plain',bytes,unavailable:true};
+ const s=await setup(t,{media,output:'路径备份：/data/hermes_native/workspace/outbox/给小语-20261015.txt'}),id=crypto.randomUUID(),messageId='reply-'+id;
+ await s.api('/api/chat/send',{requestId:id,message:'file delivery fixture',attachments:[]});
+ const failed=await until(async()=>{const reply=(await s.rows()).find(m=>m.id===messageId);return reply?.mediaDelivery?.state==='failed'&&reply;});assert.equal(failed.status,'completed');assert.equal(failed.attachments.length,0);assert.ok((await s.rows()).filter(m=>m.kind==='commentary').every(m=>m.mediaDelivery===undefined));
+ let sync=await (await s.api('/api/chat/media/sync',{messageId})).json();assert.equal(sync.ok,false);assert.equal(sync.data[0].state,'failed');assert.equal(s.fake.executions,1);
+ media.unavailable=false;sync=await (await s.api('/api/chat/media/sync',{messageId})).json();assert.equal(sync.ok,true);const reply=(await s.rows()).find(m=>m.id===messageId);assert.equal(reply.mediaDelivery.state,'complete');assert.equal(reply.attachments.length,1);
+ const attachment=reply.attachments[0],download=await s.api('/api/chat/attachments/'+attachment);assert.match(download.headers.get('content-disposition'),/attachment; filename\*=UTF-8/);assert.deepEqual(Buffer.from(await download.arrayBuffer()),bytes);assert.equal((await fetch(s.origin+'/api/chat/attachments/'+attachment)).status,401);
+ media.errors=[{code:'media_file_missing'}];sync=await(await s.api('/api/chat/media/sync',{messageId})).json();assert.equal(sync.ok,false);assert.equal(sync.data[0].state,'partial');assert.equal((await s.rows()).find(m=>m.id===messageId).attachments.length,1);media.errors=[];
+ await s.api('/api/chat/media/sync',{messageId});assert.equal((await s.rows()).find(m=>m.id===messageId).attachments.length,1);assert.equal(s.fake.executions,1);
+ assert.equal((await s.api('/api/chat/media/sync',{messageId:'user-'+id})).status,404);assert.equal((await s.api('/api/chat/media/sync',{messageId,run_id:'foreign'})).status,400);
+ await s.stop();await s.start();assert.equal((await s.rows()).find(m=>m.id===messageId).mediaDelivery.state,'complete');assert.deepEqual(Buffer.from(await (await s.api('/api/chat/attachments/'+attachment)).arrayBuffer()),bytes);
+});
+test('missing original file and corrupt download are visible and never falsely mark reply delivery complete',async t=>{
+ const media={name:'note.txt',mime:'text/plain',bytes:Buffer.from('expected bytes'),missing:true,errors:[{code:'media_file_missing'}]},s=await setup(t,{media,output:'MEDIA:/data/hermes_native/workspace/outbox/note.txt'}),id=crypto.randomUUID(),messageId='reply-'+id;
+ await s.api('/api/chat/send',{requestId:id,message:'missing file fixture',attachments:[]});
+ await until(async()=> (await s.rows()).find(m=>m.id===messageId)?.mediaDelivery?.error==='media_file_missing');
+ media.missing=false;media.errors=[];media.corrupt=true;
+ const sync=await (await s.api('/api/chat/media/sync',{messageId})).json();assert.equal(sync.ok,false);const reply=(await s.rows()).find(m=>m.id===messageId);assert.equal(reply.mediaDelivery.state,'failed');assert.equal(reply.attachments.length,0);assert.equal(s.fake.executions,1);
+ media.corrupt=false;assert.equal((await (await s.api('/api/chat/media/sync',{messageId})).json()).ok,true);
+});

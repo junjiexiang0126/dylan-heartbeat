@@ -52,7 +52,7 @@ class ChatStore {
  }
  addMedia(id,ids){const m=this.message(id);if(!m)return;const attachments=[...new Set([...m.attachments,...ids])];this.db.prepare('UPDATE messages SET attachments=? WHERE id=?').run(JSON.stringify(attachments),id);this.event(null,'timeline.changed',{id});}
  message(id){const m=this.db.prepare('SELECT * FROM messages WHERE id=? AND deleted=0').get(id);return m?this.decode(m):null;}
- decode(m){return {...m,attachments:JSON.parse(m.attachments),quote:m.quote?JSON.parse(m.quote):null,favorite:!!m.favorite,deleted:!!m.deleted};}
+ decode(m){const value={...m,attachments:JSON.parse(m.attachments),quote:m.quote?JSON.parse(m.quote):null,favorite:!!m.favorite,deleted:!!m.deleted};if(m.role==='assistant'&&m.kind==='final'&&m.request_id){const row=this.db.prepare('SELECT value FROM meta WHERE key=?').get('media:'+m.request_id);if(row)try{value.mediaDelivery=JSON.parse(row.value);}catch{}}return value;}
  list({before=Number.MAX_SAFE_INTEGER,limit=50,q='',favorite=false,source='live',trash=false}={}){
   const cursor=before===Number.MAX_SAFE_INTEGER?null:this.db.prepare('SELECT created_at FROM messages WHERE source=? AND seq=?').get(source,before);
   if(before!==Number.MAX_SAFE_INTEGER&&!cursor)return [];
