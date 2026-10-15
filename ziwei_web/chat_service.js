@@ -25,18 +25,43 @@ function createChatService(dir,{authorized=()=>true}={}){
   store.db.prepare('INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run('approval:'+id,JSON.stringify(record));
   store.event(id,'approval.pending',record);
  }
- async function collectMedia(r){
-  if(!r.run_id||closing)return;
-  try{const result=await client.json('/ziwei/web/runs/'+r.run_id+'/media');if(!Array.isArray(result.data))return;
-   const ids=[];for(const [index,a] of result.data.slice(0,6).entries()){
-    if(!a||typeof a.name!=='string'||/[\x00-\x1f/\\]/.test(a.name)||a.name.length>160||!Number.isSafeInteger(a.size)||a.size<1||a.size>20*1024*1024||!/^[a-f0-9]{64}$/.test(a.sha256))continue;
-    const seed=hash(r.id+':'+index+':'+a.sha256),id=seed.slice(0,8)+'-'+seed.slice(8,12)+'-4'+seed.slice(13,16)+'-8'+seed.slice(17,20)+'-'+seed.slice(20,32);
-    if(!store.attachment(id)){const response=await client.fetch('/ziwei/web/runs/'+r.run_id+'/media/'+index);if(!response.ok)throw Error('media_read_failed');const chunks=[];let n=0;for await(const c of response.body){n+=c.length;if(n>a.size)throw Error('media_size');chunks.push(c);}const b=Buffer.concat(chunks);if(n!==a.size||hash(b)!==a.sha256)throw Error('media_integrity');if(closing)return;files.save(b,a.name,id);}
-    ids.push(id);
-   }
-   if(ids.length&&!closing)store.addMedia('reply-'+r.id,ids);
-  }catch{/* A saved reply is still usable if media delivery needs a manual retry. */}
+ const mediaJobs=new Map();
+ function delivery(r,value){
+  if(closing)return value;
+  store.db.prepare('INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run('media:'+r.id,JSON.stringify(value));
+  store.event(r.id,'timeline.changed',{id:'reply-'+r.id});return value;
  }
+ async function collectMedia(r){
+  if(!r.run_id||closing)return {state:'unavailable',error:'media_run_unavailable'};
+  if(mediaJobs.has(r.id))return mediaJobs.get(r.id);
+  const job=(async()=>{
+   const ids=[],issues=[];let expected=false;
+   try{
+    const reply=store.message('reply-'+r.id);expected=!!reply&&(/MEDIA:|\/workspace\/outbox\//.test(reply.content));
+    const result=await client.json('/ziwei/web/runs/'+r.run_id+'/media');
+    if(!Array.isArray(result.data)||result.data.length>6)throw Error('media_manifest_invalid');
+    for(const issue of result.errors||[])issues.push(typeof issue.code==='string'?issue.code:'media_unavailable');
+    for(const [position,a] of result.data.entries()){
+     try{
+      if(!a||typeof a.name!=='string'||/[\x00-\x1f\x7f/\\]/.test(a.name)||a.name.length>160||!Number.isSafeInteger(a.size)||a.size<1||a.size>20*1024*1024||!/^[a-f0-9]{64}$/.test(a.sha256))throw Error('media_manifest_invalid');
+      const index=a.index===undefined?position:a.index;if(!Number.isSafeInteger(index)||index<0||index>5)throw Error('media_manifest_invalid');
+      const prior=reply?.attachments.map(id=>store.attachment(id)).find(old=>old?.sha256===a.sha256&&old.name===a.name);
+      const seed=hash(r.id+':'+position+':'+a.sha256),id=prior?.id||seed.slice(0,8)+'-'+seed.slice(8,12)+'-4'+seed.slice(13,16)+'-8'+seed.slice(17,20)+'-'+seed.slice(20,32);
+      if(!store.attachment(id)){
+       const response=await client.fetch('/ziwei/web/runs/'+r.run_id+'/media/'+index);if(!response.ok)throw Error('media_read_failed');
+       const chunks=[];let n=0;for await(const c of response.body){n+=c.length;if(n>a.size)throw Error('media_size');chunks.push(c);}const bytes=Buffer.concat(chunks);
+       if(n!==a.size||hash(bytes)!==a.sha256)throw Error('media_integrity');if(closing)return {state:'unavailable',error:'media_stopped'};files.save(bytes,a.name,id);
+      }
+      ids.push(id);store.addMedia('reply-'+r.id,[id]);
+     }catch(e){issues.push(e.message);}
+    }
+    if(!ids.length&&!issues.length&&expected)issues.push('media_not_registered');
+   }catch(e){if(expected)issues.push(e.message);else return delivery(r,{state:'unavailable',count:0,error:'media_manifest_unavailable'});}
+   const value={state:issues.length?(ids.length?'partial':'failed'):ids.length?'complete':'none',count:ids.length,error:issues.length?String(issues[0]).replace(/[^a-z0-9_]/g,'').slice(0,80):null};
+   return delivery(r,value);
+  })().finally(()=>mediaJobs.delete(r.id));mediaJobs.set(r.id,job);return job;
+ }
+
  function finish(id,o){
   if(!TERMINAL.includes(o.status))return false;
   store.db.prepare('DELETE FROM meta WHERE key=?').run('approval:'+id);
@@ -107,7 +132,13 @@ function createChatService(dir,{authorized=()=>true}={}){
     const result=await client.json('/v1/runs/'+r.run_id+'/approval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request_id:b.approvalId,choice:b.choice})});
     if(!result.resolved)return json(res,409,{error:'approval_expired'});store.db.prepare('DELETE FROM meta WHERE key=?').run('approval:'+r.id);store.event(r.id,'approval.resolved',{});return json(res,200,{ok:true});
    }
-   if(pathname==='/api/chat/media/sync'&&req.method==='POST'){await body(req);for(const r of store.db.prepare("SELECT * FROM requests WHERE run_id IS NOT NULL AND state='completed' ORDER BY seq DESC LIMIT 10").all())await collectMedia(r);return json(res,200,{ok:true});}
+   if(pathname==='/api/chat/media/sync'&&req.method==='POST'){
+    const b=await body(req);if(Object.keys(b).some(k=>k!=='messageId')||b.messageId!==undefined&&typeof b.messageId!=='string')throw Error('invalid_media_sync');
+    let rows;if(b.messageId){const m=store.message(b.messageId);if(!m||m.role!=='assistant'||m.source!=='live'||!m.request_id)throw Error('message_not_found');const r=store.request(m.request_id);if(!r?.run_id||!TERMINAL.includes(r.state))throw Error('media_run_unavailable');rows=[r];}
+    else rows=store.db.prepare("SELECT * FROM requests WHERE run_id IS NOT NULL AND state IN ('completed','failed','interrupted') ORDER BY seq DESC LIMIT 10").all();
+    const data=[];for(const r of rows)data.push({messageId:'reply-'+r.id,...await collectMedia(r)});
+    return json(res,200,{ok:data.every(r=>!['partial','failed','unavailable'].includes(r.state)),data});
+   }
    if(pathname==='/api/chat/speech'&&req.method==='POST'){const b=await body(req);if(Object.keys(b).some(k=>k!=='messageId')||typeof b.messageId!=='string')throw Error('invalid_speech');const m=store.message(b.messageId);if(!m)throw Error('message_not_found');return json(res,200,await speech.read(m));}
    if(pathname==='/api/chat/messages'&&req.method==='GET'){
     const limit=Number(url.searchParams.get('limit')||50),before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER),q=url.searchParams.get('q')||'',source=url.searchParams.get('source')||'live';

@@ -103,7 +103,8 @@ window.ZiweiChat=(()=>{
     const download=element('a','voice-download','下载原音频');download.href=url;download.download=a.name;
     box.append(audio,label,download);container.append(box);return;
    }
-   const link=element('a','file-link',a.name+' · '+Math.ceil(a.size/1024)+' KB');link.href=url;link.download=a.name;container.append(link);
+   const link=element('a','file-link file-card');link.href=url;link.download=a.name;link.setAttribute('aria-label','下载文件：'+a.name);
+   const icon=element('span','file-card-icon','▤'),details=element('span','file-card-details');icon.setAttribute('aria-hidden','true');details.append(element('strong','file-card-name',a.name),element('small','file-card-size',a.size<1024?a.size+' B':Math.ceil(a.size/1024)+' KB'));link.append(icon,details,element('span','file-card-download','下载'));container.append(link);
   }catch{if(container.isConnected){const retry=button('附件读取失败，点此重试',()=>{retry.remove();return media(container,id);});retry.classList.add('media-retry');container.append(retry);}}
  }
  function messageLabel(m){return (m.source==='archive'?m.role==='user'?'历史用户':m.role==='assistant'?'历史助手':'原始档案':m.role==='user'?'你':'知微')+' · '+timestamp(m.created_at)+' · '+(states[m.status]||m.status)+(m.kind==='commentary'?' · 过程消息':'')+(m.favorite?' · ★':'');}
@@ -115,9 +116,16 @@ window.ZiweiChat=(()=>{
   const avatar=element('div','message-avatar'),body=element('div','message-body');avatar.dataset.role=m.role;paintMessageAvatar(avatar,m.role);card.append(avatar,body);
   body.append(element('p','message-label',messageLabel(m)));
   if(m.source_ref)body.append(element('p','message-label','来源：'+m.source_ref));
-  const display=m.role==='assistant'?m.content.replace(/\[\[audio_as_voice\]\]/g,'').replace(/^\s*MEDIA:.*$/gm,m.attachments.length?'':'[附件暂未加载，可在搜索工具中重试同步]').trim():m.content;
+  const missingMedia=m.role==='assistant'&&(/MEDIA:|\/workspace\/outbox\//.test(m.content))&&m.mediaDelivery?.state!=='complete';
+  const display=m.role==='assistant'?m.content.replace(/\[\[audio_as_voice\]\]/g,'').replace(/^\s*MEDIA:.*$/gm,'').trim():m.content;
   const bubble=element('div','message-bubble glass');if(m.quote)bubble.append(element('blockquote','message-quote',m.quote.content));const content=element('p','message-content',display.slice(0,5000));bubble.append(content);if(display.length>5000)bubble.append(button('展开完整记录',()=>{content.textContent=display;}));body.append(bubble);
   for(const id of m.attachments)void media(bubble,id);
+  if(m.role==='assistant'&&m.source==='live'&&(missingMedia||['failed','partial'].includes(m.mediaDelivery?.state))){
+   const box=element('div','file-delivery'),status=element('p','file-delivery-status');status.setAttribute('role','status');
+   const reasons={media_file_missing:'原文件暂时找不到',media_path_not_allowed:'文件位置或大小不符合回传要求',media_file_unreadable:'原文件无法读取',media_type_not_supported:'暂不支持此文件类型',media_integrity:'文件校验失败',media_not_registered:'回复中的文件尚未登记为附件',attachment_quota:'附件存储空间已满'};
+   status.textContent=(m.mediaDelivery?.state==='partial'?'部分附件尚未收到：':'附件尚未收到：')+(reasons[m.mediaDelivery?.error]||'文件回传未完成')+'。';
+   const retry=button('重试接收附件',async()=>{const epoch=version;retry.disabled=true;status.textContent='正在接收附件…';try{const o=await request('/api/chat/media/sync','POST',{messageId:m.id});if(epoch!==version)return;await load();if(!o.ok&&box.isConnected)status.textContent='附件尚未收到：'+(reasons[o.data?.[0]?.error||m.mediaDelivery?.error]||'文件回传未完成')+'。';}catch(e){if(epoch===version&&box.isConnected)status.textContent='附件接收失败，请稍后重试。';}finally{if(epoch===version)retry.disabled=false;}});box.append(status,retry);bubble.append(box);
+  }
   const actions=element('div','message-actions');
   if(m.source==='live'&&!m.deleted)actions.append(button('引用',()=>{quote=m;$('#chatQuote').hidden=false;$('#chatQuoteText').textContent=m.content.slice(0,120)||'附件消息';$('#chatInput').focus();}));
   actions.append(button('复制',async()=>{await copy(m.content);$('#chatError').textContent='已复制。';}),button(m.favorite?'取消收藏':'收藏',async()=>{await request('/api/chat/action','POST',{id:m.id,action:m.favorite?'unfavorite':'favorite'});await load();}));
