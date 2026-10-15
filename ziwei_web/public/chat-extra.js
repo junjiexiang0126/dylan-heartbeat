@@ -22,7 +22,7 @@ window.ZiweiChatExtra=(()=>{
   }
   for(const card of list.children)if(!keep.has(card.dataset.key))card.remove();
  }
- async function history(){if(!api)return;const v=epoch,o=await api('/api/chat/history');if(v!==epoch)return;$('#chatHistoryStatus').textContent=(o.state==='running'?'正在同步':o.state==='completed'?'同步完成':o.state==='failed'?'同步未完成':'尚未同步')+' · '+o.sessions+' 个会话 / '+o.messages+' 条记录'+(o.error?' · '+o.error:'')+'。'+(o.scope||'');}
+ async function history(){if(!api)return;const v=epoch,o=await api('/api/chat/history');if(v!==epoch)return;$('#chatHistoryStatus').textContent=(['running','pending'].includes(o.state)?'正在后台增量同步':o.state==='completed'?'同步完成':o.state==='failed'?'同步未完成':'尚未同步')+' · '+o.sessions+' 个会话 / '+o.messages+' 条记录'+(o.error?' · '+o.error:'')+(o.failedAt?' · 断点：'+(o.failedAt.session||'会话列表')+' / '+o.failedAt.offset:'')+'。'+(o.scope||'');}
  $('#chatImageFull').onerror=()=>{$('#chatImageRetry').hidden=false;};$('#chatImageFull').onload=()=>{$('#chatImageRetry').hidden=true;};$('#chatImageRetry').onclick=()=>{$('#chatImageFull').src=viewer[index].src+'?retry='+Date.now();};
  function paintImage(){const image=viewer[index];if(!image)return;scale=1;$('#chatImageFull').style.width='100%';$('#chatImageFull').src=image.src;$('#chatImageFull').alt=image.alt;$('#chatImageName').textContent=(index+1)+' / '+viewer.length+' · '+image.alt;$('#chatImageSave').href=image.src;$('#chatImageSave').download=image.alt;$('#chatImagePrevious').disabled=index===0;$('#chatImageNext').disabled=index===viewer.length-1;}
  function zoom(value){scale=Math.min(4,Math.max(1,value));$('#chatImageFull').style.width=scale*100+'%';}

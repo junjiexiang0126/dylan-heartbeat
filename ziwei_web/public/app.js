@@ -28,6 +28,7 @@ async function api(url, method = 'GET', body) {
 }
 function tab(name) {
   activeTab = name;
+  window.ZiweiRecords?.show(name,csrf,text=>{if(!window.ZiweiChat?.canDraft())return false;tab('chat');return window.ZiweiChat.draft(text);});
   if(name==='moments'&&csrf)window.ZiweiMoments?.start(csrf);else window.ZiweiMoments?.leave();
   if(name!=='chat')window.ZiweiChat?.leave();
   window.ZiweiChatAppearance?.setVisible(name==='chat'&&!!csrf);
@@ -54,7 +55,7 @@ function renderHome() {
   appearance();
 }
 function clearPrivateUI() {
-  window.ZiweiMoments?.stop();window.ZiweiPoke?.stop();
+  window.ZiweiRecords?.stop();window.ZiweiMoments?.stop();window.ZiweiPoke?.stop();
   window.ZiweiChat?.stop();window.ZiweiChat?.setProfiles({user:{nickname:'你',avatar:null},ziwei:{nickname:'知微',avatar:null}});
   window.ZiweiChatExtra?.presence(null);$('#metOn').value='';$('#metOnValue').textContent='待确认';$('#daysTogether').textContent='待确认';refreshVersion++;csrf=null; homeData=null; sessionData=null; pendingAvatars={};
   if($('#settings').open)$('#settings').close();
@@ -83,6 +84,7 @@ async function refresh() {
   $('#login').hidden=true;$('#app').hidden=false;$('#settingsButton').hidden=false;window.ZiweiPoke?.configure(csrf);window.ZiweiMoments?.connect(csrf);
   if(activeTab==='chat')window.ZiweiChat?.start(csrf);
   if(activeTab==='moments')window.ZiweiMoments?.start(csrf);
+  if(['logs','memory'].includes(activeTab))window.ZiweiRecords?.show(activeTab,csrf,text=>{if(!window.ZiweiChat?.canDraft())return false;tab('chat');return window.ZiweiChat.draft(text);});
 }
 $('#loginForm').addEventListener('submit', async e => {
   e.preventDefault(); const button=e.submitter;button.disabled=true;$('#loginError').textContent='';
