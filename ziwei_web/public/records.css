@@ -106,3 +106,58 @@ body.records-subpage #logs.panel,body.records-subpage #memory.panel{padding-bott
 @media(prefers-reduced-motion:reduce){#logs.record-open,#memory.record-open{overflow-x:clip}
 .record-sheet{animation:none}}
 #logs.record-open .record-card::before,#memory.record-open .record-card::before{display:none}
+
+/* Match the supplied page hierarchy; default values are centralized in tokens.css. */
+.record-page-header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:var(--record-heading-gap)}
+.record-heading-group{min-width:0}
+.record-page-header h1{font-size:var(--record-page-title-size);line-height:var(--ui-leading-1_5)}
+.record-page-header .record-refresh{font-size:var(--ui-font-11);padding:0;min-height:var(--record-page-tool-size)}
+.record-page-actions{gap:var(--ui-space-6)}
+.record-back.text-button,.record-search-toggle{border:var(--ui-size-1) solid var(--paper-rule);background:var(--record-tool-fill);justify-items:center;flex:none}
+.record-back.text-button{line-height:1}
+.memory-overview-header{margin-top:env(safe-area-inset-top,0px)}
+body.records-memory-overview .topbar{display:none}
+.record-refresh{font-size:var(--ui-font-11);align-self:flex-end}
+#logRefresh{order:3}
+#memory.record-open>#memoryOverviewRefresh{display:none}
+#memory.record-open>.memory-overview-header{display:none}
+body.has-space-wallpaper.records-subpage .shell{background:transparent}
+.work-timeline{border:0;padding:0;margin-block:var(--ui-space-16)}
+.work-timeline-day{font:var(--ui-font-12)/var(--ui-leading-1_8) var(--ui-sans);letter-spacing:var(--ui-tracking-_08);color:var(--muted);margin-bottom:var(--ui-space-18)}
+.work-timeline-entry{display:flex;flex-direction:column;gap:var(--ui-space-6);padding-bottom:var(--ui-space-12);margin-bottom:var(--ui-space-12);border-bottom:var(--record-timeline-rule)}
+.work-timeline-entry::before{display:none}
+.work-timeline-title{font-size:var(--ui-font-15);font-weight:var(--ui-weight-medium);overflow-wrap:anywhere}
+.work-timeline-summary{display:block;max-width:100%;font:var(--ui-font-13)/var(--ui-leading-1_8) var(--ui-sans);color:var(--muted)}
+.work-timeline-time{font-size:var(--ui-font-11);margin:0}
+#logReader{display:flex;flex-direction:column;min-width:0}
+#logSearchBox{order:-2}
+#logError{order:-1}
+#logStatus,#workLogScope{order:3}
+#logPagination{order:2}
+#logUnavailable{min-height:calc(100dvh - var(--record-page-tool-size) - var(--record-page-block) * 5);display:flex;flex-direction:column;justify-content:center;max-width:var(--record-private-width);margin-inline:auto;padding:var(--record-private-space) 0;gap:var(--record-private-space)}
+.private-log-title{font:var(--ui-weight-medium) var(--ui-font-18)/var(--ui-leading-1_8) var(--records-reading-font);color:var(--ink)}
+.private-log-copy{font-size:var(--ui-font-14);line-height:var(--record-private-leading)}
+.private-log-note{font-size:var(--ui-font-11);line-height:var(--ui-leading-1_8)}
+#logs.record-open .diary-card{position:relative;background:var(--record-card-fill);border:var(--ui-size-1) solid var(--paper-rule);border-radius:var(--record-reading-radius);box-shadow:var(--paper-shadow);padding:var(--records-card-padding-block) var(--record-reading-inset)}
+#logs.record-open .diary-card .record-date{font:italic var(--ui-weight-medium) var(--ui-font-18)/var(--ui-leading-1_8) var(--records-reading-font);color:var(--ink);margin-bottom:var(--ui-space-8)}
+.diary-card .record-date-line{display:none}
+#logs:not(.diary-reading) .diary-card .record-author,#logs:not(.diary-reading) .diary-card .record-provenance{display:none}
+#logs:not(.diary-reading) .diary-card .record-title{font-size:var(--ui-font-15);margin-bottom:var(--ui-space-8)}
+.diary-open{align-self:flex-start;font-size:var(--ui-font-12)}
+.diary-open::after{content:'';position:absolute;inset:0;border-radius:inherit}
+.diary-open:focus-visible::after{outline:var(--ui-size-1) solid var(--accent)}
+#logs.diary-reading .diary-card{background:transparent;border:0;box-shadow:none;padding-inline:0}
+#memory .memory-main-group{background:var(--record-card-fill)}
+#memory .memory-primary{padding-bottom:var(--ui-space-14);min-height:var(--memory-main-height)}
+#memory .memory-primary .eyebrow,#memory .memory-entry>.eyebrow{color:var(--muted);margin-bottom:var(--ui-space-8)}
+#memory .memory-primary strong{margin:0}
+#memory .memory-entry strong [data-memory-count]{display:block;margin:var(--ui-space-6) 0 0;color:var(--accent);font-size:var(--ui-font-13)}
+.memory-main-excerpt{display:-webkit-box;-webkit-line-clamp:var(--memory-excerpt-lines);-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;width:calc(100% - var(--memory-entry-padding) * 2);text-align:left;margin:0 var(--memory-entry-padding);padding:var(--ui-space-14) 0 0;border:0;border-top:var(--record-timeline-rule);background:transparent;color:var(--ink);font:var(--ui-font-14)/var(--ui-leading-2_05) var(--records-reading-font)}
+.memory-main-excerpt:disabled{opacity:1}
+#memory .memory-uncategorized{border:0;padding-bottom:0;font-size:var(--ui-font-12);color:var(--muted)}
+.memory-main-link{width:100%;text-align:left;padding:var(--ui-space-14) var(--memory-entry-padding) var(--ui-space-18);font-size:var(--ui-font-12)}
+#memory .memory-entry:not(.memory-primary){box-shadow:none;background:transparent}
+.memory-small-entries{border:0;margin-top:var(--ui-space-12);padding:0;gap:0 var(--ui-space-12)}
+.memory-category-filters{display:flex;flex-wrap:wrap;gap:var(--ui-space-6) var(--ui-space-12);margin-bottom:var(--ui-space-12)}
+.memory-category-filters button[aria-pressed=true]{text-decoration:underline;color:var(--ink)}
+@media(max-width:360px){.record-page-header{gap:var(--ui-space-8)}.record-page-header .record-page-actions{flex-direction:column}.record-page-header .record-refresh{min-height:0;order:2}}

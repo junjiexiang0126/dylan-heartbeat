@@ -47,3 +47,6 @@
 新增页面不新增写死的设计值；优先复用现有语义变量/标尺，需要新语义值时在 tokens.css 定义默认值。不要为了美化修改数据接口、知微后端或登录行为。
 
 四个记忆入口使用 --memory-entry-gap / height / padding / radius / title-size / description-size / meta-size / fill / icon-size。分类只影响原生条目的展示，不将视觉入口映射成新的记忆存储或保护策略。
+
+
+记忆与日志的四张草图修正见 docs/RECORD_SKETCH_FOLLOWUP_2026-10-16.md。记忆首页使用主卡与两个副入口，低数量分类在页脚；不改变后台分类。--glass-opacity 表示不透明度，设置里的通透度值向右增大时取 (100 - value) / 100。玻璃伪元素、纸面与卡片共用该变量；空间壁纸后面的阅读页 shell 不另铺不透明纸底。降低透明度模式保留实底。

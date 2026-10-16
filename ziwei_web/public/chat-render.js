@@ -3,7 +3,7 @@ window.ZiweiChatRender=(()=>{
  const root=document.documentElement,thoughts=document.getElementById('showThoughts'),glass=document.getElementById('glassLevel'),reduced=document.getElementById('reduceGlass');
  function read(key,fallback){try{return localStorage.getItem(key)??fallback;}catch{return fallback;}}
  function save(key,value){try{localStorage.setItem(key,value);}catch{}}
- function preference(){root.dataset.thoughts=String(thoughts.checked);root.dataset.reduceGlass=String(reduced.checked);root.style.setProperty('--glass-opacity',String(Number(glass.value)/100));}
+ function preference(){root.dataset.thoughts=String(thoughts.checked);root.dataset.reduceGlass=String(reduced.checked);root.style.setProperty('--glass-opacity',String((100-Number(glass.value))/100));}
  thoughts.checked=read('zw_show_summaries','false')==='true';glass.value=read('zw_glass_level','68');reduced.checked=read('zw_reduce_glass','false')==='true';preference();
  thoughts.onchange=()=>{save('zw_show_summaries',String(thoughts.checked));preference();};
  glass.oninput=()=>{save('zw_glass_level',glass.value);preference();};reduced.onchange=()=>{save('zw_reduce_glass',String(reduced.checked));preference();};

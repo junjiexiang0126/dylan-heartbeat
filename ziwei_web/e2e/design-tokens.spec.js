@@ -7,7 +7,7 @@ async function measure(page){return page.locator('.diary-card').evaluate(n=>{con
 test('shared font/spacing/radius controls change real diary rendering without editing component rules',async({page})=>{
  await diary(page);await open(page);await page.locator('[data-tab=logs]').click();await page.locator('[data-log-kind=diary]').click();await expect(page.locator('.diary-card')).toBeVisible();const before=await measure(page);
  await page.evaluate(()=>{const s=document.documentElement.style;s.setProperty('--ui-font-scale','1.1');s.setProperty('--ui-spacing-scale','1.2');s.setProperty('--ui-radius-scale','1.3');});
- const after=await measure(page);expect(after.font/before.font).toBeCloseTo(1.1,2);expect(after.padding/before.padding).toBeCloseTo(1.2,2);expect(after.radius).toBe(0);
+ const after=await measure(page);expect(after.font/before.font).toBeCloseTo(1.1,2);expect(after.padding/before.padding).toBeCloseTo(1.2,2);expect(after.radius/before.radius).toBeCloseTo(1.3,2);
  await page.locator('#logs').evaluate(n=>{n.style.setProperty('--records-diary-size','21px');document.documentElement.style.setProperty('--record-page-inline','31px');n.style.setProperty('--record-reading-radius','7px');});
  expect(await measure(page)).toEqual({font:21,padding:31,radius:7});
  await page.setViewportSize({width:900,height:900});expect(await measure(page)).toEqual({font:21,padding:31,radius:7});
