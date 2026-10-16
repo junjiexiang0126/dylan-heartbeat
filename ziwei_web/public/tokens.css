@@ -309,3 +309,8 @@
 :root{
  --voice-bubble-min:var(--ui-size-125);--voice-bubble-step:2px;--voice-bubble-radius:var(--ui-radius-24);--voice-wave-min:3px;--voice-wave-height:var(--ui-size-40);--voice-wave-width:var(--ui-size-3);--voice-recorder-padding:var(--ui-space-24);--voice-recorder-gap:var(--ui-space-12);--voice-play-icon:var(--ui-size-16);--voice-play-wave-width:var(--ui-size-22);--voice-wave-duration:.65s;--voice-cancel-color:#a53552;--voice-recorder-shadow:var(--dialog-shadow);
 }
+
+/* Record pages: presentation tokens only; native data and protection are unchanged. */
+:root{
+ --record-reading-inset:0px;--record-reading-radius:0px;--record-page-fill:var(--paper-cream);--record-page-inline:var(--ui-space-24);--record-page-block:var(--ui-space-20);--record-page-title-size:var(--ui-font-26);--record-page-meta-size:var(--ui-font-12);--record-page-duration:.28s;--record-page-distance:12%;--record-page-tool-size:44px;--record-timeline-gap:var(--ui-space-22);--record-timeline-dot:var(--ui-size-5);--record-timeline-summary-size:var(--ui-font-16);--memory-main-size:var(--ui-font-26);--memory-main-height:220px;--memory-side-height:145px;
+}

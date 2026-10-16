@@ -1,0 +1,5 @@
+# Candidate bytes only; not live deployment evidence. / returns index.html.
+2a388f8753d9477ed4c50ef39ddb3cb9cd46daa4332b2e51273b87e31e72081e  /index.html
+25e88729036f029532d6b82c9a44a95e1f4c8dc6a422f3a147d1b313ec8e4f0b  /records.js
+9b79c7a89b673d6ed6d2e6eecfc9919401d2878b2f9e656ac5abd7502473a598  /records.css
+53fa71e0c15b63bc26f04a5992acb1178c97fd4e27776c424ad2cca6734bec54  /tokens.css
