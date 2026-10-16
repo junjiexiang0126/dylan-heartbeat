@@ -22,14 +22,24 @@
  // Clear unsent Work drafts whenever the authenticated application is hidden.
  const app=document.getElementById('app');
  if(app){new MutationObserver(()=>{if(app.hidden){input.value='';status.textContent='Work 已就绪；@知微 委派与文件工具尚待接入';}}).observe(app,{attributes:true,attributeFilter:['hidden']});}
+ const toolPanel=root.querySelector('#workToolsPanel'),searchBar=root.querySelector('#workSearchBar'),searchInput=root.querySelector('#workSearchInput');
+ root.querySelector('#workToolsOpen').onclick=()=>{toolPanel.hidden=!toolPanel.hidden;};
+ root.querySelector('#workToolsClose').onclick=()=>{toolPanel.hidden=true;};
+ root.querySelector('#workToolAdd').onclick=()=>{root.querySelector('#workToolNotice').textContent='安装与授权接口尚未接入，未修改任何工具权限。';};
+ root.querySelector('#workSearchToggle').onclick=()=>{searchBar.hidden=!searchBar.hidden;if(!searchBar.hidden)searchInput.focus();};
+ searchInput.oninput=()=>{const q=searchInput.value.trim().toLocaleLowerCase();root.querySelectorAll('.work-line').forEach(n=>n.hidden=!!q&&!n.textContent.toLocaleLowerCase().includes(q));};
  const conversation=root.querySelector('.work-conversation');
  const show=items=>{
   conversation.replaceChildren();
   for(const m of items){
-   const line=document.createElement('div');line.className='work-line';
+   const line=document.createElement('article');line.className='work-line message '+(m.role==='user'?'user':'assistant');
+   const avatar=document.createElement('span');avatar.className='work-message-avatar';avatar.textContent=m.role==='user'?'你':m.role==='glm'?'鸦':'微';
    const who=document.createElement('strong');who.textContent=m.role==='user'?'你':m.role==='glm'?'白鸦':'系统';
-   const body=document.createElement('p');body.textContent=m.text;
-   line.append(who,body);conversation.append(line);
+   const bubble=document.createElement('div');bubble.className='message-bubble glass';const body=document.createElement('p');body.className='message-content';body.textContent=m.text;bubble.append(body);
+   const meta=document.createElement('small');meta.className='message-label';meta.textContent=m.at?new Date(m.at).toLocaleString('zh-CN'):'';
+   const actions=document.createElement('div');actions.className='message-actions';
+   const copy=document.createElement('button');copy.type='button';copy.textContent='复制';copy.onclick=()=>navigator.clipboard?.writeText(m.text).catch(()=>{status.textContent='复制失败';});actions.append(copy);
+   line.append(avatar,who,meta,bubble,actions);conversation.append(line);
   }
   conversation.scrollTop=conversation.scrollHeight;
  };
