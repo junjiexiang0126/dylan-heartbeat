@@ -3,10 +3,12 @@ const path=require('node:path'),fs=require('node:fs');
 const {NativeHistory}=require('./native_history'),{VoiceSynthesizer}=require('./voice_synthesizer'),{extract}=require('./document_text');
 const {ChatStore,uuid,hash}=require('./chat_store'),{HermesClient}=require('./hermes_client'),{Attachments}=require('./attachments'),{SSEParser}=require('./sse_parser');
 const presentation=require('./chat_presentation');
+const {ActionLog}=require('./action_log');
 const TERMINAL=['completed','failed','cancelled','interrupted'];
 const {VoiceTranscriber}=require('./voice_transcriber');
 function createChatService(dir,{authorized=()=>true}={}){
  const client=new HermesClient(),store=new ChatStore(dir,hash(client.base+'|'+client.session+'|'+client.key)),files=new Attachments(dir,store),voice=new VoiceTranscriber();
+ const actions=new ActionLog(store.db);store.actions=actions;
  const history=new NativeHistory(client,store),speech=new VoiceSynthesizer(files);
  let presenceCache=null,working=false,closing=false,connected=false,lastError=null,lastCheck=0,checking=null;
  const timers=new Set();
@@ -80,15 +82,15 @@ function createChatService(dir,{authorized=()=>true}={}){
   const upstream=await client.stream(r.run_id,r.upstream_seq);
   if(!upstream.ok||!upstream.headers.get('content-type')?.includes('text/event-stream'))return finish(r.id,await client.status(r.run_id));
   let bytes=0,terminal=false;
-  const parser=new SSEParser(({data})=>{
-   if(!data||typeof data!=='object')return;const event=data.event||data.type;
+  const parser=new SSEParser(({event:named,data})=>{
+   if(!data||typeof data!=='object')return;const event=data.event||data.type||named;
    store.upstreamEvent(r.id,data.seq,()=>{
-    if(event==='message.delta'&&typeof data.delta==='string')store.event(r.id,'message.delta',{delta:data.delta});
+    if(['message.delta','assistant.delta'].includes(event)&&typeof data.delta==='string')store.event(r.id,'message.delta',{delta:data.delta});
     else if(event==='message.interim'&&typeof data.text==='string'){store.assistant(r.id,'interim-'+r.id+'-'+data.seq,data.text,'commentary');}
     else if(/^run\.(completed|failed|cancelled|interrupted)$/.test(event||'')){terminal=finish(r.id,{...data,status:event.slice(4)});}
     else if(event==='approval.request'){approvalRecord(r.id,data);store.event(r.id,'request.notice',{text:'知微正在等待你的批准。'});}
     else if(event==='approval.responded'){store.db.prepare('DELETE FROM meta WHERE key=?').run('approval:'+r.id);store.event(r.id,'approval.resolved',{});}
-    else if(/^tool\.(started|completed|failed)$/.test(event||''))store.event(r.id,'request.notice',{text:event==='tool.started'?'知微正在处理这条消息。':'知微已更新处理进度。'});
+    else if(/^tool\.(started|completed|failed)$/.test(event||'')&&actions.capture(r.id,event,data))store.event(r.id,'actions.changed',{});
    });
   });
   for await(const c of upstream.body){bytes+=c.length;if(bytes>16*1024*1024)throw Error('stream_limit');parser.feed(c);if(terminal)break;}

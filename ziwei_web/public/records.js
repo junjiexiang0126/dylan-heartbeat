@@ -6,12 +6,12 @@ window.ZiweiRecords=(()=>{
  const documents=new Map();
  let logOpen=false,memoryOpen=false,workSelected=null,diarySelected=null,memorySnapshot=null,historySession=0;
  const logTitles={work:'工作日志',diary:'个人日志',private:'私人日志',photos:'照片墙'};
- const pageMeta={};let memoryOriginalId=null;
+ const pageMeta={};let memoryOriginalId=null,todayDiary=null,overviewRun=0;
  function pageChrome(){
   const sheet=visible==='logs'&&logOpen||visible==='memory'&&memoryOpen;
   document.body.classList.toggle('records-subpage',sheet);document.body.classList.toggle('records-memory-overview',visible==='memory'&&!memoryOpen);
   for(const [id,open] of [['logs',logOpen],['memory',memoryOpen]])$('#'+id).classList.toggle('record-open',open);
-  $('#logDetail').hidden=!logOpen;
+  $('#logDetail').hidden=!logOpen;window.ZiweiPhotos?.show(visible==='logs'&&logOpen&&kind==='photos',token);
   $('#logDetailTitle').textContent=workSelected?'工作记录':diarySelected?'日记原文':logTitles[kind];
   $('#logs').classList.toggle('diary-reading',!!diarySelected);
   $('#logPrivateHint').hidden=kind!=='private';
@@ -49,8 +49,8 @@ window.ZiweiRecords=(()=>{
   if(state[k].offset===0){const dates=value.data.map(r=>r.at||r.savedAt||r.date).filter(x=>x&&Number.isFinite(Date.parse(x))).sort();pageMeta[key]='共 '+value.total+' 条 · 最近更新 '+(dates.length?(/^\d{4}-\d{2}-\d{2}$/.test(dates.at(-1))?dates.at(-1).replaceAll('-','.') : new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok',hour12:false}).format(new Date(dates.at(-1)))):'未提供');}
   pageChrome();
  }
- const memoryTitles={user:'关于你',self:'关于知微',protected:'长期记忆',work:'工作记忆',uncategorized:'待归类的原生记忆'};
- const memoryHints={user:'你的资料、偏好，以及与你有关的记忆。',self:'知微对自身身份、性格与经历的记忆。',protected:'后端设定的受保护记忆；保护规则由后端执行。',work:'代码、项目和实际工作中保存的记忆。',uncategorized:'这些原生记录没有明确分类，保留原文，等待补充分类标记。'};
+ const memoryTitles={memory:'长期记忆原文',user:'关于你',self:'关于知微',protected:'长期记忆',work:'工作记忆',uncategorized:'待归类的原生记忆'};
+ const memoryHints={memory:'MEMORY.md 原生原文；保护状态以每条后台标记为准。',user:'你的资料、偏好，以及与你有关的记忆。',self:'知微对自身身份、性格与经历的记忆。',protected:'后端设定的受保护记忆；保护规则由后端执行。',work:'代码、项目和实际工作中保存的记忆。',uncategorized:'这些原生记录没有明确分类，保留原文，等待补充分类标记。'};
  function memoryChrome(value){
   if(value)memorySnapshot=value;value=value||memorySnapshot;
   const category=state.memory.category,overview=!memoryOpen;$('#memoryOverview').hidden=!overview;$('#memoryDetail').hidden=overview;
@@ -60,7 +60,11 @@ window.ZiweiRecords=(()=>{
    for(const b of document.querySelectorAll('[data-memory-count]')){const count=counts[b.dataset.memoryCount];b.textContent=Number.isSafeInteger(count)?count+' 条':'待同步';}
    for(const c of ['user','work']){const count=counts[c],small=Number.isSafeInteger(count)&&count<=1;document.querySelector('.memory-entry[data-memory-category="'+c+'"]').hidden=small;document.querySelector('#memorySmallEntries [data-memory-category="'+c+'"]').hidden=!small;}
    const count=counts.uncategorized;$('#memoryUncategorized').hidden=!Number.isSafeInteger(count)||count===0;$('#memoryUncategorized').textContent=count?'未分类 '+count+' 条 · 查看原文':'';
-   const row=value.data?.[0],excerpt=$('#memoryMainExcerpt');excerpt.textContent=row?.content?'最近一条（原话）：「'+row.content+'」':'这里还没有可读取的原生记忆。';excerpt.disabled=!row;excerpt.onclick=()=>{openMemory('all');if(row){state.memory.expanded.add(row.id);memoryOriginalId=row.id;}};
+   const file=value.overview?.files?.find(f=>f.name==='MEMORY.md'),metric=Number.isSafeInteger(file?.chars)&&file.chars>=0&&Number.isSafeInteger(file?.budget)&&file.budget>0;
+   $('#memoryBudgetValue').hidden=$('#memoryBudgetBar').hidden=$('#memoryBudgetHint').hidden=!metric;$('#memoryPrimaryTitle [data-memory-count]').hidden=metric;$('#memoryAllLink').textContent='全部记忆 '+value.total+' 条 · 可搜索、按分类筛选';
+   if(metric){$('#memoryPrimaryTitle').firstChild.textContent='长期记忆 ';$('#memoryBudgetValue').replaceChildren(el('span','',file.chars.toLocaleString()+' / '+file.budget.toLocaleString()),el('small','',' 字'));$('#memoryBudgetBar').value=Math.min(100,file.chars/file.budget*100);$('#memoryBudgetHint').textContent=file.chars/file.budget>=.9?'快满了，留下值得记住的。':'知微自己的长期记录。';}
+   else $('#memoryPrimaryTitle').firstChild.textContent='全部记忆 ';
+   const row=value.overview?.excerpt||value.data?.[0],excerpt=$('#memoryMainExcerpt');excerpt.textContent=row?.content?'原文摘录：「'+row.content+'」':'这里还没有可读取的原生记忆。';excerpt.disabled=!row;excerpt.onclick=()=>{openMemory(value.overview?.excerpt?'memory':'all');if(row){state.memory.expanded.add(row.id);memoryOriginalId=row.id;}};
   }
   const sources=value?.protectedSources||[];$('#memoryProtectedSources').hidden=category!=='protected'||!sources.length;$('#memoryProtectedSources').textContent=sources.length?'后端另标记了受保护文件：'+sources.join('、')+'。当前接口未提供这些文件的原文。':'';
   $('#memoryCategoryFilters').hidden=overview;for(const b of document.querySelectorAll('[data-memory-filter]'))b.setAttribute('aria-pressed',String(b.dataset.memoryFilter===category));
@@ -78,7 +82,7 @@ window.ZiweiRecords=(()=>{
  function current(){return visible==='memory'?'memory':logOpen?kind:null;}
  function logChrome(){
   const readable=kind==='work'||kind==='diary';
-  $('#logReader').hidden=!readable;$('#logRefresh').hidden=!readable;$('#logUnavailable').hidden=readable;
+  $('#logReader').hidden=!readable;$('#logRefresh').hidden=!readable;$('#logUnavailable').hidden=readable||kind==='photos';
   const unavailable=$('#logUnavailable');unavailable.replaceChildren();if(kind==='private'){unavailable.append(el('h2','private-log-title','这一格是《默记》'),el('p','private-log-copy','他写给自己，不给人看。哪天他想让你读，他会自己把它改成可分享的那一层——那时它就会出现在个人日志里。'),el('p','private-log-note','只写给知微自己；这里不展示内容、标题、日期或数量，也不读取内容。'));}else if(!readable)unavailable.textContent='照片墙尚未接入，暂时没有可查看的照片。';
   $('#workLogScope').hidden=kind!=='work';if(!readable){$('#workTimeline').replaceChildren();$('#logRecords').replaceChildren();$('#logStatus').textContent='';$('#logError').textContent='';}
   for(const b of document.querySelectorAll('[data-log-kind]')){const selected=b.dataset.logKind===kind;b.classList.toggle('active',selected);b.setAttribute('aria-selected',String(selected));}
@@ -151,13 +155,22 @@ window.ZiweiRecords=(()=>{
   catch(e){if(v===epoch&&run===sequence){status.textContent=s.data.length?'后台更新未确认，以下保留上次读取结果。':'尚未读到真实后台记录。';errorNode(k).textContent=e.message;$(k==='memory'?'#memoryEmpty':'#logEmpty').hidden=true;}}
   finally{if(v===epoch&&run===sequence)busy=false;}
  }
+ async function loadOverview(){
+  if(!token||visible!=='logs'||logOpen)return;const v=epoch,run=++overviewRun;
+  const [diaryResult,workResult,photoResult]=await Promise.allSettled([api('/api/records/diary?limit=1&offset=0'),api('/api/records/work?limit=1&offset=0'),api('/api/photos?limit=100')]);if(v!==epoch||run!==overviewRun||visible!=='logs'||logOpen)return;
+  if(diaryResult.status==='fulfilled'){const diary=diaryResult.value;todayDiary=diary.data?.[0]||null;$('#logTodayDate').textContent=todayDiary?.date||'还没有可分享的日记';$('#logTodayTitle').textContent=todayDiary?.title||'把今天留给以后';$('#logTodayPreview').textContent=todayDiary?.preview||'';$('#logTodayContinue').disabled=!todayDiary;$('#logDiaryMeta').textContent='共 '+diary.total+' 篇 · 最近更新 '+(todayDiary?.date||'未提供');}
+  else{$('#logTodayDate').textContent='最近日记未读到，点入口重试。';$('#logTodayContinue').disabled=true;}
+  if(workResult.status==='fulfilled'){const work=workResult.value;$('#logWorkMeta').textContent='共 '+work.total+' 条 · 最近更新 '+(work.data?.[0]?.at?time(work.data[0].at):'未提供');}
+  $('#logPhotoThumbs').replaceChildren();if(photoResult.status==='fulfilled'){const days=new Set();for(const photo of photoResult.value.data||[]){if(days.has(photo.date))continue;days.add(photo.date);const img=el('img');img.src='/api/photos/'+encodeURIComponent(photo.id)+'/file?thumb=1';img.alt=photo.date+' 的照片';img.loading='lazy';$('#logPhotoThumbs').append(img);if(days.size===3)break;}}
+ }
+ $('#logTodayContinue').onclick=async()=>{if(!todayDiary||!onReply)return;const v=epoch;try{const doc=await full('diary',todayDiary);if(v!==epoch)return;if(!onReply('我想继续聊这篇日记：'+todayDiary.title+'\n\n「'+doc.content.slice(0,2000)+'」\n\n你愿意接着写吗？'))$('#logTodayDate').textContent='聊天里还有未发送内容或正在处理的消息，请先处理后再继续。';}catch(e){if(v===epoch)$('#logTodayDate').textContent=e.message;}};
  function show(name,csrf,reply){
   if(token!==csrf){stop();token=csrf;}onReply=reply;
   if(name!==visible){sequence++;busy=false;clearTimeout(searchTimer);logOpen=false;memoryOpen=false;workSelected=null;diarySelected=null;kind='work';state.memory.category='all';state.memory.q='';state.memory.offset=0;$('#memorySearch').value='';memorySnapshot=null;}
   visible=['memory','logs'].includes(name)?name:null;memoryChrome();logChrome();pageChrome();
-  clearInterval(timer);timer=null;if(!visible)return;void load();timer=setInterval(()=>{if(!document.hidden&&!busy)void load();},30000);
+  clearInterval(timer);timer=null;if(!visible)return;if(visible==='logs'&&!logOpen)void loadOverview();else void load();timer=setInterval(()=>{if(!document.hidden&&!busy){if(visible==='logs'&&!logOpen)void loadOverview();else void load();}},30000);
  }
- function stop(){historySession++;logOpen=false;memoryOpen=false;workSelected=null;diarySelected=null;memoryOriginalId=null;memorySnapshot=null;for(const key of Object.keys(pageMeta))delete pageMeta[key];$('#workTimeline').replaceChildren();visible=null;pageChrome();epoch++;sequence++;token=null;visible=null;onReply=null;busy=false;clearInterval(timer);clearTimeout(searchTimer);timer=null;documents.clear();for(const s of Object.values(state)){s.data=[];s.offset=0;s.next=null;s.q='';s.category='all';s.expanded.clear();}$('#logRecords').replaceChildren();$('#memoryRecords').replaceChildren();for(const id of ['logStatus','logError','memoryStatus','memoryError'])$('#'+id).textContent='';$('#logSearch').value='';$('#memorySearch').value='';kind='work';logChrome();memoryChrome();for(const b of document.querySelectorAll('[data-memory-count]'))b.textContent='待同步';$('#memoryUncategorized').hidden=true;$('#memoryUncategorized').textContent='';$('#memoryMainExcerpt').textContent='等待读取真实记忆';$('#memoryMainExcerpt').disabled=true;$('#memoryMainExcerpt').onclick=null;}
+ function stop(){historySession++;logOpen=false;memoryOpen=false;workSelected=null;diarySelected=null;memoryOriginalId=null;memorySnapshot=null;for(const key of Object.keys(pageMeta))delete pageMeta[key];overviewRun++;todayDiary=null;$('#logPhotoThumbs').replaceChildren();$('#logTodayTitle').textContent='等待读取真实日记';$('#logTodayPreview').textContent='';$('#logTodayDate').textContent='';$('#logTodayContinue').disabled=true;$('#workTimeline').replaceChildren();visible=null;pageChrome();epoch++;sequence++;token=null;visible=null;onReply=null;busy=false;clearInterval(timer);clearTimeout(searchTimer);timer=null;documents.clear();for(const s of Object.values(state)){s.data=[];s.offset=0;s.next=null;s.q='';s.category='all';s.expanded.clear();}$('#logRecords').replaceChildren();$('#memoryRecords').replaceChildren();for(const id of ['logStatus','logError','memoryStatus','memoryError'])$('#'+id).textContent='';$('#logSearch').value='';$('#memorySearch').value='';kind='work';logChrome();memoryChrome();for(const b of document.querySelectorAll('[data-memory-count]'))b.textContent='待同步';$('#memoryUncategorized').hidden=true;$('#memoryUncategorized').textContent='';$('#memoryMainExcerpt').textContent='等待读取真实记忆';$('#memoryMainExcerpt').disabled=true;$('#memoryMainExcerpt').onclick=null;$('#memoryBudgetValue').hidden=$('#memoryBudgetBar').hidden=$('#memoryBudgetHint').hidden=true;$('#memoryBudgetValue').textContent='';$('#memoryBudgetBar').value=0;$('#memoryAllLink').textContent='全部记忆 · 可搜索、按分类筛选';$('#logWorkMeta').textContent='等待读取工作记录';$('#logDiaryMeta').textContent='等待读取个人日记';}
  for(const b of document.querySelectorAll('[data-log-kind]'))b.onclick=()=>{
   pushRoute(()=>{kind=b.dataset.logKind;logOpen=true;workSelected=null;diarySelected=null;sequence++;busy=false;clearTimeout(searchTimer);$('#logSearch').value=state[kind]?.q||'';$('#logRecords').replaceChildren();$('#workTimeline').replaceChildren();$('#logStatus').textContent='';$('#logError').textContent='';$('#logEmpty').hidden=true;$('#logSearchBox').hidden=true;logChrome();});void load();
  };
@@ -172,7 +185,7 @@ window.ZiweiRecords=(()=>{
   $('#'+prefix+'Previous').onclick=()=>{const s=state[current()];if(!s)return;s.offset=Math.max(0,s.offset-20);void load();};
   $('#'+prefix+'Next').onclick=()=>{const s=state[current()];if(s&&s.next!==null){s.offset=s.next;void load();}};
  }
- for(const b of document.querySelectorAll('[data-memory-category]'))b.onclick=()=>openMemory(b.dataset.memoryCategory);$('#memoryUncategorized').onclick=()=>openMemory('uncategorized');
+ for(const b of document.querySelectorAll('[data-memory-category]'))b.onclick=()=>openMemory(b.classList.contains('memory-primary')&&memorySnapshot?.overview?.files?.some(f=>f.name==='MEMORY.md')?'memory':b.dataset.memoryCategory);$('#memoryUncategorized').onclick=()=>openMemory('uncategorized');
  document.addEventListener('visibilitychange',()=>{if(visible&&!document.hidden&&!busy)void load();});
  return {show,stop};
 })();

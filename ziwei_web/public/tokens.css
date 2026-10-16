@@ -338,3 +338,11 @@
  --memory-main-size:var(--ui-font-25);
 }
 :root[data-theme=dark]{--glass-fill-alpha-top:var(--glass-opacity);--glass-fill-alpha-bottom:var(--glass-opacity)}
+
+/* October handoff: journal and photo surfaces share the provided design scale. */
+:root{
+ --journal-background:#fff9f7;--journal-paper:#fffcf6;--journal-icon-fill:#f9e5ed;--journal-accent:#c97d9d;--journal-ink:#503f48;--journal-muted:#7c6a73;--journal-rule:rgba(80,63,72,.10);--journal-shadow:0 2px 10px rgba(80,63,72,.05);--journal-main-shadow:0 3px 14px rgba(80,63,72,.06);
+ --journal-title:calc(27px * var(--ui-font-scale));--journal-title-weight:700;--journal-capacity-size:calc(30px * var(--ui-font-scale));--journal-card-title:var(--ui-font-17);--journal-card-weight:650;--journal-meta:calc(12.5px * var(--ui-font-scale));--journal-footer:calc(11.5px * var(--ui-font-scale));--journal-radius:calc(17px * var(--ui-radius-scale));--journal-main-radius:calc(22px * var(--ui-radius-scale));--journal-pill-radius:999px;--journal-inline:var(--ui-space-20);--journal-row-padding:var(--ui-space-14);--journal-card-gap:var(--ui-space-12);--journal-icon-size:36px;--journal-icon-stroke:1.7;
+ --photo-day-width:58px;--photo-day-radius:16px;--photo-day-font:14.5px;--photo-day-count:10.5px;--photo-day-dot:5px;--photo-date-selected:#f9e5ed;--photo-date-selected-ink:#8a5a7c;--photo-grid-gap:var(--ui-space-12);--photo-preview-height:118px;--photo-preview-radius:12px;--photo-heart-width:320px;--photo-heart-height:292px;--photo-heart-cell:27px;--photo-heart-gap:3px;--photo-heart-radius:7px;--photo-heart-rule-opacity:.14;
+}
+:root[data-theme=dark]{--journal-background:var(--paper-background);--journal-paper:var(--paper-cream);--journal-ink:var(--paper-ink);--journal-muted:var(--paper-muted);--journal-rule:var(--paper-rule)}

@@ -1,12 +1,13 @@
 'use strict';
 // Protocol fixture only: never considered evidence of a live Agent reply.
 const http=require('node:http'),crypto=require('node:crypto');
-function fakeHermes({delay=500,loseAdmission=false,interim=true,approval=false,media=null,presence=null,history=[],pokes=[],records=null,output='协议测试回复'}={}){
+function fakeHermes({delay=500,loseAdmission=false,interim=true,approval=false,media=null,presence=null,history=[],pokes=[],records=null,toolEvents=[],photoRoute=null,output='协议测试回复'}={}){
  const runs=new Map(),keys=new Map(),seen=[];let executions=0;
  const server=http.createServer(async(req,res)=>{
   seen.push({url:req.url,method:req.method,authorization:req.headers.authorization,sessionKey:req.headers['x-hermes-session-key']});
   const json=(code,o)=>{res.writeHead(code,{'Content-Type':'application/json'});res.end(JSON.stringify(o));};
   if(req.headers.authorization!=='Bearer protocol-fixture-key')return json(401,{error:'unauthorized'});
+  if(req.url.startsWith('/ziwei/web/photos')&&photoRoute)return photoRoute(req,res,json);
   if(req.url==='/v1/capabilities')return json(200,{features:{runs_idempotency:{durable:true,retention_seconds:86400},run_events_sse:true}});
   if(req.url==='/api/sessions'&&req.method==='POST')return json(201,{object:'hermes.session'});
   if(['/ziwei/web/memory','/ziwei/web/logs','/ziwei/web/diary'].includes(new URL(req.url,'http://localhost').pathname)){if(req.method!=='GET')return json(405,{error:'read_only'});const url=new URL(req.url,'http://localhost'),nativeKind=url.pathname.split('/').at(-1),kind=nativeKind==='logs'?'work':nativeKind,value=typeof records==='function'?records(kind,url):records?.[kind];if(!value)return json(503,{error:'unavailable'});if(value.status)return json(value.status,value.body);return json(200,value);}
@@ -20,6 +21,7 @@ function fakeHermes({delay=500,loseAdmission=false,interim=true,approval=false,m
    if(keys.has(key)){const r=keys.get(key);if(r.body!==text)return json(409,{error:'idempotency_key_conflict'});return json(202,{run_id:r.id,status:'started',replayed:true});}
    executions++;const id='run_'+crypto.randomUUID().replaceAll('-',''),r={id,body:text,status:approval?'waiting_for_approval':'running',approval:approval?{request_id:'approval-'+id,command:'fixture command',choices:['once','deny']}:null,output,events:[],clients:new Set()};keys.set(key,r);runs.set(id,r);
    const send=(event,fields)=>{const e={event,run_id:id,seq:r.events.length,...fields};r.events.push(e);for(const client of r.clients)client.write('id: '+e.seq+'\ndata: '+JSON.stringify(e)+'\n\n');};
+   for(const [i,item] of toolEvents.entries())setTimeout(()=>send(item.event,item.data),10+i*12);
    if(approval)setTimeout(()=>send('approval.request',r.approval),10);
    setTimeout(()=>send('message.delta',{delta:'协议测试'}),Math.floor(delay/4));
    if(interim)setTimeout(()=>send('message.interim',{text:'这是过程消息',already_streamed:false}),Math.floor(delay/2));

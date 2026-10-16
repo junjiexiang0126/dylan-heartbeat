@@ -55,10 +55,11 @@ function createRecords(){
     const view=memoryView(value);rows=view.rows;errors=view.errors;
     if(id){const row=rows.find(r=>r.id===id);return row?json(200,row):json(404,{error:'record_not_found'});}
     const counts=view.counts,protectedSources=view.protectedSources;
+    const overview={files:value.files.map(f=>({name:f.name,chars:Number.isSafeInteger(f.chars)?f.chars:null,budget:Number.isSafeInteger(f.budget)?f.budget:null,updatedAt:date(f.updated_at)})),excerpt:view.rows.find(r=>r.sourceFile==='MEMORY.md')||null};
     rows=rows.filter(row=>category==='all'||category==='memory'&&row.sourceFile==='MEMORY.md'||row.categories.includes(category));
     if(q)rows=rows.filter(row=>[row.title,row.source,row.content].some(x=>x.toLocaleLowerCase().includes(q.toLocaleLowerCase())));
     rows.sort((a,b)=>(b.at||'').localeCompare(a.at||'')||a.sourceFile.localeCompare(b.sourceFile)||a.entryIndex-b.entryIndex);
-    return json(200,{data:rows.slice(offset,offset+limit),total:rows.length,nextOffset:offset+limit<rows.length?offset+limit:null,counts,protectedSources,source:'hermes_native',readOnly:true,checkedAt:new Date().toISOString(),errors,unit:'entries'});
+    return json(200,{data:rows.slice(offset,offset+limit),total:rows.length,nextOffset:offset+limit<rows.length?offset+limit:null,counts,protectedSources,overview,source:'hermes_native',readOnly:true,checkedAt:new Date().toISOString(),errors,unit:'entries'});
    }else{
     if(id)return json(404,{error:'record_not_found'});
     const value=await work();errors=value.errors;

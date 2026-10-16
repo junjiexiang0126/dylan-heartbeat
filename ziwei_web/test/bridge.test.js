@@ -163,3 +163,24 @@ test('Agent-chosen segments persist as independent messages; summaries and exact
  await s.stop();const db=new DatabaseSync(path.join(s.dir,'chat.sqlite'));assert.equal(JSON.parse(db.prepare('SELECT value FROM meta WHERE key=?').get('presentation:'+id).value).raw,output);db.close();
  await s.start();assert.deepEqual((await s.rows()).filter(x=>x.role==='assistant'&&x.kind==='final').map(x=>x.content),JSON.parse(output).messages);assert.equal(s.fake.executions,1);
 });
+
+test('public tool actions survive restart in real order while thinking, args and reasoning never persist',async t=>{
+ const secret='PRIVATE_THINKING_SENTINEL',s=await setup(t,{delay:350,toolEvents:[
+  {event:'tool.started',data:{tool_name:'terminal',preview:'wc -l',args:{secret},ts:'2026-10-16T10:00:00Z'}},
+  {event:'tool.progress',data:{tool_name:'_thinking',delta:secret,reasoning_content:secret}},
+  {event:'tool.completed',data:{tool_name:'terminal',args:{secret},ts:'2026-10-16T10:00:00.100Z'}},
+  {event:'tool.started',data:{tool_name:'read_file',preview:'notes.md',ts:'2026-10-16T10:00:00.120Z'}},
+  {event:'tool.failed',data:{tool_name:'read_file',reasoning_content:secret,ts:'2026-10-16T10:00:00.220Z'}},
+  {event:'tool.started',data:{tool_name:'browser',preview:'打开网页',ts:'2026-10-16T10:00:00.300Z'}}
+ ]}),id=crypto.randomUUID();await s.api('/api/chat/send',{requestId:id,message:'action fixture',attachments:[]});
+ const rows=await until(async()=>{const r=await s.rows();return r.find(m=>m.id==='reply-'+id)&&r;}),actions=rows.find(m=>m.id==='reply-'+id).toolActions;assert.deepEqual(actions.map(r=>r.tool),['terminal','read_file','browser']);assert.deepEqual(actions.map(r=>r.state),['completed','failed','in_progress']);assert.equal(actions[0].elapsedMs,100);assert.ok(!JSON.stringify(rows).includes(secret));assert.equal(rows.filter(m=>m.toolActions?.length).length,1);
+ await s.stop();const db=new DatabaseSync(path.join(s.dir,'chat.sqlite'),{readOnly:true});for(const table of ['tool_actions','messages','events','meta'])assert.ok(!JSON.stringify(db.prepare('SELECT * FROM '+table).all()).includes(secret));db.close();await s.start();assert.deepEqual((await s.rows()).find(m=>m.id==='reply-'+id).toolActions,actions);assert.equal(s.fake.executions,1);
+});
+
+test('photo BFF authenticates byte proxies, verifies hashes, limits uploads and forwards native ownership failures',async t=>{
+ const pid=crypto.randomUUID(),note=crypto.randomUUID(),bytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64'),seen=[];let corrupt=false;
+ const s=await setup(t,{photoRoute:async(req,res,json)=>{let body=Buffer.alloc(0);for await(const c of req)body=Buffer.concat([body,c]);seen.push({url:req.url,method:req.method,headers:req.headers,body});if(req.url.includes('/file')){res.writeHead(200,{'Content-Type':'image/png','X-Content-Sha256':crypto.createHash('sha256').update(corrupt?Buffer.from('bad'):bytes).digest('hex')});return res.end(bytes);}if(req.method==='PATCH'||req.method==='DELETE')return json(403,{error:'not_owner'});if(req.method==='POST')return json(201,{photo:{id:pid,source:'user'},annotation:{id:note,author:'user'}});return json(200,{data:[],total:0,next_cursor:null,errors:[]});}});
+ const url=s.origin+'/api/photos/'+pid+'/file';assert.equal((await fetch(url)).status,401);const good=await fetch(url,{headers:s.headers});assert.equal(good.status,200);assert.deepEqual(Buffer.from(await good.arrayBuffer()),bytes);assert.equal(good.headers.get('cache-control'),'no-store');corrupt=true;assert.equal((await fetch(url,{headers:s.headers})).status,503);corrupt=false;
+ const upload=body=>fetch(s.origin+'/api/photos',{method:'POST',headers:{...s.headers,'Content-Type':'image/png','X-Photo-Id':pid,'X-Photo-Name':'tiny.png','X-Photo-Actor':'ziwei'},body});assert.equal((await upload(bytes)).status,201);assert.deepEqual(seen.at(-1).body,bytes);assert.equal(seen.at(-1).headers['x-photo-actor'],undefined);assert.equal(seen.at(-1).headers.authorization,'Bearer protocol-fixture-key');assert.equal((await upload(Buffer.alloc(9500001))).status,413);assert.equal((await upload(Buffer.from('<svg>'))).status,400);
+ const count=seen.length,route='/api/photos/'+pid+'/annotations/'+note;assert.equal((await fetch(s.origin+route,{method:'PATCH',headers:s.headers,body:JSON.stringify({text:'attempt',author:'ziwei'})})).status,400);assert.equal(seen.length,count);assert.equal((await fetch(s.origin+route,{method:'PATCH',headers:s.headers,body:JSON.stringify({text:'attempt'})})).status,403);assert.equal((await fetch(s.origin+route,{method:'DELETE',headers:s.headers})).status,403);assert.equal((await fetch(s.origin+'/api/photos',{method:'POST',headers:{Cookie:s.cookie,Origin:s.origin},body:bytes})).status,403);
+});
