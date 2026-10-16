@@ -15,9 +15,9 @@
  document.addEventListener('click',e=>{if(!e.target.closest('.work-tool-picker'))closeMenu();});
  root.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu();});
  choices.forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.workTool;choices.forEach(x=>x.setAttribute('aria-pressed',String(x===b)));mode.textContent=label[selected];closeMenu();}));
- const insertMention=name=>{const at=input.selectionStart??input.value.length;const before=input.value.slice(0,at),after=input.value.slice(input.selectionEnd??at);const match=before.match(/@[^@\\s]*$/);const start=match?at-match[0].length:at;const prefix=match?'':(before&& !/\\s$/.test(before)?' ':'');const value=prefix+'@'+name+' ';input.setRangeText(value,start,input.selectionEnd??at,'end');mentionMenu.hidden=true;input.focus();};
+ const insertMention=name=>{const at=input.selectionStart??input.value.length;const before=input.value.slice(0,at),after=input.value.slice(input.selectionEnd??at);const match=before.match(/@[^@\s]*$/);const start=match?at-match[0].length:at;const prefix=match?'':(before&& !/\s$/.test(before)?' ':'');const value=prefix+'@'+name+' ';input.setRangeText(value,start,input.selectionEnd??at,'end');mentionMenu.hidden=true;input.focus();};
  root.querySelectorAll('[data-work-mention]').forEach(b=>b.addEventListener('click',()=>insertMention(b.dataset.workMention)));
- input.addEventListener('input',()=>{const before=input.value.slice(0,input.selectionStart??input.value.length);mentionMenu.hidden=!/@[^@\\s]*$/.test(before);});
+ input.addEventListener('input',()=>{const before=input.value.slice(0,input.selectionStart??input.value.length);mentionMenu.hidden=!/@[^@\s]*$/.test(before);});
  input.addEventListener('keydown',e=>{if(e.key==='Escape')mentionMenu.hidden=true;});
  // Clear unsent Work drafts whenever the authenticated application is hidden.
  const app=document.getElementById('app');
