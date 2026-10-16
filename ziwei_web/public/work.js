@@ -22,7 +22,38 @@
  // Clear unsent Work drafts whenever the authenticated application is hidden.
  const app=document.getElementById('app');
  if(app){new MutationObserver(()=>{if(app.hidden){input.value='';status.textContent='前端预览阶段 · 尚未连接 Work 消息服务';}}).observe(app,{attributes:true,attributeFilter:['hidden']});}
- root.querySelector('#workForm').addEventListener('submit',e=>{e.preventDefault();status.textContent='Work 后端尚未接入，消息未发送。当前选择：'+label[selected]+'。';});
+ const conversation=root.querySelector('.work-conversation');
+ const show=items=>{
+  conversation.replaceChildren();
+  for(const m of items){
+   const line=document.createElement('div');line.className='work-line';
+   const who=document.createElement('strong');who.textContent=m.role==='user'?'你':m.role==='glm'?'GLM':'系统';
+   const body=document.createElement('p');body.textContent=m.text;
+   line.append(who,body);conversation.append(line);
+  }
+  conversation.scrollTop=conversation.scrollHeight;
+ };
+ const refresh=async()=>{
+  try{const r=await fetch('/api/work/messages',{credentials:'same-origin'});if(r.ok)show((await r.json()).data||[]);}
+  catch{status.textContent='Work 历史读取失败，请检查网络';}
+ };
+ refresh();
+ root.querySelector('#workForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const text=input.value.trim();if(!text)return;
+  const submit=root.querySelector('#workForm button[type=submit]');submit.disabled=true;
+  status.textContent='GLM 正在处理（最多一次调用，12 秒超时）…';
+  try{
+   const session=await fetch('/api/session',{credentials:'same-origin'}).then(r=>r.json());
+   if(!session.authenticated||!session.csrf)throw Error('请重新登录');
+   const r=await fetch('/api/work/send',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':session.csrf},body:JSON.stringify({text,tool:selected})});
+   const data=await r.json();
+   if(!r.ok)throw Error(data.error||'发送失败');
+   input.value='';status.textContent='GLM 已回复 · Token '+(data.usage?.total_tokens??'未报告');
+   await refresh();
+  }catch(err){status.textContent='Work 未完成：'+err.message;}
+  finally{submit.disabled=false;}
+ });
  root.querySelector('#workVoice').addEventListener('click',()=>{status.textContent='Work 语音消息尚未接入；私人聊天语音功能不受影响。';});
  root.querySelector('#workAttach').addEventListener('click',()=>{status.textContent='Work 附件传输尚未接入（目标上限 30 MB）。';});
 })();
