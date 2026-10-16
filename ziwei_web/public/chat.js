@@ -146,7 +146,7 @@ window.ZiweiChat=(()=>{
   const parts=m.role==='assistant'?assistantBubbles(m.content):[m.content];
   const bubble=element('div','message-bubble-group');if(m.quote)bubble.append(element('blockquote','message-quote',m.quote.content));for(const part of parts){const one=element('div','message-bubble glass');const content=element('p','message-content',part.slice(0,5000));one.append(content);if(part.length>5000)one.append(button('展开完整记录',()=>{content.textContent=part;}));bubble.append(one);}body.append(bubble);
   if(m.role==='assistant'&&Array.isArray(m.toolActions)&&m.toolActions.length){
-   const details=element('details','chat-tool-actions'),summary=element('summary','chat-tool-summary','做了 '+m.toolActions.length+' 个动作');
+   const actionsCount=new Set(m.toolActions.filter(x=>x.state==='started').map(x=>x.upstream_seq)).size||m.toolActions.filter(x=>x.state==='completed'||x.state==='failed').length;const details=element('details','chat-tool-actions'),summary=element('summary','chat-tool-summary','工具事件 '+m.toolActions.length+' 条');
    const list=element('ol','chat-tool-list');
    for(const action of m.toolActions){const state={started:'开始',completed:'完成',failed:'失败'}[action.state]||'更新';list.append(element('li','',String(action.tool||'工具')+' · '+state));}
    details.append(summary,list);bubble.append(details);
