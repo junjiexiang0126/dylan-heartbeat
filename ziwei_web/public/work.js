@@ -8,7 +8,7 @@
  const label={auto:'自由聊天',ppt:'PPT',word:'Word',pdf:'PDF',excel:'Excel',image:'图片',research:'资料研究'};
  let selected='auto';
  choices.forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.workTool;choices.forEach(x=>x.setAttribute('aria-pressed',String(x===b)));mode.textContent='当前工具：'+label[selected];}));
- root.querySelectorAll('[data-work-mention]').forEach(b=>b.addEventListener('click',()=>{input.value+=(input.value&&!/\\s$/.test(input.value)?' ':'')+'@'+b.dataset.workMention+' ';input.focus();}));
+ root.querySelectorAll('[data-work-mention]').forEach(b=>b.addEventListener('click',()=>{input.value+=(input.value&&!/\s$/.test(input.value)?' ':'')+'@'+b.dataset.workMention+' ';input.focus();}));
  root.querySelector('#workForm').addEventListener('submit',e=>{e.preventDefault();status.textContent='Work 后端尚未接入，消息未发送。当前选择：'+label[selected]+'。';});
  root.querySelector('#workVoice').addEventListener('click',()=>{status.textContent='Work 语音消息尚未接入；私人聊天语音功能不受影响。';});
  root.querySelector('#workAttach').addEventListener('click',()=>{status.textContent='Work 附件传输尚未接入（目标上限 200 MB）。';});
