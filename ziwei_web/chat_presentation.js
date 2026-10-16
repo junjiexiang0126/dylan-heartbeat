@@ -27,6 +27,36 @@ function normalizeEnvelope(source){
  }
  return out;
 }
+
+function fallback(candidate,plain){
+ // Only intercept a recognizable reply envelope; unrelated JSON and ordinary prose
+ // must stay untouched. Recover literal string values without exposing wire JSON.
+ if(!/["']type["']\s*:\s*["']ziwei\.reply\.v1["']/.test(candidate))return plain;
+ const start=/"messages"\s*:\s*\[/.exec(candidate);
+ if(!start)return {messages:['知微的这条回复格式不完整，请重新发送。'],summary:null,structured:false};
+ const rest=candidate.slice(start.index+start[0].length);
+ const messages=[];let i=0;
+ while(i<rest.length&&messages.length<20){
+  while(i<rest.length&&/[\s,，]/.test(rest[i]))i++;
+  if(rest[i]===']')break;
+  if(rest[i]!=='"')break;
+  const begin=i++;let escaped=false;
+  for(;i<rest.length;i++){
+   if(escaped){escaped=false;continue;}
+   if(rest[i]==='\\'){escaped=true;continue;}
+   if(rest[i]==='"')break;
+  }
+  if(i>=rest.length)break;
+  const raw=rest.slice(begin,i+1);i++;
+  try{
+   const value=JSON.parse(normalizeEnvelope(raw));
+   if(typeof value!=='string'||!value.trim())break;
+   messages.push(value);
+  }catch{break;}
+ }
+ return {messages:messages.length?messages:['知微的这条回复格式不完整，请重新发送。'],summary:null,structured:false};
+}
+
 function parse(text){
  const plain={messages:[text],summary:null,structured:false};
  if(typeof text!=='string')return plain;
@@ -36,7 +66,7 @@ function parse(text){
  if(!candidate.startsWith('{'))return plain;
  let value;
  try{value=JSON.parse(candidate);}
- catch{try{value=JSON.parse(normalizeEnvelope(candidate));}catch{return plain;}}
+ catch{try{value=JSON.parse(normalizeEnvelope(candidate));}catch{return fallback(candidate,plain);}}
  if(value?.type!==TYPE||!Array.isArray(value.messages)||!value.messages.length||value.messages.length>20||value.messages.some(x=>typeof x!=='string'||!x.trim()||x.length>200000))return plain;
  return {messages:value.messages,summary:typeof value.summary==='string'&&value.summary.trim()?value.summary.slice(0,4000):null,structured:true};
 }
