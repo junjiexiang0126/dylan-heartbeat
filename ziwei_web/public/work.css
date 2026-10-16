@@ -11,3 +11,12 @@
 /* Existing navigation was five-column; Work makes it six. */
 nav.glass{grid-template-columns:repeat(6,minmax(0,1fr))}
 @media(max-width:550px){nav.glass button{font-size:9px;letter-spacing:0}}
+
+/* Compact tool picker beside attachment; overlay does not consume chat height. */
+.work-tool-picker{position:relative;min-width:0}
+.work-tool-menu[hidden]{display:none!important}
+.work-tool-menu{position:absolute;z-index:30;bottom:calc(100% + 8px);left:0;width:min(260px,calc(100vw - 90px));max-height:min(320px,55vh);overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;border:1px solid var(--border);border-radius:var(--work-radius);box-shadow:0 12px 30px rgba(0,0,0,.14);background:var(--input)}
+.work-tool-menu button{min-height:40px;text-align:center}
+.work-tool-menu button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
+.work-actions{flex-wrap:wrap;align-items:center}
+.work-actions #workToolToggle{white-space:nowrap}
