@@ -1,0 +1,35 @@
+/* All Work-specific dimensions and colors are adjustable tokens. */
+.work-panel{--work-gap:12px;--work-radius:18px;--work-padding:16px;--work-min-conversation:180px;display:flex;flex-direction:column;gap:var(--work-gap);padding-bottom:calc(var(--nav-h,70px) + 55px)}
+.work-heading,.work-conversation,.work-compose{padding:var(--work-padding);border-radius:var(--work-radius)}
+.work-heading p{font-size:13px}.work-conversation{min-height:var(--work-min-conversation);display:flex;align-items:center}
+.work-compose{display:flex;flex-direction:column;gap:var(--work-gap)}
+.work-tools{display:flex;flex-wrap:wrap;gap:8px}.work-tools button,.work-mentions button,.work-actions button{border:1px solid var(--border);border-radius:var(--work-radius);background:var(--input);color:var(--ink);padding:7px 10px}
+.work-tools button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
+.work-mentions{display:flex;gap:8px}.work-compose form{display:grid;gap:8px}.work-compose textarea{width:100%;resize:vertical;min-height:65px;border:1px solid var(--border);border-radius:var(--work-radius);background:var(--input);color:var(--ink);padding:10px;font:inherit}
+.work-actions{display:flex;gap:8px;justify-content:flex-end}.work-actions button[type=submit]{background:var(--accent);color:white}
+
+/* Existing navigation was five-column; Work makes it six. */
+nav.glass{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media(max-width:550px){nav.glass button{font-size:9px;letter-spacing:0}}
+
+/* Compact tool picker beside attachment; overlay does not consume chat height. */
+.work-tool-picker{position:relative;min-width:0}
+.work-tool-menu[hidden]{display:none!important}
+.work-tool-menu{position:absolute;z-index:30;bottom:calc(100% + 8px);left:0;width:min(260px,calc(100vw - 90px));max-height:min(320px,55vh);overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;border:1px solid var(--border);border-radius:var(--work-radius);box-shadow:0 12px 30px rgba(0,0,0,.14);background:var(--input)}
+.work-tool-menu button{min-height:40px;text-align:center}
+.work-tool-menu button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
+.work-actions{flex-wrap:wrap;align-items:center}
+.work-actions #workToolToggle{white-space:nowrap}
+
+/* Work member avatars and iPhone-style upward tool sheet. */
+.work-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.work-members{display:flex;gap:8px;flex-shrink:0}
+.work-members button{width:42px;height:42px;border-radius:50%;border:1px solid var(--border);background:var(--accent-soft);color:var(--ink);font:inherit;font-weight:650;cursor:pointer}
+.work-tool-menu{bottom:calc(100% + 12px);left:0;width:min(320px,calc(100vw - 70px));max-height:min(65dvh,440px);grid-template-columns:repeat(2,minmax(0,1fr));border-radius:24px 24px 16px 16px;animation:work-sheet-rise .22s ease-out}
+.work-tool-handle{grid-column:1/-1;justify-self:center;width:38px;height:5px;border-radius:99px;background:var(--border)}
+.work-tool-menu-title{grid-column:1/-1;text-align:center;font-weight:650;padding-bottom:4px}
+@keyframes work-sheet-rise{from{opacity:.5;transform:translateY(25px)}to{opacity:1;transform:translateY(0)}}
+.work-mention-menu[hidden]{display:none!important}
+.work-mention-menu{display:flex;gap:8px;padding:8px;border:1px solid var(--border);border-radius:var(--work-radius)}
+.work-mention-menu button{flex:1;border:1px solid var(--border);background:var(--input);color:var(--ink);padding:10px;border-radius:12px}
+@media(prefers-reduced-motion:reduce){.work-tool-menu{animation:none}}
