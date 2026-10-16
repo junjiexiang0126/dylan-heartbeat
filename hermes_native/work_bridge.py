@@ -3,6 +3,7 @@ import asyncio
 import fcntl
 import hashlib
 import json
+import logging
 import os
 import re
 import signal
@@ -13,6 +14,23 @@ from pathlib import Path
 
 def install_work_route(adapter):
     from aiohttp import web
+    async def status(self, request):
+        err = self._check_auth(request)
+        if err is not None:
+            return err
+        child = await asyncio.create_subprocess_exec(sys.executable, str(Path(__file__).with_name('work_agent.py')), '--check',
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, start_new_session=True)
+        try:
+            out, _ = await asyncio.wait_for(child.communicate(), timeout=45)
+            result = json.loads(out) if len(out) <= 32000 else {'error':'work_agent_failed'}
+            return web.json_response(result, status=200 if child.returncode == 0 else 502, headers={'Cache-Control':'no-store'})
+        except (asyncio.TimeoutError, asyncio.CancelledError):
+            if child.returncode is None:
+                os.killpg(child.pid, signal.SIGKILL)
+                await child.wait()
+            return web.json_response({'error':'work_timeout'}, status=504)
+        except (ValueError, TypeError):
+            return web.json_response({'error':'work_agent_failed'}, status=502)
     async def work(self, request):
         err = self._check_auth(request)
         if err is not None:
@@ -66,6 +84,7 @@ def install_work_route(adapter):
                     raise ValueError('worker_failed')
                 result = json.loads(out)
                 if child.returncode:
+                    logging.getLogger(__name__).warning('Work worker rejected stage=%s code=%s', stage, result.get('error', 'work_agent_failed'))
                     return web.json_response({'error':result.get('error','work_agent_failed')}, status=502)
                 write(target, {'digest': digest, 'result': result})
                 return web.json_response(result, headers={'Cache-Control': 'no-store'})
@@ -79,4 +98,4 @@ def install_work_route(adapter):
         finally:
             lock.close()
     original = adapter._http_route_table
-    adapter._http_route_table = lambda self: original(self) + [('POST', '/ziwei/web/work/turn', lambda request: work(self, request))]
+    adapter._http_route_table = lambda self: original(self) + [('POST', '/ziwei/web/work/turn', lambda request: work(self, request)), ('GET', '/ziwei/web/work/status', lambda request: status(self, request))]
