@@ -64,8 +64,8 @@ def execute(payload):
         if not isinstance(text, str) or not text.strip():
             raise RuntimeError('work_empty_response')
         return {'text': text, 'model': model, 'calls': calls,
-                'usage': {'prompt_tokens': int(getattr(agent, 'session_input_tokens', 0)),
-                          'completion_tokens': int(getattr(agent, 'session_output_tokens', 0))}}
+                'usage': {'prompt_tokens': getattr(agent, 'session_input_tokens', None),
+                          'completion_tokens': getattr(agent, 'session_output_tokens', None)}}
     finally:
         if hasattr(agent, 'close'):
             agent.close()
