@@ -20,3 +20,13 @@ test('valid structured reply keeps each chosen bubble',()=>{
  assert.deepEqual(result.messages,['一','二','三']);
  assert.equal(result.structured,true);
 });
+
+test('observed wei.reply.v1 envelope produces separate bubbles',()=>{
+ const result=parse('{"type":"wei.reply.v1","messages":["第一条","第二条"]}');
+ assert.deepEqual(result.messages,['第一条','第二条']);
+ assert.equal(result.structured,true);
+});
+test('malformed observed envelope falls back to recovered text',()=>{
+ const result=parse('{"type":"wei.reply.v1","messages":["第一条","第二条",]}');
+ assert.deepEqual(result.messages,['第一条','第二条']);
+});
