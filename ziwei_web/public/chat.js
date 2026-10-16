@@ -127,7 +127,7 @@ window.ZiweiChat=(()=>{
   try{parsed=JSON.parse(stripped);}catch{
     // Repair only punctuation outside JSON strings; do not rewrite message content.
     let inString=false,escaped=false,fixed='';
-    for(const ch of stripped){if(escaped){fixed+=ch;escaped=false;continue;}if(ch==='\\\\'&&inString){fixed+=ch;escaped=true;continue;}if(ch==='"'){inString=!inString;fixed+=ch;continue;}fixed+=!inString&&ch==='，'?',':ch;}
+    for(const ch of stripped){if(escaped){fixed+=ch;escaped=false;continue;}if(ch==='\\'&&inString){fixed+=ch;escaped=true;continue;}if(ch==='"'){inString=!inString;fixed+=ch;continue;}fixed+=!inString&&ch==='，'?',':ch;}
     try{parsed=JSON.parse(fixed);}catch{
       // Never display a raw failed envelope as code.
       const matches=[...stripped.matchAll(/"(?:content|text)"\s*[:：]\s*"((?:\\.|[^"\\])*)"/g)];
