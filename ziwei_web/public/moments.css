@@ -90,3 +90,8 @@ nav button[data-tab=moments]{position:relative}
 
 
 #workbench{border-radius:var(--workbench-dialog-radius)}
+
+.moment-sync-skipped{border-block:var(--ui-size-1) solid var(--border);padding-block:var(--ui-space-12);margin-block:var(--ui-space-12);font-size:var(--ui-font-13)}
+.moment-sync-skipped li{margin-block:var(--ui-space-12);overflow-wrap:anywhere;line-height:var(--ui-leading-1_8)}
+.moment-sync-skipped strong{font-size:var(--ui-font-12);font-weight:var(--ui-weight-medium)}
+.moment-sync-skipped small{display:block;font-size:var(--ui-font-12);color:var(--muted)}

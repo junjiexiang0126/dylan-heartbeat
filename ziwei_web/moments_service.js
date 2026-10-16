@@ -7,34 +7,40 @@ function createMomentsService(dir,{client,now=()=>Date.now(),random=Math.random,
  client=client||new HermesClient(env);
  const store=new MomentsStore(dir,hash(client.base+'|'+client.session+'|'+client.key),{now,random});
  const imageRoot=path.join(dir,'moments-files');fs.mkdirSync(imageRoot,{recursive:true,mode:0o700});const files=new MomentsFiles(imageRoot,store);
- let closed=false,syncing=null,working=false,ready=false,lastSync=null,lastError=null;const timers=[];
+ let closed=false,syncing=null,working=false,ready=false,lastSync=store.meta('last_native_sync')||null,lastError=null;const timers=[];
  function json(res,status,value){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));}
  async function body(req){let n=0;const chunks=[];for await(const c of req){n+=c.length;if(n<=20000)chunks.push(c);}if(n>20000)throw Error('body_too_large');return JSON.parse(Buffer.concat(chunks).toString()||'{}');}
  async function sync(){
   if(closed||!client.configured()){lastError='hermes_not_configured';return {available:false,error:lastError};}if(syncing)return syncing;
   syncing=(async()=>{try{
-   let checkpoint=JSON.parse(store.meta('native_cursor')||'{}'),pages=0,imported=0;
+   let checkpoint=JSON.parse(store.meta('native_cursor')||'{}'),pages=0,imported=0,processed=0;
    while(++pages<=10&&!closed){
     const query=new URLSearchParams({limit:'100'});if(checkpoint.cursor)query.set('cursor',checkpoint.cursor);else if(checkpoint.at)query.set('since',new Date(Date.parse(checkpoint.at)-1).toISOString());
     const value=await client.json('/ziwei/web/moments?'+query,{signal:AbortSignal.timeout(12000)});
     if(!Array.isArray(value.data)||value.data.length>100||!Array.isArray(value.errors))throw Error('native_moments_contract_invalid');
-    const errors=[];let latest=checkpoint.at||null,last=-Infinity;
-    for(const record of value.data){
-     if(!record||!Number.isFinite(Date.parse(record.at))||Date.parse(record.at)<last){errors.push('native_moments_order_invalid');continue;}last=Date.parse(record.at);
-     try{if(store.native(record))imported++;if(!latest||Date.parse(record.at)>Date.parse(latest))latest=record.at;}catch(e){errors.push(safeError(e));}
+    let latest=checkpoint.at||null,last=-Infinity;
+    const invalid=new Set(['native_reply_parent_missing','duplicate_native_reply','id_conflict','invalid_native_reply','native_edit_rejected','invalid_native_record','invalid_native_text','invalid_native_target','invalid_images','delete_not_owned','native_moments_order_invalid']);
+    for(const [index,record] of value.data.entries()){
+     const at=Date.parse(record?.at);if(Number.isFinite(at)&&at<=now()+60000&&(!latest||at>Date.parse(latest)))latest=record.at;
+     if(store.wasSkipped(record))continue;
+     let reason=null;
+     if(!record||!Number.isFinite(at))reason='invalid_native_record';else if(at<last)reason='native_moments_order_invalid';
+     if(Number.isFinite(at))last=Math.max(last,at);
+     if(!reason){try{if(store.native(record))imported++;}catch(e){reason=safeError(e);if(!invalid.has(reason))throw e;}}
+     if(reason)store.skipNative(record,reason,processed+index+1);
     }
-    if(value.errors.length)errors.push('native_moments_write_error');
-    if(errors.length)throw Error(errors[0]);
+    processed+=value.data.length;
+    if(value.errors.length)throw Error('native_moments_write_error');
     if(value.next_cursor!==undefined&&value.next_cursor!==null&&(typeof value.next_cursor!=='string'||!value.next_cursor||value.next_cursor.length>2048))throw Error('native_moments_cursor_invalid');
     if(value.next_cursor){if(value.next_cursor===checkpoint.cursor)throw Error('native_moments_cursor_stalled');checkpoint={at:latest,cursor:value.next_cursor};}
     else{if(value.has_more===true||value.data.length===100&&value.has_more!==false)throw Error('native_moments_pagination_required');checkpoint={at:latest};}
     store.meta('native_cursor',JSON.stringify(checkpoint));if(!value.next_cursor)break;
    }
-   ready=true;lastError=null;lastSync=new Date(now()).toISOString();return {available:true,imported};
-  }catch(e){lastError=e.message==='hermes_http_404'?'native_moments_not_installed':safeError(e);ready=false;return {available:false,error:lastError};}})().finally(()=>syncing=null);return syncing;
+   ready=true;lastError=null;lastSync=new Date(now()).toISOString();store.meta('last_native_sync',lastSync);return {available:true,imported};
+  }catch(e){lastError=e.message==='hermes_http_404'?'native_moments_not_installed':safeError(e);ready=false;console.warn('MOMENTS_SYNC_ERROR '+JSON.stringify({code:lastError}));return {available:false,error:lastError};}})().finally(()=>syncing=null);return syncing;
  }
  function approvals(){return store.db.prepare("SELECT value FROM meta WHERE key LIKE 'approval:%'").all().map(x=>JSON.parse(x.value)).filter(a=>store.job(a.jobId)?.state==='waiting_approval');}
- function status(){return {available:ready,configured:client.configured(),lastSync,error:lastError,pending:store.db.prepare("SELECT count(*) n FROM jobs WHERE state NOT IN ('completed','cancelled','failed')").get().n};}
+ function status(){return {skipped:store.skipped(),available:ready,configured:client.configured(),lastSync,error:lastError,pending:store.db.prepare("SELECT count(*) n FROM jobs WHERE state NOT IN ('completed','cancelled','failed')").get().n};}
  function prompt(j){const p=JSON.parse(j.payload);return '朋友圈互动任务；不是聊天消息，也不是新增长期记忆。\n'+
   '不要调用 memory 工具，不要修改 MEMORY.md、USER.md 或其他长期记忆；可自主决定是否在自己的日记记录少量体会。不得删除或修改用户内容。\n'+
   '请读下面的用户动态/评论，以你自己的身份用 ziwei_moment 写一条 reply；不要只在最终文字里假称已发布。无需等待展示延迟，展示由 Web 处理。\n'+
