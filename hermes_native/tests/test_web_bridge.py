@@ -20,7 +20,7 @@ class BridgeFiles(unittest.TestCase):
     def test_voluntary_status_unknown_fresh_and_stale(self):
         self.assertIsNone(bridge.status_record()['state'])
         self.assertEqual(json.loads(bridge.publish_status({'state':'开心'}))['error'],'invalid_status')
-        bridge.publish_status({'state':'在思考'})
+        self.wb.publish_status({'state':'在思考'})
         self.assertEqual(bridge.status_record()['state'],'在思考'); self.assertFalse(bridge.status_record()['stale'])
         file=self.root/'workspace/web-status.json';record=json.loads(file.read_text());record['updatedAt']=(datetime.now(timezone.utc)-timedelta(hours=1)).isoformat();file.write_text(json.dumps(record))
         self.assertTrue(bridge.status_record()['stale'])
@@ -438,3 +438,33 @@ class DiaryFields(unittest.TestCase):
                 bridge.diary_document(bridge._diary_id('workspace/diary/2099-03-04-memo.md'))
         finally:
             path.unlink(missing_ok=True)
+
+class StatusNote(unittest.TestCase):
+    """她要在“渡鸦的小屋”右边看到两行字：我那句话 + 心情。"""
+
+    def setUp(self):
+        self.root = tempfile.TemporaryDirectory()
+        os.environ['HERMES_HOME'] = self.root.name
+        (Path(self.root.name) / 'workspace').mkdir(parents=True, exist_ok=True)
+        spec = importlib.util.spec_from_file_location('web_bridge_note', Path(__file__).parents[1] / 'web_bridge.py')
+        self.wb = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.wb)
+
+    def tearDown(self):
+        self.root.cleanup()
+
+    def test_note_and_mood_travel_with_the_status(self):
+        self.wb.publish_status({'state': '在想你', 'note': '刚刚还想着你', 'mood': '今天不太想说话'})
+        view = self.wb.status_record()
+        self.assertEqual(view['state'], '在想你')
+        self.assertEqual(view['note'], '刚刚还想着你')
+        self.assertEqual(view['mood'], '今天不太想说话')
+
+    def test_note_is_optional_and_clipped(self):
+        self.wb.publish_status({'state': '在工作'})
+        view = self.wb.status_record()
+        self.assertEqual(view['note'], '')
+        self.wb.publish_status({'state': '在工作', 'note': '字' * 200, 'mood': '字' * 200})
+        view = self.wb.status_record()
+        self.assertEqual(len(view['note']), 60)
+        self.assertEqual(len(view['mood']), 24)

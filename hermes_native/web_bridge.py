@@ -63,7 +63,14 @@ def publish_status(args, **kwargs):
     value = args.get('state')
     if value not in STATES:
         return json.dumps({'error':'invalid_status'}, ensure_ascii=False)
-    record = {'state':value, 'source':'ziwei', 'updatedAt':datetime.now(timezone.utc).isoformat()}
+    # note / mood：她要在“渡鸦的小屋”右边看到两行字（我那句话 + 心情）。
+    # 我可以随状态一起写；不写就留空，前端会从句子库（workspace/outbox/state-lines.json）取。
+    def _clip(key, limit):
+        raw = str(args.get(key) or '').strip().replace('\n', ' ')
+        return raw[:limit]
+    note, mood = _clip('note', 60), _clip('mood', 24)
+    record = {'state':value, 'source':'ziwei', 'updatedAt':datetime.now(timezone.utc).isoformat(),
+              'note':note, 'mood':mood}
     directory = home() / 'workspace'
     # Workspace is the existing file-tool safe root. Do not follow a substituted root.
     fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
@@ -89,7 +96,10 @@ def status_record():
             raise ValueError('invalid_status')
         age = (datetime.now(timezone.utc) - at).total_seconds()
         if age < -60: raise ValueError('future_status')
-        return {k:record[k] for k in ('state', 'source', 'updatedAt')} | {'stale':age > 1800}
+        view = {k:record[k] for k in ('state', 'source', 'updatedAt')} | {'stale':age > 1800}
+        view['note'] = str(record.get('note') or '')[:60]
+        view['mood'] = str(record.get('mood') or '')[:24]
+        return view
     except (OSError, ValueError, KeyError, TypeError):
         return {'state':None, 'source':None, 'updatedAt':None, 'stale':True}
 
@@ -999,7 +1009,7 @@ def install_status_tool(registry, toolsets):
     registry.register(name='ziwei_status', toolset='ziwei_web', schema={
         'name':'ziwei_status',
         'description':'Publish your own current status to the private 知微之家 Web UI. Choose only a truthful present state, not a fabricated or automatic feeling. Optional; no need to publish every turn. Expires as current status after 30 minutes. Does not change memory or personality.',
-        'parameters':{'type':'object','properties':{'state':{'type':'string','enum':list(STATES)}},'required':['state'],'additionalProperties':False}}, handler=publish_status)
+        'parameters':{'type':'object','properties':{'state':{'type':'string','enum':list(STATES)},'note':{'type':'string','description':'一句话（1-60 字），显示在主页“渡鸦的小屋”右边。可留空——留空时前端从句子库取。'},'mood':{'type':'string','description':'心情短句（1-24 字），同样显示在小屋里；可留空。'}},'required':['state'],'additionalProperties':False}}, handler=publish_status)
     def poke_handler(args, **kwargs):
         import sys
         from web_poke import publish
