@@ -1,0 +1,9 @@
+/* All Work-specific dimensions and colors are adjustable tokens. */
+.work-panel{--work-gap:12px;--work-radius:18px;--work-padding:16px;--work-min-conversation:180px;display:flex;flex-direction:column;gap:var(--work-gap);padding-bottom:calc(var(--nav-h,70px) + 55px)}
+.work-heading,.work-conversation,.work-compose{padding:var(--work-padding);border-radius:var(--work-radius)}
+.work-heading p{font-size:13px}.work-conversation{min-height:var(--work-min-conversation);display:flex;align-items:center}
+.work-compose{display:flex;flex-direction:column;gap:var(--work-gap)}
+.work-tools{display:flex;flex-wrap:wrap;gap:8px}.work-tools button,.work-mentions button,.work-actions button{border:1px solid var(--border);border-radius:var(--work-radius);background:var(--input);color:var(--ink);padding:7px 10px}
+.work-tools button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
+.work-mentions{display:flex;gap:8px}.work-compose form{display:grid;gap:8px}.work-compose textarea{width:100%;resize:vertical;min-height:65px;border:1px solid var(--border);border-radius:var(--work-radius);background:var(--input);color:var(--ink);padding:10px;font:inherit}
+.work-actions{display:flex;gap:8px;justify-content:flex-end}.work-actions button[type=submit]{background:var(--accent);color:white}
