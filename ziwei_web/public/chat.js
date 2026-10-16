@@ -116,6 +116,26 @@ window.ZiweiChat=(()=>{
  function rememberMessage(card,m){renderedMessages.set(card,{full:JSON.stringify(m),withoutStatus:JSON.stringify({...m,status:null})});}
  function paintMessageAvatar(el,role){const profile=role==='user'?profileData.user:role==='assistant'?profileData.ziwei:{nickname:'原始档案',avatar:null};el.replaceChildren();el.removeAttribute('role');el.removeAttribute('aria-label');if(profile.avatar){const img=element('img');img.src=profile.avatar;img.alt=profile.nickname+'的头像';el.append(img);}else{el.textContent=[...profile.nickname][0]||'微';el.setAttribute('role','img');el.setAttribute('aria-label',profile.nickname+'的头像');}}
  function setProfiles(profiles){for(const who of ['user','ziwei'])if(profiles?.[who])profileData[who]={nickname:profiles[who].nickname||(who==='user'?'你':'知微'),avatar:profiles[who].avatar||null};document.querySelectorAll('#chatMessages .message-avatar').forEach(el=>paintMessageAvatar(el,el.dataset.role));window.ZiweiChatCall?.setProfile(profileData.ziwei);}
+ function assistantBubbles(raw){
+  const original=String(raw||'');
+  const newline=s=>s.replace(/\\r\\n|\\n/g,'\n');
+  const clean=s=>newline(s).replace(/\[\[audio_as_voice\]\]/g,'').replace(/^\s*MEDIA:.*$/gm,'').trim();
+  const stripped=original.trim().replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,'');
+  if(!/^\{\s*"type"\s*:\s*"wei\.reply\.v1"/.test(stripped))return [clean(original)];
+  let parsed;
+  try{parsed=JSON.parse(stripped);}catch{
+    let inString=false,escaped=false,fixed='';
+    for(const ch of stripped){if(escaped){fixed+=ch;escaped=false;continue;}if(ch==='\\'&&inString){fixed+=ch;escaped=true;continue;}if(ch==='"'){inString=!inString;fixed+=ch;continue;}fixed+=!inString&&ch==='，'?',':ch;}
+    try{parsed=JSON.parse(fixed);}catch{
+      const section=stripped.match(/"messages"\s*:\s*\[([\s\S]*)\]\s*\}?$/);
+      if(section){const matches=[...section[1].matchAll(/"((?:\\.|[^"\\])*)"/g)];if(matches.length)return matches.map(m=>{try{return clean(JSON.parse('"'+m[1]+'"'));}catch{return clean(m[1]);}}).filter(Boolean);}
+      return [clean(stripped.replace(/^\s*\{\s*"type"\s*:\s*"wei\.reply\.v1"\s*[,，]?/,'').replace(/"messages"\s*:\s*/,'').replace(/[\[\]{}]/g,'').replace(/\s+/g,' '))];
+    }
+  }
+  if(parsed?.type!=='wei.reply.v1'||!Array.isArray(parsed.messages))return [clean(original)];
+  const parts=parsed.messages.filter(x=>typeof x==='string').map(clean).filter(Boolean);
+  return parts.length?parts:[clean(original)];
+ }
  function renderMessage(m){
   if(m.kind==='poke'){const card=element('article','chat-poke-event');card.dataset.id=m.id;card.append(element('p','message-label',timestamp(m.created_at)),element('p','',m.content));rememberMessage(card,m);return card;}
   const card=element('article','message '+m.role+(m.source==='archive'?' archive':''));card.dataset.id=m.id;
@@ -123,8 +143,14 @@ window.ZiweiChat=(()=>{
   body.append(element('p','message-label',messageLabel(m)));
   if(m.source_ref)body.append(element('p','message-label','来源：'+m.source_ref));
   const missingMedia=m.role==='assistant'&&(/MEDIA:|\/workspace\/outbox\//.test(m.content))&&m.mediaDelivery?.state!=='complete';
-  const display=m.role==='assistant'?m.content.replace(/\[\[audio_as_voice\]\]/g,'').replace(/^\s*MEDIA:.*$/gm,'').trim():m.content;
-  const bubble=element('div','message-bubble glass');if(m.quote)bubble.append(element('blockquote','message-quote',m.quote.content));const content=element('p','message-content',display.slice(0,5000));bubble.append(content);if(display.length>5000)bubble.append(button('展开完整记录',()=>{content.textContent=display;}));body.append(bubble);
+  const parts=m.role==='assistant'?assistantBubbles(m.content):[m.content];
+  const bubble=element('div','message-bubble-group');if(m.quote)bubble.append(element('blockquote','message-quote',m.quote.content));for(const part of parts){const one=element('div','message-bubble glass');const content=element('p','message-content',part.slice(0,5000));one.append(content);if(part.length>5000)one.append(button('展开完整记录',()=>{content.textContent=part;}));bubble.append(one);}body.append(bubble);
+  if(m.role==='assistant'&&Array.isArray(m.toolActions)&&m.toolActions.length){
+   const details=element('details','chat-tool-actions'),summary=element('summary','chat-tool-summary','工具事件 '+m.toolActions.length+' 条');
+   const list=element('ol','chat-tool-list');
+   for(const action of m.toolActions){const state={started:'开始',completed:'完成',failed:'失败'}[action.state]||'更新';list.append(element('li','',String(action.tool||'工具')+' · '+state));}
+   details.append(summary,list);bubble.append(details);
+  }
   for(const id of m.attachments)void media(bubble,id);
   if(m.role==='assistant'&&m.source==='live'&&(missingMedia||['failed','partial'].includes(m.mediaDelivery?.state))){
    const box=element('div','file-delivery'),status=element('p','file-delivery-status');status.setAttribute('role','status');

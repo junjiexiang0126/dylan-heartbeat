@@ -1,7 +1,7 @@
 name: Ziwei unified regression
 on:
   pull_request:
-    branches: [main, develop/ziwei-hermes-unified-v1]
+    branches: [main, develop/ziwei-hermes-unified-v1, feature/interaction-workbench]
   push:
     branches: [main]
   workflow_dispatch:

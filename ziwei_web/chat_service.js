@@ -37,7 +37,7 @@ function createChatService(dir,{authorized=()=>true}={}){
   const job=(async()=>{
    const ids=[],issues=[];let expected=false;
    try{
-    const reply=store.message('reply-'+r.id);expected=!!reply&&(/MEDIA:|\/workspace\/outbox\//.test(reply.content));
+    const reply=store.message('reply-'+r.id);expected=!!reply&&(/MEDIA:|\/workspace\/outbox\//.test(reply.content.replace(/\\r\\n|\\n/g,'\n')));
     const result=await client.json('/ziwei/web/runs/'+r.run_id+'/media');
     if(!Array.isArray(result.data)||result.data.length>6)throw Error('media_manifest_invalid');
     for(const issue of result.errors||[])issues.push(typeof issue.code==='string'?issue.code:'media_unavailable');
@@ -79,7 +79,7 @@ function createChatService(dir,{authorized=()=>true}={}){
     else if(/^run\.(completed|failed|cancelled|interrupted)$/.test(event||'')){terminal=finish(r.id,{...data,status:event.slice(4)});}
     else if(event==='approval.request'){approvalRecord(r.id,data);store.event(r.id,'request.notice',{text:'知微正在等待你的批准。'});}
     else if(event==='approval.responded'){store.db.prepare('DELETE FROM meta WHERE key=?').run('approval:'+r.id);store.event(r.id,'approval.resolved',{});}
-    else if(/^tool\.(started|completed|failed)$/.test(event||''))store.event(r.id,'request.notice',{text:event==='tool.started'?'知微正在处理这条消息。':'知微已更新处理进度。'});
+    else if(/^tool\.(started|completed|failed)$/.test(event||'')){store.toolAction(r.id,data.seq,event,data);store.event(r.id,'request.notice',{text:event==='tool.started'?'知微正在处理这条消息。':'知微已更新处理进度。'});}
    });
   });
   for await(const c of upstream.body){bytes+=c.length;if(bytes>16*1024*1024)throw Error('stream_limit');parser.feed(c);if(terminal)break;}
