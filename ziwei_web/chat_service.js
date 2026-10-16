@@ -4,6 +4,7 @@ const {NativeHistory}=require('./native_history'),{VoiceSynthesizer}=require('./
 const {ChatStore,uuid,hash}=require('./chat_store'),{HermesClient}=require('./hermes_client'),{Attachments}=require('./attachments'),{SSEParser}=require('./sse_parser');
 const presentation=require('./chat_presentation');
 const {ActionLog}=require('./action_log');
+const stateText=(value,max)=>typeof value==='string'?[...value.replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim()].slice(0,max).join(''):'';
 const TERMINAL=['completed','failed','cancelled','interrupted'];
 const {VoiceTranscriber}=require('./voice_transcriber');
 function createChatService(dir,{authorized=()=>true}={}){
@@ -17,7 +18,7 @@ function createChatService(dir,{authorized=()=>true}={}){
  async function presence(){
   if(presenceCache&&Date.now()-presenceCache.at<10000)return presenceCache.value;
   let value={state:null,source:null,updatedAt:null,stale:true};
-  try{const o=await client.json('/ziwei/web/state',{signal:AbortSignal.timeout(2500)});value.available=true;if(o.source==='ziwei'&&['在工作','在休息','在思考','在想你'].includes(o.state)&&Number.isFinite(Date.parse(o.updatedAt)))value={available:true,state:o.state,source:'ziwei',updatedAt:o.updatedAt,stale:o.stale!==false||Date.now()-Date.parse(o.updatedAt)>1800000};}catch{}
+  try{const o=await client.json('/ziwei/web/state',{signal:AbortSignal.timeout(2500)});value.available=true;if(o.source==='ziwei'&&['在工作','在休息','在思考','在想你'].includes(o.state)&&Number.isFinite(Date.parse(o.updatedAt)))value={available:true,state:o.state,source:'ziwei',updatedAt:o.updatedAt,stale:o.stale!==false||Date.now()-Date.parse(o.updatedAt)>1800000,note:stateText(o.note,60),mood:stateText(o.mood,24)};}catch{}
   presenceCache={at:Date.now(),value};return value;
  }
  function approvalRecord(id,data){

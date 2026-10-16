@@ -1,4 +1,5 @@
 import {resolvePresence} from './presence.mjs';
+import {resolveStatusCopy} from './status-copy.mjs';
 const app=document.querySelector('#app'),home=document.querySelector('#home'),article=document.querySelector('.today');
 if(app&&home&&article){
  const stage=document.createElement('div');stage.className='raven-stage';stage.id='ravenStage';
@@ -7,10 +8,22 @@ if(app&&home&&article){
  const caption=document.createElement('p');caption.id='ravenCaption';caption.className='raven-caption';
  const feedback=document.createElement('p');feedback.id='ravenFeedback';feedback.className='raven-feedback';feedback.setAttribute('aria-live','polite');
  const retry=document.createElement('button');retry.className='text-button raven-retry';retry.textContent='重新载入渡鸦';retry.hidden=true;
- article.classList.add('raven-home');article.querySelector('.status-orbit')?.nextElementSibling?.classList.add('raven-info');article.append(stage,caption,feedback,retry);
+ article.classList.add('raven-home');
+ const info=article.querySelector('.status-orbit')?.nextElementSibling;info.classList.add('raven-info');
+ const house=document.createElement('div');house.className='raven-house';house.setAttribute('aria-label','渡鸦的小屋');
+ const mood=document.createElement('p');mood.id='ravenMood';mood.className='raven-mood';
+ const note=document.createElement('p');note.id='ravenNote';note.className='raven-note';
+ const credit=document.createElement('p');credit.id='ravenCopySource';credit.className='raven-copy-source';
+ const updated=info.querySelector('#todayStatusTime'),status=info.querySelector('#todayStatus');
+ info.replaceChildren(mood,status,note);house.append(stage,info);article.append(house,updated,credit,caption,feedback,retry);
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');let view=null,pending=false,source=null,epoch=0,requestVersion=0,shown=false,inViewport=false,timer=null,loadError=null;
  const visible=()=>!app.hidden&&!home.hidden&&!document.hidden;
  function paint(){original?.call(window.ZiweiChatExtra,source);const state=resolvePresence(source);stage.dataset.presence=state.state||'unknown';stage.dataset.mode=state.mode;stage.dataset.stale=String(state.stale);
+  house.dataset.stale=String(state.stale);const copy=resolveStatusCopy(source);
+  mood.textContent=copy.mood?'心情：'+copy.mood:'';mood.hidden=!copy.mood;mood.dataset.source=copy.moodSource;
+  note.textContent=copy.note;note.hidden=!copy.note;note.dataset.source=copy.noteSource;note.dataset.slot=copy.slot||'';
+  const local=copy.noteSource==='local'||copy.moodSource==='local';credit.hidden=!local;credit.textContent=local?(copy.noteSource==='local'&&copy.moodSource==='local'?'心情与一句话为本地场景配文 · 非知微实时原话':copy.noteSource==='local'?'一句话为本地场景配文 · 非知微实时原话':'心情为本地场景配文；一句话由知微发布'):'';
+  note.title=copy.noteSource==='ziwei'?'知微随状态发布的原话':copy.noteSource==='local'?'本地句子库，不代表知微发布了新状态':'';
   view?.setMode(state.mode);const clock=state.updatedAt?new Intl.DateTimeFormat('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Bangkok'}).format(new Date(state.updatedAt)):null;
   caption.textContent=state.stale?'状态已过期 · 最后更新于 '+clock:state.state?'点击跳一下 · 左右拖动看看':'尚无状态记录 · 等知微本人更新';canvas.setAttribute('aria-label',state.stale?'装死的小渡鸦：点一下戳戳，左右拖动旋转':'小渡鸦：点击跳跃，左右拖动旋转');
   if(loadError)feedback.textContent=loadError;else if(!view?.interaction)feedback.textContent=state.stale?'只是很久没更新，不是真的挂了。':'';

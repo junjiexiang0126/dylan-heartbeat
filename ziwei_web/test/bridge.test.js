@@ -184,3 +184,9 @@ test('photo BFF authenticates byte proxies, verifies hashes, limits uploads and 
  const upload=body=>fetch(s.origin+'/api/photos',{method:'POST',headers:{...s.headers,'Content-Type':'image/png','X-Photo-Id':pid,'X-Photo-Name':'tiny.png','X-Photo-Actor':'ziwei'},body});assert.equal((await upload(bytes)).status,201);assert.deepEqual(seen.at(-1).body,bytes);assert.equal(seen.at(-1).headers['x-photo-actor'],undefined);assert.equal(seen.at(-1).headers.authorization,'Bearer protocol-fixture-key');assert.equal((await upload(Buffer.alloc(9500001))).status,413);assert.equal((await upload(Buffer.from('<svg>'))).status,400);
  const count=seen.length,route='/api/photos/'+pid+'/annotations/'+note;assert.equal((await fetch(s.origin+route,{method:'PATCH',headers:s.headers,body:JSON.stringify({text:'attempt',author:'ziwei'})})).status,400);assert.equal(seen.length,count);assert.equal((await fetch(s.origin+route,{method:'PATCH',headers:s.headers,body:JSON.stringify({text:'attempt'})})).status,403);assert.equal((await fetch(s.origin+route,{method:'DELETE',headers:s.headers})).status,403);assert.equal((await fetch(s.origin+'/api/photos',{method:'POST',headers:{Cookie:s.cookie,Origin:s.origin},body:bytes})).status,403);
 });
+
+test('public presence preserves bounded optional native note/mood without changing state semantics',async t=>{
+ const s=await setup(t,{presence:{source:'ziwei',state:'在工作',updatedAt:new Date().toISOString(),stale:false,note:'  原生随状态写的\n一句话  ',mood:'🪶'.repeat(30)}});
+ const p=await (await s.api('/api/chat/presence')).json();assert.equal(p.state,'在工作');assert.equal(p.stale,false);assert.equal(p.note,'原生随状态写的 一句话');assert.equal([...p.mood].length,24);
+ const status=await (await s.api('/api/chat/status')).json();assert.equal(status.presence.note,p.note);assert.equal(status.presence.mood,p.mood);assert.ok(s.fake.seen.filter(r=>r.url==='/ziwei/web/state').every(r=>r.method==='GET'));
+});

@@ -30,5 +30,59 @@
   background:radial-gradient(ellipse at 50% 28%,#ffe6f0,#ffc2d8 72%,#ffb6d1);
   box-shadow:0 6px 12px rgba(186,126,158,.22),inset 0 2px 0 rgba(255,255,255,.85);
 }
-/* 她 2026-10-17 定的第 2 案：只留小屋外那圈虚线，舞台里不再画四角括号（垫子保留） */
 
+/* 小屋 v2：舞台尺寸、垫子百分比与角括号粗细沿用已验收数值。 */
+:root{--raven-house-radius:22px;--raven-house-gap:var(--ui-space-16);--raven-house-padding:var(--ui-space-12);--raven-copy-gap:7px;--raven-meta-size:12.5px;--raven-note-size:15.5px;--raven-stale-opacity:.75}
+.home .today.raven-home{display:flex;flex-direction:column;gap:var(--ui-space-6);padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+/* 她 2026-10-17 定的第 2 案：整张卡只留小屋外那一圈虚线，舞台与屋内都不再画四角括号（垫子保留） */
+.raven-house{position:relative;display:grid;grid-template-columns:minmax(0,var(--raven-stage-max)) minmax(0,1fr);gap:var(--raven-house-gap);align-items:center;width:100%;padding:var(--raven-house-padding);border:var(--ui-size-1) dashed var(--border);border-radius:var(--raven-house-radius);background:radial-gradient(ellipse at 25% 40%,var(--raven-stage-light),transparent 80%)}
+.raven-house[data-stale=true]{opacity:var(--raven-stale-opacity)}
+.raven-house .raven-stage{grid-column:auto;background:transparent;margin:0}
+.raven-house /* 她 2026-10-17 定的第 2 案：整张卡只留小屋外那一圈虚线，舞台里不画四角括号（垫子保留） */
+:root{--raven-stage-height:104px;--raven-stage-radius:var(--ui-radius-20);--raven-stage-light:#f7ede6;--raven-stage-dark:#211d29;--raven-caption-size:var(--ui-font-12);--raven-stage-max:170px;--raven-control-min:100px}
+.today.raven-home{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--ui-space-8);position:relative;overflow:hidden}
+.raven-home>.status-orbit{display:none}
+.raven-home>.raven-info{min-width:0;align-self:start}
+.raven-home>.raven-info h2{margin-block:var(--ui-space-6);font-size:var(--ui-font-20)}
+.raven-home>.status-tag{align-self:start}
+.raven-stage{grid-column:1/-1;position:relative;width:100%;height:var(--raven-stage-height);max-width:var(--raven-stage-max);margin-inline:auto;border-radius:var(--raven-stage-radius);background:radial-gradient(ellipse at 50% 40%,var(--raven-stage-light),transparent 72%);overflow:hidden}
+.raven-stage canvas{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab;position:relative;z-index:1}
+.raven-stage canvas:active{cursor:grabbing}
+.raven-stage canvas:focus-visible{outline:var(--ui-size-2) solid var(--accent);outline-offset:calc(-1 * var(--ui-space-4));border-radius:var(--raven-stage-radius)}
+.raven-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:0}
+.raven-fallback[hidden]{display:none}
+.raven-caption,.raven-feedback{grid-column:1/-1;text-align:center;font-size:var(--raven-caption-size);color:var(--muted);margin:0;min-height:var(--ui-space-18)}
+.raven-feedback{color:var(--ink)}
+.raven-retry{grid-column:1/-1;justify-self:center}
+:root[data-theme=dark] .raven-stage{background:radial-gradient(ellipse at 50% 40%,var(--raven-stage-dark),transparent 72%)}
+.raven-preview-shell{max-width:720px;margin:0 auto;padding:var(--ui-space-20);color:var(--ink)}
+.raven-preview-shell .raven-stage{--raven-stage-height:400px;--raven-stage-max:520px}
+.raven-preview-controls{display:flex;flex-wrap:wrap;gap:var(--ui-space-8);justify-content:center;margin-block:var(--ui-space-16)}
+.raven-preview-shell h1{font-size:var(--ui-font-25)}
+@media(max-width:360px){:root{--raven-stage-height:96px}.raven-home>.raven-info h2{font-size:var(--ui-font-18)}}
+
+.raven-preview-controls button{width:auto;min-width:var(--raven-control-min);margin:0}
+
+.raven-stage canvas[hidden]{display:none}
+/* 她 2026-10-17 凌晨定的：脚下加一块垫子（不是一条横线），外圈换成四角小括号 */
+.raven-stage::before{
+  content:'';position:absolute;left:50%;bottom:8.5%;transform:translateX(-50%);
+  width:46%;height:7.5%;min-height:12px;border-radius:50%;z-index:0;
+  background:radial-gradient(ellipse at 50% 28%,#ffe6f0,#ffc2d8 72%,#ffb6d1);
+  box-shadow:0 6px 12px rgba(186,126,158,.22),inset 0 2px 0 rgba(255,255,255,.85);
+}
+
+/* 小屋 v2：舞台尺寸、垫子百分比与角括号粗细沿用已验收数值。 */
+:root{--raven-house-radius:22px;--raven-house-gap:var(--ui-space-16);--raven-house-padding:var(--ui-space-12);--raven-copy-gap:7px;--raven-meta-size:12.5px;--raven-note-size:15.5px;--raven-stale-opacity:.75}
+.home .today.raven-home{display:flex;flex-direction:column;gap:var(--ui-space-6);padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.raven-house{position:relative;display:grid;grid-template-columns:minmax(0,var(--raven-stage-max)) minmax(0,1fr);gap:var(--raven-house-gap);align-items:center;width:100%;padding:var(--raven-house-padding);border:var(--ui-size-1) dashed var(--border);border-radius:var(--raven-house-radius);background:radial-gradient(ellipse at 25% 40%,var(--raven-stage-light),transparent 80%)}
+.raven-house[data-stale=true]{opacity:var(--raven-stale-opacity)}
+.raven-house .raven-stage{grid-column:auto;background:transparent;margin:0}
+.raven-house .raven-info{display:flex;flex-direction:column;gap:var(--raven-copy-gap);min-width:0}
+.home .today.raven-home .raven-info #todayStatus,.home .today.raven-home .raven-mood{margin:0;color:var(--muted);font-family:inherit;font-size:var(--raven-meta-size);font-weight:normal;line-height:1.5;overflow-wrap:anywhere}
+.home .today.raven-home .raven-note{margin:0;color:var(--ink);font-size:var(--raven-note-size);line-height:1.7;overflow-wrap:anywhere;white-space:pre-wrap}
+.home .today.raven-home #todayStatusTime,.raven-copy-source{font-size:var(--raven-meta-size);color:var(--muted);margin:0;text-align:center}
+.raven-home>.status-tag,.raven-home>.status-orbit{display:none}
+.raven-home .raven-feedback:empty{display:none}
+:root[data-theme=dark] .raven-house{background:radial-gradient(ellipse at 25% 40%,var(--raven-stage-dark),transparent 80%)}
+@media(max-width:550px){.raven-house{grid-template-columns:minmax(0,1fr);gap:var(--ui-space-8)}.raven-house .raven-stage{justify-self:center}.raven-house .raven-info{text-align:center}}
