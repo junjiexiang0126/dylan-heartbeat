@@ -37,7 +37,7 @@ function createChatService(dir,{authorized=()=>true}={}){
   const job=(async()=>{
    const ids=[],issues=[];let expected=false;
    try{
-    const reply=store.message('reply-'+r.id);expected=!!reply&&(/MEDIA:|\/workspace\/outbox\//.test(reply.content));
+    const reply=store.message('reply-'+r.id);expected=!!reply&&(/MEDIA:|\/workspace\/outbox\//.test(reply.content.replace(/\\r\\n|\\n/g,'\n')));
     const result=await client.json('/ziwei/web/runs/'+r.run_id+'/media');
     if(!Array.isArray(result.data)||result.data.length>6)throw Error('media_manifest_invalid');
     for(const issue of result.errors||[])issues.push(typeof issue.code==='string'?issue.code:'media_unavailable');
