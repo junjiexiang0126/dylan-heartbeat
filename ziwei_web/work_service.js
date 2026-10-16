@@ -7,6 +7,11 @@ function createWorkService(dataDir){
  let messages=load(file,[]);
  if(!Array.isArray(messages))throw Error('invalid_work_history');
  let busy=false;
+ const usageFile=path.join(dataDir,'work-usage.json');
+ let ledger=load(usageFile,{day:'',calls:0,tokens:0});
+ const dailyCalls=12,dailyTokens=12000;
+ const day=()=>new Date().toISOString().slice(0,10);
+ const resetDay=()=>{if(ledger.day!==day())ledger={day:day(),calls:0,tokens:0};};
  const save=()=>atomicWrite(file,messages);
  const append=(role,text,extra={})=>{
   const item={id:crypto.randomUUID(),role,text,at:new Date().toISOString(),...extra};
@@ -17,11 +22,14 @@ function createWorkService(dataDir){
   if(pathname==='/api/work/messages'&&req.method==='GET')return json(res,200,{data:messages.slice(-100)});
   if(pathname!=='/api/work/send'||req.method!=='POST')return json(res,405,{error:'method_not_allowed'});
   if(busy)return json(res,429,{error:'work_busy'});
+  resetDay();
+  if(ledger.calls>=dailyCalls||ledger.tokens>=dailyTokens)return json(res,429,{error:'work_daily_limit'});
   const body=await readBody(req,8192);
   if(!body||typeof body.text!=='string'||!body.text.trim()||body.text.length>MAX_TEXT||!['auto','ppt','word','pdf','excel','image','research'].includes(body.tool))return json(res,400,{error:'invalid_work_message'});
   const key=process.env.ZHIPU_API_KEY||'';
   if(!key)return json(res,503,{error:'glm_not_configured'});
   busy=true;
+  ledger.calls++;atomicWrite(usageFile,ledger);
   try{
    const user=append('user',body.text,{tool:body.tool});
    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
@@ -39,8 +47,10 @@ function createWorkService(dataDir){
    const result=await response.json();
    const answer=result?.choices?.[0]?.message?.content;
    if(typeof answer!=='string'||!answer.trim())return json(res,502,{error:'glm_empty_response'});
+   ledger.tokens+=Number.isSafeInteger(result?.usage?.total_tokens)?result.usage.total_tokens:MAX_OUTPUT_TOKENS+MAX_TEXT;
+   atomicWrite(usageFile,ledger);
    const assistant=append('glm',answer.slice(0,16000),{model:'glm-4-flash',usage:result.usage||null});
-   return json(res,200,{user,assistant,limits:{calls:MAX_CALLS,maxOutputTokens:MAX_OUTPUT_TOKENS,timeoutMs:12000},usage:result.usage||null});
+   return json(res,200,{user,assistant,limits:{calls:MAX_CALLS,maxOutputTokens:MAX_OUTPUT_TOKENS,timeoutMs:12000,dailyCalls,dailyTokens},usage:result.usage||null});
   }catch(e){return json(res,502,{error:e.name==='AbortError'?'glm_timeout':'glm_request_failed'});}
   finally{busy=false;}
  }
