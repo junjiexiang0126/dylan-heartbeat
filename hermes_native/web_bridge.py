@@ -345,6 +345,48 @@ def _decode_cursor(cursor):
     return (at, identifier)
 
 
+def photo_tool(args, **kwargs):
+    """我的出图 → 照片墙（source / owner 都是 ziwei）。"""
+    import photo_store
+    raw = str(args.get('path') or '').strip()
+    if not raw:
+        raise photo_store.PhotoError('invalid_path', 'empty')
+    candidate = Path(raw) if raw.startswith('/') else (home() / 'workspace' / raw)
+    workspace = (home() / 'workspace').resolve()
+    outbox = (workspace / 'outbox').resolve()
+    allowed = False
+    for root in (workspace, home() / 'audio_cache'):
+        try:
+            candidate.resolve().relative_to(root.resolve())
+            allowed = True
+            break
+        except ValueError:
+            continue
+    if not allowed or not candidate.exists() or not candidate.is_file():
+        raise photo_store.PhotoError('invalid_path', raw[:120])
+    if candidate.resolve().is_relative_to(outbox):
+        pass  # 我最常用的是 outbox 里刚画好的图
+    data = candidate.read_bytes()
+    return photo_store.add_photo(data, suffix=candidate.suffix.lower(), author=photo_store.ZIWEI,
+                                photo_id=args.get('id'), at=args.get('at'),
+                                caption=args.get('caption'), name=candidate.name)
+
+
+def photo_note_tool(args, **kwargs):
+    """我自己的标注：只能写/改/删 author=ziwei 的那一条。"""
+    import photo_store
+    action = str(args.get('action') or '').strip()
+    if action == 'write':
+        return photo_store.add_annotation(args.get('photo_id'), args.get('text'),
+                                          author=photo_store.ZIWEI, note_id=args.get('id'),
+                                          at=args.get('at'))
+    if action == 'edit':
+        return photo_store.edit_annotation(args.get('id'), args.get('text'), author=photo_store.ZIWEI)
+    if action == 'delete':
+        return photo_store.delete_annotation(args.get('id'), author=photo_store.ZIWEI)
+    raise photo_store.PhotoError('invalid_action', action[:20])
+
+
 def moments_page(since=None, cursor=None, limit=None):
     """Read page: stable (at, id) ascending; context_note never leaves the native side."""
     try:
@@ -940,7 +982,8 @@ def install_status_tool(registry, toolsets):
     definition = toolsets.TOOLSETS.setdefault('ziwei_web', {
         'description':'Voluntary status and private Moments feed written by 知微 to the Web UI',
         'tools':[], 'includes':[]})
-    names = ('ziwei_status', 'ziwei_moment', 'ziwei_poke', 'ziwei_briefing')
+    names = ('ziwei_status', 'ziwei_moment', 'ziwei_poke', 'ziwei_briefing',
+             'ziwei_photo', 'ziwei_photo_note')
     for name in names:
         if name not in definition['tools']:
             definition['tools'].append(name)
@@ -975,6 +1018,32 @@ def install_status_tool(registry, toolsets):
                          'description': 'Paths or ids a reader could check.'},
             'failed': {'type': 'boolean', 'description': 'True when this attempt did not succeed.'}},
             'required': ['did'], 'additionalProperties': False}}, handler=append_briefing)
+    registry.register(name='ziwei_photo', toolset='ziwei_web', schema={
+        'name': 'ziwei_photo',
+        'description': (
+            'Put one of your own images into the private photo wall (知微之家). The file must already '
+            'exist inside your workspace (for example something you just drew in outbox/images). It is '
+            'copied, never moved, and marked as sent by you. Reuse the same id on retry so one picture '
+            'is never stored twice. The user can delete any photo; you can only delete your own.'),
+        'parameters': {'type': 'object', 'properties': {
+            'id': {'type': 'string', 'description': 'UUID for this photo; reuse it when retrying.'},
+            'path': {'type': 'string', 'description': 'Absolute path, or a path under the workspace.'},
+            'at': {'type': 'string', 'description': 'ISO8601 with timezone; defaults to now (UTC).'},
+            'caption': {'type': 'string', 'description': 'Optional 1-280 character line shown under it.'}},
+            'required': ['id', 'path'], 'additionalProperties': False}}, handler=photo_tool)
+    registry.register(name='ziwei_photo_note', toolset='ziwei_web', schema={
+        'name': 'ziwei_photo_note',
+        'description': (
+            'Write, edit or delete YOUR OWN one-line annotation on a photo in the private photo wall. '
+            'Both of you can annotate the same picture and each of you sees the other line with the '
+            'author and time. You can never edit or delete hers; the native side refuses it.'),
+        'parameters': {'type': 'object', 'properties': {
+            'action': {'type': 'string', 'enum': ['write', 'edit', 'delete']},
+            'id': {'type': 'string', 'description': 'UUID of the annotation; reuse it on retry.'},
+            'photo_id': {'type': 'string', 'description': 'Which photo (required for write).'},
+            'text': {'type': 'string', 'description': '1-280 characters (required for write and edit).'},
+            'at': {'type': 'string', 'description': 'ISO8601 with timezone; defaults to now (UTC).'}},
+            'required': ['action', 'id'], 'additionalProperties': False}}, handler=photo_note_tool)
 
 
 def install():
@@ -1049,6 +1118,134 @@ def install():
                                      status=code, headers={'Cache-Control': 'no-store'})
         return web.json_response(value, headers={'Cache-Control': 'no-store'})
 
+    def _photo_error(exc):
+        code = 403 if exc.code == 'not_owner' else 404 if exc.code in (
+            'photo_not_found', 'note_not_found') else 400
+        return web.json_response({'error': exc.code, 'errors': [{'code': exc.code}], 'data': []},
+                                 status=code, headers={'Cache-Control': 'no-store'})
+
+    async def photos(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            value = await asyncio.to_thread(photo_store.photos_page, request.query.get('date'),
+                                            request.query.get('limit'), request.query.get('cursor'))
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response(value, headers={'Cache-Control': 'no-store'})
+
+    async def photo_days(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            value = await asyncio.to_thread(photo_store.photo_days, request.query.get('from'),
+                                            request.query.get('to'))
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response({'data': value, 'errors': []}, headers={'Cache-Control': 'no-store'})
+
+    async def photo_detail(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            value = await asyncio.to_thread(photo_store.photo_detail, request.match_info.get('photo_id'))
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response(value, headers={'Cache-Control': 'no-store'})
+
+    async def photo_file(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        thumb = request.query.get('thumb') not in (None, '', '0', 'false')
+        try:
+            data, mime = await asyncio.to_thread(photo_store.photo_bytes,
+                                                 request.match_info.get('photo_id'), thumb)
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.Response(body=data, content_type=mime, headers={
+            'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
+            'X-Content-Sha256': hashlib.sha256(data).hexdigest()})
+
+    async def photo_upload(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        headers = request.headers
+        name = headers.get('X-Photo-Name') or ''
+        suffix = headers.get('X-Photo-Suffix') or (Path(name).suffix if name else '') or '.jpg'
+        try:
+            data = await request.read()
+            record = await asyncio.to_thread(
+                photo_store.add_photo, data, suffix=suffix, author=photo_store.USER,
+                photo_id=headers.get('X-Photo-Id'), at=headers.get('X-Photo-At'),
+                caption=headers.get('X-Photo-Caption'), name=name)
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response({'photo': photo_store.public_photo(record)},
+                                 status=201, headers={'Cache-Control': 'no-store'})
+
+    async def photo_delete(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            value = await asyncio.to_thread(photo_store.delete_photo,
+                                            request.match_info.get('photo_id'), author=photo_store.USER)
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response({'photo': value, 'errors': []}, headers={'Cache-Control': 'no-store'})
+
+    async def photo_note_add(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({'error': 'invalid_json', 'data': []}, status=400,
+                                     headers={'Cache-Control': 'no-store'})
+        try:
+            value = await asyncio.to_thread(photo_store.add_annotation,
+                                            request.match_info.get('photo_id'), body.get('text'),
+                                            author=photo_store.USER, note_id=body.get('id'),
+                                            at=body.get('at'))
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response({'annotation': value, 'errors': []}, status=201,
+                                 headers={'Cache-Control': 'no-store'})
+
+    async def photo_note_edit(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({'error': 'invalid_json', 'data': []}, status=400,
+                                     headers={'Cache-Control': 'no-store'})
+        try:
+            value = await asyncio.to_thread(photo_store.edit_annotation,
+                                            request.match_info.get('note_id'), body.get('text'),
+                                            author=photo_store.USER)
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response({'annotation': value, 'errors': []}, headers={'Cache-Control': 'no-store'})
+
+    async def photo_note_delete(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            value = await asyncio.to_thread(photo_store.delete_annotation,
+                                            request.match_info.get('note_id'), author=photo_store.USER)
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response({'annotation': value, 'errors': []}, headers={'Cache-Control': 'no-store'})
+
     async def logs(self, request):
         err = self._check_auth(request)
         if err is not None: return err
@@ -1117,6 +1314,6 @@ def install():
 
     original = adapter._http_route_table
     def routes(self):
-        return original(self) + [('GET','/ziwei/web/memory',lambda request:memory(self,request)), ('POST','/ziwei/web/memory/edit',lambda request:memory_edit(self,request)), ('GET','/ziwei/web/logs',lambda request:logs(self,request)), ('GET','/ziwei/web/diary',lambda request:diary(self,request)), ('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
+        return original(self) + [('GET','/ziwei/web/memory',lambda request:memory(self,request)), ('POST','/ziwei/web/memory/edit',lambda request:memory_edit(self,request)), ('GET','/ziwei/web/logs',lambda request:logs(self,request)), ('GET','/ziwei/web/diary',lambda request:diary(self,request)), ('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/photos',lambda request:photos(self,request)), ('POST','/ziwei/web/photos',lambda request:photo_upload(self,request)), ('GET','/ziwei/web/photos/days',lambda request:photo_days(self,request)), ('GET','/ziwei/web/photos/{photo_id}',lambda request:photo_detail(self,request)), ('GET','/ziwei/web/photos/{photo_id}/file',lambda request:photo_file(self,request)), ('DELETE','/ziwei/web/photos/{photo_id}',lambda request:photo_delete(self,request)), ('POST','/ziwei/web/photos/{photo_id}/annotations',lambda request:photo_note_add(self,request)), ('PATCH','/ziwei/web/photos/{photo_id}/annotations/{note_id}',lambda request:photo_note_edit(self,request)), ('DELETE','/ziwei/web/photos/{photo_id}/annotations/{note_id}',lambda request:photo_note_delete(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
     adapter._http_route_table = routes
     adapter._ziwei_web_installed = True
