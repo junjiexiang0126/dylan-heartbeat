@@ -361,7 +361,14 @@ def moments_page(since=None, cursor=None, limit=None):
         os.close(fd)
     records = sorted(payload['records'], key=lambda r: (r.get('at', ''), r.get('id', '')))
     window = []
+    retired = set()
+    try:
+        retired = set(json.loads(read_beneath(home() / 'workspace', MOMENT_RETIRED_FILE, 65536)))
+    except (OSError, FileNotFoundError, ValueError, TypeError):
+        retired = set()
     for record in records:
+        if record.get('id') in retired:
+            continue
         if start is not None:
             try:
                 at = datetime.fromisoformat(record['at'])
@@ -801,6 +808,26 @@ def _diary_title(text, date):
     return f'{date} 日记'
 
 
+MOMENT_RETIRED_FILE = 'moments-retired.json'
+
+
+def _diary_display(text, title):
+    """把正文里那几个 markdown 记号去掉：标题行不再重复、**粗体**还原成字。"""
+    lines = []
+    dropped_heading = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not dropped_heading and stripped.startswith('## ') and stripped[3:].strip() == title:
+            dropped_heading = True
+            continue
+        lines.append(line)
+    body = '\n'.join(lines).strip()
+    body = re.sub(r'\*\*(.+?)\*\*', r'\1', body)
+    body = re.sub(r'(?m)^#{1,6}\s*', '', body)
+    body = re.sub(r'`(.+?)`', r'\1', body)
+    return body
+
+
 def diary_records():
     """Every saved diary file as the Web contract wants it: date, source, fingerprint, preview."""
     root = home() / 'workspace' / DIARY_DIR
@@ -828,10 +855,12 @@ def diary_records():
         if _diary_is_private(name, fields):
             # 私密页（《默记》）：标题、日期、预览、数量一律不出现在列表里，只有他自己改成共享才算
             continue
-        record = {'id': _diary_id(relative), 'title': _diary_title(text, date), 'date': date,
+        title = _diary_title(text, date)
+        body = _diary_display(text, title)
+        record = {'id': _diary_id(relative), 'title': title, 'date': date,
                   'at': stamp.isoformat(), 'savedAt': stamp.isoformat(), 'source': relative,
-                  'preview': text.strip()[:DIARY_PREVIEW], 'revision': hashlib.sha256(raw).hexdigest(),
-                  'document': True, 'content': text, 'visibility': DIARY_SHARED}
+                  'preview': body.strip()[:DIARY_PREVIEW], 'revision': hashlib.sha256(raw).hexdigest(),
+                  'document': True, 'content': body, 'visibility': DIARY_SHARED}
         if fields['mood']:
             record['mood'] = fields['mood']
         if fields['summary']:
