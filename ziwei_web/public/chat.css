@@ -190,3 +190,8 @@ dialog.chat-call-dialog{position:fixed;inset:0;width:100%;max-width:none;height:
 .call-mode{font-size:11px;line-height:1.7;color:var(--muted);max-width:330px;margin:auto}
 #chatCallRetry{max-width:300px;margin:0 auto 12px}#chatCallAudio{display:none}
 @media(max-height:600px){.call-screen{padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}.call-peer{padding:22px 0 8px;min-height:220px}.call-portrait{width:100px;height:100px;margin-bottom:20px}.call-controls{margin:10px 0 12px}.call-wave{height:36px}}
+
+/* Multiple assistant bubbles remain one persisted message with separate visual bubbles. */
+.message-bubble-group{display:flex;flex-direction:column;align-items:flex-start;gap:var(--chat-bubble-gap,8px);max-width:100%;min-width:0}
+.message-bubble-group>.message-bubble{max-width:100%}
+.message-bubble-group .message-content{white-space:pre-wrap;overflow-wrap:anywhere}
