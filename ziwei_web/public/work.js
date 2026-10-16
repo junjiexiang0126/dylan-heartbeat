@@ -27,7 +27,7 @@
   conversation.replaceChildren();
   for(const m of items){
    const line=document.createElement('div');line.className='work-line';
-   const who=document.createElement('strong');who.textContent=m.role==='user'?'你':m.role==='glm'?'GLM':'系统';
+   const who=document.createElement('strong');who.textContent=m.role==='user'?'你':m.role==='glm'?'白鸦':'系统';
    const body=document.createElement('p');body.textContent=m.text;
    line.append(who,body);conversation.append(line);
   }
@@ -42,14 +42,14 @@
   e.preventDefault();
   const text=input.value.trim();if(!text)return;
   const submit=root.querySelector('#workForm button[type=submit]');submit.disabled=true;
-  status.textContent='GLM 正在处理（最多一次调用，12 秒超时）…';
+  status.textContent='白鸦正在处理（最多一次调用，12 秒超时）…';
   try{
    const session=await fetch('/api/session',{credentials:'same-origin'}).then(r=>r.json());
    if(!session.authenticated||!session.csrf)throw Error('请重新登录');
    const r=await fetch('/api/work/send',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Ziwei-CSRF':session.csrf},body:JSON.stringify({text,tool:selected})});
    const data=await r.json();
    if(!r.ok)throw Error(data.error||'发送失败');
-   input.value='';status.textContent='GLM 已回复 · Token '+(data.usage?.total_tokens??'未报告');
+   input.value='';status.textContent='白鸦已回复 · Token '+(data.usage?.total_tokens??'未报告');
    await refresh();
   }catch(err){status.textContent='Work 未完成：'+err.message;}
   finally{submit.disabled=false;}
