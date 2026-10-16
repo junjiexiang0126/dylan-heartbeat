@@ -7,12 +7,38 @@ function transport(input){
  if(Array.isArray(input)){if(input[0]?.type==='text'&&typeof input[0].text==='string')return [{...input[0],text:instruction+input[0].text},...input.slice(1)];return [{type:'text',text:instruction},...input];}
  return input;
 }
+function normalizeEnvelope(source){
+ // Repair only JSON punctuation outside quoted strings and literal line breaks inside
+ // JSON strings. Never split message content by commas, punctuation or length.
+ let out='',quoted=false,escaped=false;
+ for(let i=0;i<source.length;i++){
+  const c=source[i];
+  if(quoted){
+   if(escaped){out+=c;escaped=false;continue;}
+   if(c==='\\'){out+=c;escaped=true;continue;}
+   if(c==='"'){quoted=false;out+=c;continue;}
+   if(c==='\n'){out+='\\n';continue;}
+   if(c==='\r'){out+='\\r';continue;}
+   if(c==='\t'){out+='\\t';continue;}
+   out+=c;continue;
+  }
+  if(c==='"'){quoted=true;out+=c;continue;}
+  out+=c==='，'?',':c;
+ }
+ return out;
+}
 function parse(text){
  const plain={messages:[text],summary:null,structured:false};
  if(typeof text!=='string')return plain;
- const candidate=text.trim().replace(/^```(?:json)?\s*\n([\s\S]*)\n```$/,'$1');if(!candidate.startsWith('{'))return plain;
- let value;try{value=JSON.parse(candidate);}catch{return plain;}
+ const trimmed=text.trim();
+ const fenced=/^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```$/i.exec(trimmed);
+ const candidate=(fenced?fenced[1]:trimmed).trim();
+ if(!candidate.startsWith('{'))return plain;
+ let value;
+ try{value=JSON.parse(candidate);}
+ catch{try{value=JSON.parse(normalizeEnvelope(candidate));}catch{return plain;}}
  if(value?.type!==TYPE||!Array.isArray(value.messages)||!value.messages.length||value.messages.length>20||value.messages.some(x=>typeof x!=='string'||!x.trim()||x.length>200000))return plain;
  return {messages:value.messages,summary:typeof value.summary==='string'&&value.summary.trim()?value.summary.slice(0,4000):null,structured:true};
 }
+
 module.exports={parse,transport};
