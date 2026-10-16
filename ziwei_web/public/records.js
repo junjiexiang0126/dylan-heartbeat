@@ -21,6 +21,13 @@ window.ZiweiRecords=(()=>{
  function button(text,fn){const b=el('button','text-button',text);b.type='button';b.onclick=fn;return b;}
  function time(value){if(!value||!Number.isFinite(Date.parse(value)))return '记录未提供时间';return new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok',hour12:false}).format(new Date(value));}
  function current(){return visible==='memory'?'memory':kind;}
+ function logChrome(){
+  const readable=kind==='work'||kind==='diary';
+  $('#logReader').hidden=!readable;$('#logRefresh').hidden=!readable;$('#logUnavailable').hidden=readable;
+  $('#logUnavailable').textContent=readable?'':kind==='private'?'《默记》只写给知微自己。这里不展示内容、标题、日期或数量；只有他自己决定分享的篇章，才会出现在个人日志里。':'照片墙尚未接入，暂时没有可查看的照片。';
+  $('#workLogScope').hidden=kind!=='work';
+  for(const b of document.querySelectorAll('[data-log-kind]')){const selected=b.dataset.logKind===kind;b.classList.toggle('active',selected);b.setAttribute('aria-selected',String(selected));}
+ }
  function statusNode(k){return $(k==='memory'?'#memoryStatus':'#logStatus');}
  function errorNode(k){return $(k==='memory'?'#memoryError':'#logError');}
  async function api(path){
@@ -62,19 +69,19 @@ window.ZiweiRecords=(()=>{
   if(top>0)window.scrollTo({top});
  }
  async function load(){
-  if(!token||!visible)return;const k=current(),s=state[k],v=epoch,run=++sequence;busy=true;const status=statusNode(k);status.textContent=s.data.length?'正在核对后台更新…':'正在读取知微后台…';errorNode(k).textContent='';
+  if(!token||!visible)return;const k=current(),s=state[k];if(!s)return;const v=epoch,run=++sequence;busy=true;const status=statusNode(k);status.textContent=s.data.length?'正在核对后台更新…':'正在读取知微后台…';errorNode(k).textContent='';
   try{const params=new URLSearchParams({limit:'20',offset:String(s.offset),q:s.q,...(k==='memory'?{category:s.category}:{})}),value=await api('/api/records/'+k+'?'+params);if(v!==epoch||run!==sequence||current()!==k)return;if(!Array.isArray(value.data)||value.source!=='hermes_native')throw Error('未收到可核对的原生记录。');s.data=value.data;s.next=value.nextOffset??null;if(k==='memory')memoryChrome(value);render(k);status.textContent='后台核对于 '+time(value.checkedAt)+' · '+value.total+(k==='memory'?' 条原生记忆':' 条记录');if(value.errors?.length)errorNode(k).textContent='部分来源缺失或读取失败：'+value.errors.map(x=>x.source).join('、')+'。现有列表可能不完整。';if(k==='work'&&value.workLogWindow)$('#workLogScope').textContent='展示知微的自主简报与记忆维护记录，以原生后台实际返回为准。每次刷新最多读取 2,000 条，不补写历史。';}
   catch(e){if(v===epoch&&run===sequence){status.textContent=s.data.length?'后台更新未确认，以下保留上次读取结果。':'尚未读到真实后台记录。';errorNode(k).textContent=e.message;$(k==='memory'?'#memoryEmpty':'#logEmpty').hidden=true;}}
   finally{if(v===epoch&&run===sequence)busy=false;}
  }
- function show(name,csrf,reply){if(token!==csrf){stop();token=csrf;}onReply=reply;if(name==='memory'&&visible!=='memory'){state.memory.category='all';state.memory.q='';state.memory.offset=0;$('#memorySearch').value='';memoryChrome();}visible=['memory','logs'].includes(name)?name:null;clearInterval(timer);timer=null;if(!visible)return;void load();timer=setInterval(()=>{if(!document.hidden&&!busy)void load();},30000);}
- function stop(){epoch++;sequence++;token=null;visible=null;onReply=null;busy=false;clearInterval(timer);clearTimeout(searchTimer);timer=null;documents.clear();for(const s of Object.values(state)){s.data=[];s.offset=0;s.next=null;s.q='';s.category='all';s.expanded.clear();}$('#logRecords').replaceChildren();$('#memoryRecords').replaceChildren();for(const id of ['logStatus','logError','memoryStatus','memoryError'])$('#'+id).textContent='';$('#logSearch').value='';$('#memorySearch').value='';memoryChrome();for(const b of document.querySelectorAll('[data-memory-count]'))b.textContent='待同步';$('#memoryUncategorized').hidden=true;$('#memoryUncategorized').textContent='';}
- for(const b of document.querySelectorAll('[data-log-kind]'))b.onclick=()=>{kind=b.dataset.logKind;sequence++;busy=false;document.querySelectorAll('[data-log-kind]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-selected',String(x===b));});$('#logSearch').value=state[kind].q;$('#workLogScope').hidden=kind!=='work';panels[kind].replaceChildren();void load();};
+ function show(name,csrf,reply){if(token!==csrf){stop();token=csrf;}onReply=reply;if(name==='memory'&&visible!=='memory'){state.memory.category='all';state.memory.q='';state.memory.offset=0;$('#memorySearch').value='';memoryChrome();}visible=['memory','logs'].includes(name)?name:null;if(visible==='logs')logChrome();clearInterval(timer);timer=null;if(!visible)return;void load();timer=setInterval(()=>{if(!document.hidden&&!busy)void load();},30000);}
+ function stop(){epoch++;sequence++;token=null;visible=null;onReply=null;busy=false;clearInterval(timer);clearTimeout(searchTimer);timer=null;documents.clear();for(const s of Object.values(state)){s.data=[];s.offset=0;s.next=null;s.q='';s.category='all';s.expanded.clear();}$('#logRecords').replaceChildren();$('#memoryRecords').replaceChildren();for(const id of ['logStatus','logError','memoryStatus','memoryError'])$('#'+id).textContent='';$('#logSearch').value='';$('#memorySearch').value='';kind='work';logChrome();memoryChrome();for(const b of document.querySelectorAll('[data-memory-count]'))b.textContent='待同步';$('#memoryUncategorized').hidden=true;$('#memoryUncategorized').textContent='';}
+ for(const b of document.querySelectorAll('[data-log-kind]'))b.onclick=()=>{kind=b.dataset.logKind;sequence++;busy=false;clearTimeout(searchTimer);$('#logSearch').value=state[kind]?.q||'';$('#logRecords').replaceChildren();$('#logStatus').textContent='';$('#logError').textContent='';$('#logEmpty').hidden=true;logChrome();void load();};
  for(const k of ['logs','memory']){
   const prefix=k==='logs'?'log':'memory';$('#'+prefix+'Refresh').onclick=()=>{void load();};
-  $('#'+prefix+'Search').oninput=e=>{const s=state[current()];s.q=e.target.value;s.offset=0;sequence++;clearTimeout(searchTimer);searchTimer=setTimeout(()=>{void load();},300);};
-  $('#'+prefix+'Previous').onclick=()=>{state[current()].offset=Math.max(0,state[current()].offset-20);void load();};
-  $('#'+prefix+'Next').onclick=()=>{if(state[current()].next!==null){state[current()].offset=state[current()].next;void load();}};
+  $('#'+prefix+'Search').oninput=e=>{const s=state[current()];if(!s)return;s.q=e.target.value;s.offset=0;sequence++;clearTimeout(searchTimer);searchTimer=setTimeout(()=>{void load();},300);};
+  $('#'+prefix+'Previous').onclick=()=>{const s=state[current()];if(!s)return;s.offset=Math.max(0,s.offset-20);void load();};
+  $('#'+prefix+'Next').onclick=()=>{const s=state[current()];if(s&&s.next!==null){s.offset=s.next;void load();}};
  }
  for(const b of document.querySelectorAll('[data-memory-category]'))b.onclick=()=>openMemory(b.dataset.memoryCategory);$('#memoryBack').onclick=()=>openMemory('all');$('#memoryUncategorized').onclick=()=>openMemory('uncategorized');
  document.addEventListener('visibilitychange',()=>{if(visible&&!document.hidden&&!busy)void load();});
