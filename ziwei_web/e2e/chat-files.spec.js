@@ -8,7 +8,7 @@ test('missing file remains visible beside audio; targeted retry produces a downl
  await page.route('**/api/chat/messages?*',r=>r.fulfill({json:{data:[reply({attachments:complete?[deliveredId]:[audioId],mediaDelivery:{state:complete?'complete':'failed',count:complete?1:0,error:complete?null:'media_file_missing'}})],hasMore:false}}));
  await page.route('**/api/chat/attachments/'+audioId+'/metadata',r=>r.fulfill({json:{id:audioId,name:'reading.mp3',mime:'audio/mpeg',size:100}}));await page.route('**/api/chat/attachments/'+audioId,r=>r.fulfill({status:404}));
  await page.route('**/api/chat/media/sync',r=>{expect(r.request().postDataJSON()).toEqual({messageId:'reply-file-fixture'});complete=++attempts>1;return r.fulfill({json:{ok:complete,data:[{state:complete?'complete':'failed'}]}});});
- await open(page);await expect(page.locator('.voice-audio')).toBeVisible();await expect(page.locator('.file-delivery-status')).toContainText('原文件暂时找不到');
+ await open(page);await expect(page.locator('.voice-play')).toBeVisible();await expect(page.locator('.file-delivery-status')).toContainText('原文件暂时找不到');
  const session=await(await page.request.get('/api/session')).json(),origin=new URL(page.url()).origin;
  const uploaded=await page.request.post('/api/chat/attachments',{headers:{Origin:origin,'X-Ziwei-CSRF':session.csrf,'X-Filename':encodeURIComponent('给小语-20261015.txt'),'Content-Type':'application/octet-stream'},data:bytes});expect(uploaded.status()).toBe(201);deliveredId=(await uploaded.json()).id;
  await page.getByRole('button',{name:'重试接收附件'}).click();await expect(page.locator('.file-delivery-status')).toContainText('原文件暂时找不到');expect(attempts).toBe(1);

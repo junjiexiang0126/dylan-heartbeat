@@ -63,7 +63,7 @@ window.ZiweiChatCall=(()=>{
  async function turn(blob,type,v){
   const valid=()=>active&&v===epoch;round++;state('已听到，正在发送语音…','waiting');
   try{
-   const ext=type.includes('mp4')?'m4a':type.includes('ogg')?'ogg':'weba',a=await api('/api/chat/attachments','POST',null,{headers:{'X-Filename':encodeURIComponent('call-'+crypto.randomUUID()+'.'+ext),'Content-Type':'application/octet-stream'},body:blob});if(!valid())return;
+   const ext=type.includes('mp4')?'m4a':type.includes('ogg')?'ogg':'weba',a=await api('/api/chat/attachments','POST',null,{headers:{'X-Filename':encodeURIComponent('call-'+crypto.randomUUID()+'.'+ext),'Content-Type':type},body:blob});if(!valid())return;
    const id=await sendVoice(a);if(!valid())return;state('等待知微回应…');void refresh().catch(()=>{});
    let done;const deadline=Date.now()+6*60000;
    while(valid()&&Date.now()<deadline){const o=await api('/api/chat/requests/'+id);if(!valid())return;if(['completed','failed','cancelled','interrupted'].includes(o.state)){done=o;break;}await new Promise(resolve=>{waitResolve=resolve;timeout=setTimeout(()=>{waitResolve=null;resolve();},1000);});}

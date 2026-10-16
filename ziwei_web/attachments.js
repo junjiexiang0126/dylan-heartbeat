@@ -2,7 +2,12 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {hash,uuid}=require('./chat_store');
 const MAX=20*1024*1024,QUOTA=1024*1024*1024;
-function identify(b,name){
+function mp4Tracks(b){
+ const found={audio:false,video:false};let boxes=0;
+ function walk(start,end,depth){if(depth>5)return;for(let offset=start;offset+8<=end&&++boxes<4096;){let size=b.readUInt32BE(offset),header=8;const type=b.subarray(offset+4,offset+8).toString();if(size===1){if(offset+16>end)return;const large=b.readBigUInt64BE(offset+8);if(large>BigInt(b.length))return;size=Number(large);header=16;}else if(size===0)size=end-offset;if(size<header||offset+size>end)return;const data=offset+header;if(type==='hdlr'&&data+12<=offset+size){const handler=b.subarray(data+8,data+12).toString();if(handler==='soun')found.audio=true;if(handler==='vide')found.video=true;}if(['moov','trak','mdia'].includes(type))walk(data,offset+size,depth+1);offset+=size;}}
+ walk(0,b.length,0);return found;
+}
+function identify(b,name,declaredMime=''){
  if(/\.(?:html?|svg|js|mjs|cjs|exe|sh|bat|cmd|ps1|app|dmg)$/i.test(name)||/^\s*(?:<!doctype html|<html|<svg)/i.test(b.subarray(0,256).toString()))throw Error('active_file_rejected');
  if(b.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))){if(b.length<24||b.readUInt32BE(16)*b.readUInt32BE(20)>64000000)throw Error('image_dimensions_rejected');return 'image/png';}
  if(b[0]===255&&b[1]===216&&b[2]===255)return 'image/jpeg';
@@ -11,9 +16,8 @@ function identify(b,name){
  if(b.subarray(0,4).toString()==='RIFF'&&b.subarray(8,12).toString()==='WAVE')return 'audio/wav';
  if(b.subarray(0,3).toString()==='ID3'||b.length>1&&b[0]===255&&(b[1]&0xe0)===0xe0)return 'audio/mpeg';
  if(b.subarray(0,4).toString()==='OggS')return 'audio/ogg';
- if(b.subarray(4,8).toString()==='ftyp'&&/\.m4a$/i.test(name))return 'audio/mp4';
- if(b.subarray(0,4).equals(Buffer.from([0x1a,0x45,0xdf,0xa3]))&&/\.weba$/i.test(name))return 'audio/webm';
- if(b.subarray(4,8).toString()==='ftyp')return 'video/mp4';
+ if(b.subarray(4,8).toString()==='ftyp'){const tracks=mp4Tracks(b);if(tracks.video)return 'video/mp4';return tracks.audio||String(declaredMime).toLowerCase().startsWith('audio/')||b.subarray(8,12).toString()==='M4A '?'audio/mp4':'video/mp4';}
+ if(b.subarray(0,4).equals(Buffer.from([0x1a,0x45,0xdf,0xa3]))&&declaredMime.toLowerCase().startsWith('audio/'))return 'audio/webm';
  if(b.subarray(0,4).equals(Buffer.from([0x1a,0x45,0xdf,0xa3])))return 'video/webm';
  if(/\.(txt|md|csv|json)$/i.test(name)&&!b.includes(0)&&Buffer.from(b.toString('utf8'),'utf8').equals(b))return 'text/plain';
  return 'application/octet-stream';
@@ -26,11 +30,11 @@ class Attachments {
   let bytes=0;const chunks=[];for await(const c of req){bytes+=c.length;if(bytes<=MAX)chunks.push(c);}
   if(bytes>MAX)throw Error('attachment_too_large');if(!bytes)throw Error('empty_attachment');
   if(this.store.attachmentBytes()+bytes>QUOTA)throw Error('attachment_quota');
-  return this.save(Buffer.concat(chunks),name);
+  return this.save(Buffer.concat(chunks),name,undefined,String(req.headers['content-type']||''));
  }
- save(b,name,id=crypto.randomUUID()){
+ save(b,name,id=crypto.randomUUID(),declaredMime=''){
   if(!b.length||b.length>MAX)throw Error('attachment_too_large');
-  const mime=identify(b,name),a={id,name,mime,size:b.length,sha256:hash(b)},old=this.store.attachment(id);
+  const mime=identify(b,name,declaredMime),a={id,name,mime,size:b.length,sha256:hash(b)},old=this.store.attachment(id);
   if(old){if(old.sha256!==a.sha256)throw Error('attachment_conflict');return old;}
   if(this.store.attachmentBytes()+b.length>QUOTA)throw Error('attachment_quota');
   const file=path.join(this.dir,id);if(fs.existsSync(file)){const stat=fs.lstatSync(file);if(!stat.isFile()||stat.isSymbolicLink()||stat.size!==a.size||hash(fs.readFileSync(file))!==a.sha256)throw Error('attachment_conflict');this.store.addAttachment(a);return a;}const fd=fs.openSync(file,'wx',0o600);

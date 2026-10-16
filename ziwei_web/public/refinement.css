@@ -181,3 +181,24 @@ nav.glass button svg{filter:none}
  .home .today{padding-block:var(--ui-space-12)}
  .home .home-paper-grid{margin-block:var(--ui-space-24)}
 }
+
+/* Voice content is a message, with native audio decoding behind a custom control. */
+#chat .voice-message{display:block;min-width:0;width:fit-content;max-width:100%;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+#chat .voice-message .voice-audio{display:none}
+#chat .voice-play{display:flex;align-items:center;justify-content:space-between;gap:var(--ui-space-16);width:calc(var(--voice-bubble-min) + var(--voice-seconds,0)*var(--voice-bubble-step));max-width:100%;min-height:var(--ui-size-40);border:0;background:transparent;color:var(--ink);padding:var(--ui-space-4);font-size:var(--chat-font-size);touch-action:pan-y;border-radius:var(--voice-bubble-radius)}
+#chat .voice-time{font:var(--chat-font-size)/1 Georgia,var(--ui-sans);color:var(--ink);white-space:nowrap}
+.voice-play-icon{width:var(--voice-play-icon);height:var(--voice-play-icon);flex:none;background:currentColor;clip-path:polygon(18% 0,100% 50%,18% 100%)}
+.is-playing .voice-play-icon{clip-path:polygon(10% 0,40% 0,40% 100%,10% 100%,10% 0,60% 0,90% 0,90% 100%,60% 100%,60% 0)}
+.voice-play-wave{display:flex;align-items:center;justify-content:center;gap:var(--ui-space-3);width:var(--voice-play-wave-width);height:var(--ui-size-22)}
+.voice-play-wave i{width:var(--voice-wave-width);height:40%;background:currentColor;border-radius:var(--ui-radius-3)}
+.voice-play-wave i:nth-child(2){height:70%}.voice-play-wave i:nth-child(3){height:100%}
+.is-playing .voice-play-wave i{animation:voice-play var(--voice-wave-duration) ease-in-out infinite alternate}.is-playing .voice-play-wave i:nth-child(2){animation-delay:-.2s}.is-playing .voice-play-wave i:nth-child(3){animation-delay:-.4s}
+@keyframes voice-play{from{transform:scaleY(.4)}to{transform:scaleY(1)}}
+.voice-error:empty{display:none}.voice-error{display:block;font-size:var(--ui-font-11);color:var(--muted);max-width:var(--ui-size-230);line-height:var(--ui-leading-1_8);user-select:text}
+#chatVoice{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#chat .voice-recorder{position:absolute;bottom:calc(100% + var(--ui-space-12));left:0;width:100%;padding:var(--voice-recorder-padding);border:var(--ui-size-1) solid var(--surface-border);border-radius:var(--ui-radius-24);background:var(--bg);color:var(--accent);box-shadow:var(--voice-recorder-shadow);text-align:center;z-index:4;pointer-events:none}
+.voice-recorder strong{font:var(--ui-font-20)/var(--ui-leading-1_8) Georgia,var(--ui-sans);font-variant-numeric:tabular-nums}.voice-recorder p{font-size:var(--ui-font-12);margin-top:var(--ui-space-6)}
+.voice-record-wave{display:flex;align-items:center;justify-content:center;gap:var(--ui-space-4);height:var(--voice-wave-height);margin:var(--voice-recorder-gap) auto}
+.voice-record-wave i{display:block;width:var(--voice-wave-width);height:calc(var(--voice-wave-min) + var(--voice-amplitude,0)*(var(--voice-wave-height) - var(--voice-wave-min)));border-radius:var(--ui-radius-3);background:currentColor;flex:none}
+.voice-recorder[data-cancel=true]{color:var(--voice-cancel-color)}.voice-menu h2{font-size:var(--ui-font-18)}
+@media(prefers-reduced-motion:reduce){.is-playing .voice-play-wave i{animation:none}}

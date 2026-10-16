@@ -305,3 +305,7 @@
 }
 #chat{--chat-bubble-block-scale:.85;--chat-bubble-inline-scale:1.1;--chat-bubble-radius-scale:1.6}
 @media(max-width:360px){:root{--paper-gap:var(--ui-space-12);--paper-calendar-font:var(--ui-font-11);--paper-day-size:var(--ui-size-22)}}
+
+:root{
+ --voice-bubble-min:var(--ui-size-125);--voice-bubble-step:2px;--voice-bubble-radius:var(--ui-radius-24);--voice-wave-min:3px;--voice-wave-height:var(--ui-size-40);--voice-wave-width:var(--ui-size-3);--voice-recorder-padding:var(--ui-space-24);--voice-recorder-gap:var(--ui-space-12);--voice-play-icon:var(--ui-size-16);--voice-play-wave-width:var(--ui-size-22);--voice-wave-duration:.65s;--voice-cancel-color:#a53552;--voice-recorder-shadow:var(--dialog-shadow);
+}
