@@ -5,9 +5,12 @@ window.ZiweiChatExtra=(()=>{
  function presence(value){
   const valid=value?.source==='ziwei'&&['在工作','在休息','在思考','在想你'].includes(value.state)&&Number.isFinite(Date.parse(value.updatedAt));
   const fresh=valid&&!value.stale&&Date.now()-Date.parse(value.updatedAt)<1800000;
-  $('#chatPresence').textContent=fresh?value.state:valid?'状态已过期':'状态未同步';$('#chatPresence').title=valid?'知微更新于 '+new Date(value.updatedAt).toLocaleString('zh-CN'):'';
-  $('#todayStatus').textContent=fresh?value.state:valid?'等待知微更新状态':'等待知微同步今日状态';$('#todayStatusTime').textContent=valid?'知微更新于 '+new Date(value.updatedAt).toLocaleString('zh-CN')+(fresh?'':'（已过期）'):'更新时间：暂无';
-  document.querySelector('.today .status-tag').textContent=fresh?'本人更新':valid?'已过期':'待同步';
+  const short=valid?new Intl.DateTimeFormat('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Bangkok'}).format(new Date(value.updatedAt)):null;
+  const full=valid?new Intl.DateTimeFormat('zh-CN',{dateStyle:'short',timeStyle:'short',hour12:false,timeZone:'Asia/Bangkok'}).format(new Date(value.updatedAt)):null;
+  $('#chatPresence').textContent=fresh?value.state:valid?'最后更新于 '+short:'尚无状态记录';$('#chatPresence').title=valid?'知微最后发布：'+value.state+' · '+full:'';
+  $('#todayStatus').textContent=fresh?value.state:valid?'最近状态：'+value.state:'等待知微同步今日状态';$('#todayStatusTime').textContent=valid?'知微更新于 '+full:'更新时间：暂无';
+  document.querySelector('.today .status-tag').textContent=fresh?'本人更新':valid?'最后更新于 '+short:'暂无记录';
+
  }
  async function approvals(){
   if(!api)return;const v=epoch,o=await api('/api/chat/approvals');if(v!==epoch)return;
