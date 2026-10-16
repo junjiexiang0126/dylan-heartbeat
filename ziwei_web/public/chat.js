@@ -130,7 +130,7 @@ window.ZiweiChat=(()=>{
   window.ZiweiChatRender.actions(actions);body.append(actions);renderToolActions(card,m.toolActions);rememberMessage(card,m);return card;
  }
  async function load(older=false,retain=false){
-  const epoch=version,loadEpoch=++loadVersion,params=new URLSearchParams({q:$('#chatSearch').value,source,favorite:String(favorite),trash:String(trash),limit:'50'});if(older&&before)params.set('before',before);
+  const epoch=version,loadEpoch=++loadVersion,params=new URLSearchParams({q:$('#chatSearch').value,source,favorite:String(favorite),trash:String(trash),limit:'100'});if(older&&before)params.set('before',before);
   const timeline=$('#chatTimeline'),list=$('#chatMessages'),height=timeline.scrollHeight,key=JSON.stringify([source,$('#chatSearch').value,favorite,trash]),same=key===viewKey,top=retain&&same&&readingPosition?readingPosition.top:timeline.scrollTop,follow=!list.children.length||(!same&&!older)||(retain&&same&&readingPosition?readingPosition.follow:height-top-timeline.clientHeight<80);const wasMore=!$('#chatOlder').hidden;
   timeline.setAttribute('aria-busy','true');
   if(!list.children.length){$('#chatEmpty').hidden=false;$('#chatEmpty').textContent='正在加载聊天记录…';}
