@@ -5,14 +5,15 @@ const fs=require('node:fs');
 const MIME={word:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',ppt:'application/vnd.openxmlformats-officedocument.presentationml.presentation',excel:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',pdf:'application/pdf'};
 const EXT={word:'docx',ppt:'pptx',excel:'xlsx',pdf:'pdf'};
 async function documentBytes(kind,title,text){
- if(typeof text!=='string'||!text.trim()||text.length>24000)throw Error('invalid_document_text');
- const lines=text.split(/\n/).map(x=>x.slice(0,3000)).slice(0,250);
- if(kind==='word')return Packer.toBuffer(new Document({sections:[{children:[new Paragraph({text:title,heading:HeadingLevel.TITLE}),...lines.map(text=>new Paragraph({text}))]}]}));
+ if(typeof text!=='string'||!text.trim()||text.length>48000)throw Error('invalid_document_text');
+ const lines=text.split(/\n/);if(lines.length>1200||lines.some(x=>x.length>6000))throw Error('document_content_limit');
+ if(kind==='word')return Packer.toBuffer(new Document({sections:[{children:[new Paragraph({text:title,heading:HeadingLevel.TITLE}),...lines.map(text=>{const h=/^(#{1,3})\s+(.+)$/.exec(text);return new Paragraph(h?{text:h[2],heading:[HeadingLevel.HEADING_1,HeadingLevel.HEADING_2,HeadingLevel.HEADING_3][h[1].length-1]}:{text});})]}]}));
  if(kind==='ppt'){
   const ppt=new PptxGenJS();ppt.layout='LAYOUT_WIDE';ppt.author='知微之家 Work';ppt.subject=title;ppt.title=title;ppt.lang='zh-CN';
-  const blocks=text.split(/\n\s*\n/).filter(Boolean);let pages=[];for(const block of blocks)for(let n=0;n<block.length;n+=420)pages.push(block.slice(n,n+420));
-  if(pages.length>24)throw Error('document_page_limit');
-  pages.forEach((body,i)=>{const slide=ppt.addSlide();slide.background={color:'F8F4F2'};slide.addText(i?title+' · '+(i+1):title,{x:.7,y:.4,w:12,h:.7,fontFace:'Noto Sans CJK SC',fontSize:26,color:'674958',breakLine:false});slide.addText(body,{x:.7,y:1.4,w:11.8,h:5.3,fontFace:'Noto Sans CJK SC',fontSize:20,color:'3E343B',margin:8,fit:'shrink'});});
+  const sections=text.split(/(?=^#{1,3}\s+)/m).filter(x=>x.trim()),blocks=sections.length>1?sections:text.split(/\n\s*\n/).filter(Boolean);let pages=[];
+  for(const block of blocks){const h=/^#{1,3}\s+([^\n]+)\n?/.exec(block),heading=h?h[1]:title,content=h?block.slice(h[0].length):block;for(let n=0;n<Math.max(1,content.length);n+=1000)pages.push({heading,body:content.slice(n,n+1000)});}
+  if(pages.length>32)throw Error('document_page_limit');
+  pages.forEach(({heading,body},i)=>{const slide=ppt.addSlide();slide.background={color:'F8F4F2'};slide.addShape(ppt.ShapeType.rect,{x:0,y:0,w:.18,h:7.5,fill:{color:'9A6C82'},line:{color:'9A6C82'}});slide.addText(heading,{x:.7,y:.4,w:11.9,h:.7,fontFace:'Noto Sans CJK SC',fontSize:26,color:'674958',breakLine:false,fit:'shrink'});slide.addText(body,{x:.7,y:1.4,w:11.8,h:5.3,fontFace:'Noto Sans CJK SC',fontSize:20,color:'3E343B',margin:8,fit:'shrink'});slide.addText((i+1)+' / '+pages.length,{x:11.7,y:7,w:1,h:.25,fontSize:10,color:'674958',align:'right'});});
   return ppt.write({outputType:'nodebuffer'});
  }
  if(kind==='excel'){

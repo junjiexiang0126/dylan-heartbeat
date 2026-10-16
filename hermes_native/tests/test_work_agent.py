@@ -54,7 +54,7 @@ class WorkAgent(unittest.TestCase):
         self.assertTrue(seen['skip_memory']);self.assertTrue(seen['skip_context_files']);self.assertTrue(seen['skip_background_review'])
         self.assertEqual(seen['enabled_toolsets'],[]);self.assertEqual(seen['max_iterations'],1)
         self.assertEqual(seen['conversation']['conversation_history'],[])
-        self.assertIsNone(seen['session_db']);self.assertEqual(seen['request']['max_tokens'],900)
+        self.assertIsNone(seen['session_db']);self.assertEqual(seen['request']['max_tokens'],1500)
         self.assertEqual(result['calls'],1);self.assertTrue(seen['closed'])
     def test_extra_model_call_fails_closed(self):
         with self.assertRaisesRegex(RuntimeError,'work_model_call_limit'):

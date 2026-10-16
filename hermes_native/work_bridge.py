@@ -35,11 +35,12 @@ def install_work_route(adapter):
         err = self._check_auth(request)
         if err is not None:
             return err
-        if request.content_length is None or request.content_length > 24000:
+        if request.content_length is None or request.content_length > 160000:
             return web.json_response({'error': 'work_body_limit'}, status=413)
         try:
             body = await request.json()
             task, stage = body['taskId'], body['stage']
+            timeout_ms = max(1, min(90000, int(body.get('timeoutMs', 90000))))
             if not re.fullmatch(r'[a-zA-Z0-9_-]{1,80}', task) or stage not in ('plan', 'review'):
                 raise ValueError()
         except (ValueError, KeyError, TypeError):
@@ -63,7 +64,7 @@ def install_work_route(adapter):
             today = datetime.now(timezone(timedelta(hours=7))).date().isoformat()
             usage_file = root / (today + '.json')
             count = json.loads(usage_file.read_text()) if usage_file.exists() else 0
-            if count >= 24:
+            if count >= 48:
                 return web.json_response({'error': 'work_daily_limit'}, status=429)
             def write(file, value):
                 temp = file.with_suffix('.tmp')
@@ -79,8 +80,8 @@ def install_work_route(adapter):
                          stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
                          stderr=asyncio.subprocess.DEVNULL, start_new_session=True)
             try:
-                out, _ = await asyncio.wait_for(child.communicate(encoded), timeout=45)
-                if len(out) > 32000:
+                out, _ = await asyncio.wait_for(child.communicate(encoded), timeout=timeout_ms / 1000)
+                if len(out) > 64000:
                     raise ValueError('worker_failed')
                 result = json.loads(out)
                 if child.returncode:
