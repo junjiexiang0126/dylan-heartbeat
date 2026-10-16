@@ -123,3 +123,31 @@ test('missing original file and corrupt download are visible and never falsely m
  const sync=await (await s.api('/api/chat/media/sync',{messageId})).json();assert.equal(sync.ok,false);const reply=(await s.rows()).find(m=>m.id===messageId);assert.equal(reply.mediaDelivery.state,'failed');assert.equal(reply.attachments.length,0);assert.equal(s.fake.executions,1);
  media.corrupt=false;assert.equal((await (await s.api('/api/chat/media/sync',{messageId})).json()).ok,true);
 });
+test('native pat is imported once and user pat replays one exact event and run',async t=>{
+ const nativeId=crypto.randomUUID(),s=await setup(t,{pokes:[{id:nativeId,author:'ziwei',target:'user',at:new Date().toISOString()}]});await until(async()=> (await s.rows()).some(m=>m.id==='poke-native-'+nativeId));const id=crypto.randomUUID(),payload={id,target:'ziwei'};
+ const one=await s.api('/api/chat/poke',payload),two=await s.api('/api/chat/poke',payload);assert.equal(one.status,200);assert.equal((await two.json()).replayed,true);await until(()=>s.fake.executions===1);const rows=await s.rows();assert.equal(rows.filter(m=>m.id==='poke-'+id).length,1);assert.equal(rows.filter(m=>m.id==='poke-native-'+nativeId).length,1);assert.ok(rows.every(m=>m.id!=='user-'+id));
+ assert.equal((await fetch(s.origin+'/api/chat/poke',{method:'POST',headers:{Cookie:s.cookie,Origin:s.origin},body:JSON.stringify(payload)})).status,403);
+});
+
+
+test('records use authenticated read-only native sources; updates stay live and no Agent run is launched',async t=>{
+ let revision='first';const s=await setup(t,{records:(kind,url)=>kind==='memory'?{files:[{name:'MEMORY.md',entries:[{text:revision}],updated_at:1700000000,chars:revision.length,lines:1,sha256:'a'.repeat(64)}],errors:[]}:kind==='work'?{data:[{kind:'briefing',title:'rest',body:'实际休息',at:'2026-10-15T08:00:00+07:00',refs:[],failed:false},{kind:'memory_audit',title:'replace',body:'记忆条目',at:'2026-10-15T08:01:00+07:00',refs:[],failed:true}],errors:[],has_more:false}:{source:'hermes_native',data:[],nextOffset:null,total:0,errors:[]}});
+ assert.equal((await fetch(s.origin+'/api/records/memory')).status,401);
+ assert.equal((await fetch(s.origin+'/api/records/memory',{method:'POST',headers:{Cookie:s.cookie,Origin:s.origin},body:'{}'})).status,403);
+ assert.equal((await s.api('/api/records/memory',{})).status,405);
+ assert.equal((await s.api('/api/records/private')).status,404);
+ assert.equal((await s.api('/api/records/work?path=../secret')).status,400);
+ const first=await (await s.api('/api/records/memory')).json();assert.equal(first.data[0].content,'first');assert.equal(first.counts.uncategorized,1);assert.equal(first.counts.protected,0);assert.deepEqual((await (await s.api('/api/records/memory?category=protected')).json()).data,[]);assert.equal((await (await s.api('/api/records/memory?id='+first.data[0].id)).json()).content,'first');
+ revision='second';assert.equal((await (await s.api('/api/records/memory?q=second')).json()).data[0].content,'second');
+ for(const kind of ['diary','work'])assert.equal((await s.api('/api/records/'+kind)).status,200);const work=await (await s.api('/api/records/work')).json();assert.equal(work.data.find(r=>r.basis==='memory_audit').state,'pending');assert.equal(work.data.find(r=>r.basis==='agent_briefing').state,'recorded');
+ assert.equal(s.fake.executions,0);assert.equal(s.fake.seen.filter(x=>/^\/ziwei\/web\/(memory|logs|diary)/.test(x.url)).every(x=>x.method==='GET'),true);
+ assert.equal(fs.existsSync(path.join(s.dir,'memory.sqlite')),false);
+});
+
+test('unavailable native records remain an explicit failure and SSE tail skips historical event replay',async t=>{
+ const s=await setup(t),id=crypto.randomUUID();assert.equal((await s.api('/api/records/diary')).status,503);
+ await s.api('/api/chat/send',{requestId:id,message:'old event',attachments:[]});await until(async()=> (await s.rows()).some(m=>m.id==='reply-'+id));
+ const messages=await (await s.api('/api/chat/messages')).json();assert.ok(messages.eventCursor>0);
+ const controller=new AbortController(),stream=await fetch(s.origin+'/api/chat/events?tail=true',{headers:s.headers,signal:controller.signal});
+ const text=new TextDecoder().decode((await stream.body.getReader().read()).value);assert.match(text,/event: cursor/);assert.match(text,new RegExp('id: '+messages.eventCursor));assert.doesNotMatch(text,/request.state|message.delta/);controller.abort();
+});
