@@ -16,11 +16,12 @@ test('Work has its own panel and sixth tab without replacing private chat',()=>{
 });
 test('Work controls are present and never silently submit to private chat',()=>{
  const html=read('index.html'),js=read('work.js');
- for(const id of ['workInput','workStatus','workMode','workForm','workVoice','workAttach'])assert.match(html,new RegExp('id="'+id+'"'));
+ for(const id of ['workInput','workStatus','workToolCurrent','workForm','workVoice','workAttach'])assert.match(html,new RegExp('id="'+id+'"'));
  for(const tool of ['auto','ppt','word','pdf','excel','image','research'])assert.match(html,new RegExp('data-work-tool="'+tool+'"'));
  for(const person of ['知微','白鸦'])assert.ok(html.includes('data-work-mention="'+person+'"'));
  assert.match(js,/preventDefault\(\)/);
- assert.doesNotMatch(js,/fetch\s*\(|\/api\/chat|\/api\/message/);
+ assert.match(js,/\/api\/work\/send/);
+ assert.doesNotMatch(js,/\/api\/chat|\/api\/message/);
 });
 test('Six-column navigation and scoped variable-based styling',()=>{
  const css=read('work.css');
