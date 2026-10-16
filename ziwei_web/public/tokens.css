@@ -314,3 +314,27 @@
 :root{
  --record-reading-inset:0px;--record-reading-radius:0px;--record-page-fill:var(--paper-cream);--record-page-inline:var(--ui-space-24);--record-page-block:var(--ui-space-20);--record-page-title-size:var(--ui-font-26);--record-page-meta-size:var(--ui-font-12);--record-page-duration:.28s;--record-page-distance:12%;--record-page-tool-size:44px;--record-timeline-gap:var(--ui-space-22);--record-timeline-dot:var(--ui-size-5);--record-timeline-summary-size:var(--ui-font-16);--memory-main-size:var(--ui-font-26);--memory-main-height:220px;--memory-side-height:145px;
 }
+
+/* Shared transparency and the four supplied record-page sketches. */
+:root{
+ --glass-opacity:.32;
+ --record-page-title-size:var(--ui-font-20);
+ --glass-fill-alpha-top:var(--glass-opacity);
+ --glass-fill-alpha-bottom:var(--glass-opacity);
+ --paper-fill:var(--glass);
+ --record-tool-fill:var(--glass);
+ --record-card-fill:var(--glass);
+ --record-private-width:34em;
+ --record-private-space:var(--ui-space-28);
+ --record-private-leading:var(--ui-leading-2_05);
+ --record-heading-gap:var(--ui-space-12);
+ --record-timeline-rule:var(--ui-size-1) dashed var(--paper-rule);
+ --record-reading-radius:var(--records-card-radius);
+ --record-reading-inset:var(--records-card-padding-inline);
+ --memory-main-height:0px;
+ --memory-side-height:var(--ui-size-125);
+ --memory-main-padding:var(--ui-space-16);
+ --memory-excerpt-lines:2;
+ --memory-main-size:var(--ui-font-25);
+}
+:root[data-theme=dark]{--glass-fill-alpha-top:var(--glass-opacity);--glass-fill-alpha-bottom:var(--glass-opacity)}
