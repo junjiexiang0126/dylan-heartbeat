@@ -91,18 +91,8 @@
   <header class="work-heading glass"><h2>Work · 三人工作室</h2><p>你 · 知微 · GLM</p></header>
   <div class="work-conversation glass" role="log" aria-label="Work 群聊消息"><p>Work 群聊正在建设中。此页面不会读取或修改知微的私人聊天记录。</p></div>
   <div class="work-compose glass">
-    <p id="workMode" class="hint">当前工具：自由聊天</p>
-    <div class="work-tools" role="group" aria-label="快捷工具">
-      <button type="button" data-work-tool="auto" aria-pressed="true">聊天</button>
-      <button type="button" data-work-tool="ppt" aria-pressed="false">PPT</button>
-      <button type="button" data-work-tool="word" aria-pressed="false">Word</button>
-      <button type="button" data-work-tool="pdf" aria-pressed="false">PDF</button>
-      <button type="button" data-work-tool="excel" aria-pressed="false">Excel</button>
-      <button type="button" data-work-tool="image" aria-pressed="false">图片</button>
-      <button type="button" data-work-tool="research" aria-pressed="false">研究</button>
-    </div>
     <div class="work-mentions"><button type="button" data-work-mention="知微">@知微</button><button type="button" data-work-mention="GLM">@GLM</button></div>
-    <form id="workForm"><label for="workInput" class="sr-only">Work 消息</label><textarea id="workInput" rows="2" placeholder="和知微、GLM 说说你想做什么…"></textarea><div class="work-actions"><button type="button" id="workAttach">＋ 附件</button><button type="button" id="workVoice">🎙 语音</button><button type="submit">发送</button></div></form>
+    <form id="workForm"><label for="workInput" class="sr-only">Work 消息</label><textarea id="workInput" rows="2" placeholder="和知微、GLM 说说你想做什么…"></textarea><div class="work-actions"><button type="button" id="workAttach">＋ 附件</button><div class="work-tool-picker"><button type="button" id="workToolToggle" aria-haspopup="true" aria-expanded="false" aria-controls="workToolMenu">工具 <span id="workToolCurrent">聊天</span> ▾</button><div id="workToolMenu" class="work-tool-menu glass" role="group" aria-label="选择工作工具" hidden><button type="button" data-work-tool="auto" aria-pressed="true">聊天</button><button type="button" data-work-tool="ppt" aria-pressed="false">PPT</button><button type="button" data-work-tool="word" aria-pressed="false">Word</button><button type="button" data-work-tool="pdf" aria-pressed="false">PDF</button><button type="button" data-work-tool="excel" aria-pressed="false">Excel</button><button type="button" data-work-tool="image" aria-pressed="false">图片</button><button type="button" data-work-tool="research" aria-pressed="false">研究</button></div></div><button type="button" id="workVoice">🎙 语音</button><button type="submit">发送</button></div></form>
     <p id="workStatus" role="status" class="hint">前端预览阶段 · 尚未连接 Work 消息服务</p>
   </div>
 </section>
