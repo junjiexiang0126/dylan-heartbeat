@@ -18,4 +18,4 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
       - run: node --check work_service.js && node --check public/work.js && node --check server.js
-      - run: node --test tests/work-phase1.test.cjs
+      - run: node --test tests/work-phase1.test.cjs tests/work-service.test.cjs
