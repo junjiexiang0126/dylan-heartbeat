@@ -101,9 +101,14 @@ window.ZiweiChat=(()=>{
     audio.onplay=()=>{stopAudio(audio);update();};
     audio.onerror=()=>{label.textContent='语音读取失败，请重试；也可下载原音频。';if(!box.querySelector('.media-retry')){const retry=button('重新读取语音',()=>{retry.remove();audio.load();});retry.classList.add('media-retry');box.append(retry);}};
     const download=element('a','voice-download','下载原音频');download.href=url;download.download=a.name;
+    // 保存/分享不要顶走页面：交给统一的 save-file.js（iOS 走系统分享面板，页面原地不动）
+    window.ZiweiSave&&window.ZiweiSave.bind(download,()=>url,a.name);
     box.append(audio,label,download);container.append(box);return;
    }
    const link=element('a','file-link file-card');link.href=url;link.download=a.name;link.setAttribute('aria-label','下载文件：'+a.name);
+   // 关键修复：文件卡片以前是「同页跳转下载」——iOS PWA 跳出去就回不来（她只能杀 App）。
+   // 现在统一走 save-file.js：优先系统分享面板，其次新标签页，主页面永不离开。
+   window.ZiweiSave&&window.ZiweiSave.bind(link,()=>url,a.name);
    const icon=element('span','file-card-icon','▤'),details=element('span','file-card-details');icon.setAttribute('aria-hidden','true');details.append(element('strong','file-card-name',a.name),element('small','file-card-size',a.size<1024?a.size+' B':Math.ceil(a.size/1024)+' KB'));link.append(icon,details,element('span','file-card-download','下载'));container.append(link);
   }catch{if(container.isConnected){const retry=button('附件读取失败，点此重试',()=>{retry.remove();return media(container,id);});retry.classList.add('media-retry');container.append(retry);}}
  }
