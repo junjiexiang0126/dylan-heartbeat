@@ -1,0 +1,28 @@
+:root{
+  /* 果冻气泡：底色用渐变，亮线与内阴影造出“胶质”手感；贴纸全部本地文件，不用外链 */
+  --assistant-bubble-fill:linear-gradient(165deg,#fffdf9,#f6ede6 70%,#efe3da);
+  --user-bubble-fill:linear-gradient(165deg,#ffe7f1,#ffcbdf 70%,#ffbfd7);
+  --bubble-border:rgba(255,255,255,.78);
+  --bubble-shadow:inset 0 2px 0 rgba(255,255,255,.95),inset 0 -10px 16px rgba(255,255,255,.30),0 8px 18px rgba(178,120,150,.16);
+}
+#chat .message-bubble{border-radius:24px;border-width:1px;border-style:solid;position:relative}
+#chat .message-bubble::before,#chat .message-bubble::after{
+  content:'';position:absolute;background-size:contain;background-repeat:no-repeat;background-position:center;pointer-events:none;
+}
+/* 我这边（左侧）：右上角一片羽毛、左下角一颗小星星 */
+#chat .message-bubble::after{width:20px;height:20px;top:-7px;right:-7px;background-image:url('/skin-wing.svg');transform:rotate(12deg)}
+#chat .message-bubble::before{width:14px;height:14px;bottom:-4px;left:-5px;background-image:url('/skin-star.svg');transform:rotate(-8deg)}
+/* 你那边（右侧）：右上角一只爪印、左下角一颗心 */
+#chat .message.user .message-bubble::after{width:18px;height:18px;top:-6px;right:-6px;background-image:url('/skin-paw.svg');transform:rotate(10deg)}
+#chat .message.user .message-bubble::before{width:15px;height:15px;bottom:-5px;left:-6px;background-image:url('/skin-heart.svg');transform:rotate(-6deg)}
+/* 给贴纸留位，别压到字 */
+#chat .message-bubble{padding-right:6px}
+#chat .message.user .message-bubble{padding-right:8px}
+/* 声音气泡别被贴纸压住 */
+#chat .message-bubble .voice-play{margin-right:2px}
+@media(prefers-reduced-motion:no-preference){
+  #chat .message-bubble::before,#chat .message-bubble::after{transition:transform .25s ease}
+  #chat .message-bubble:hover::after{transform:rotate(4deg) scale(1.06)}
+}
+/* 她自己关掉玻璃效果时，别把渐变又加回来 */
+html[data-reduce-glass=true]{--assistant-bubble-fill:var(--bg);--user-bubble-fill:var(--accent-soft)}
