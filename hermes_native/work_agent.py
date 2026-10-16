@@ -5,11 +5,32 @@ import json
 import os
 import sys
 
+PHASE = 'bootstrap'
+ALLOWED_ERRORS = {'work_pricing_model_not_allowed','work_isolation_unsupported','work_tool_isolation_failed','work_call_guard_unsupported','work_model_call_limit','work_tools_forbidden','work_context_limit','work_request_override_forbidden','work_agent_failed','work_empty_response'}
 
-def execute(payload):
+def activate_runtime():
+    """A fresh subprocess needs the same dependency activation as the Gateway."""
+    sys.path.insert(0, '/opt/hermes')
+    import hermes_bootstrap  # Activates the official managed dependency generation.
+    sys.path.insert(0, os.environ.get('HERMES_PYTHON_SRC_ROOT', '/opt/ziwei-runtime/current'))
+
+def safe_error(exc):
+    if str(exc) in ALLOWED_ERRORS:
+        return str(exc)
+    # Never include exception text: provider errors can contain credentials/prompts.
+    kind = type(exc).__name__
+    if kind not in {'ImportError','ModuleNotFoundError','TypeError','ValueError','RuntimeError','AttributeError','AuthenticationError','APIConnectionError','APITimeoutError','BadRequestError','RateLimitError'}:
+        kind = 'Error'
+    return 'work_' + PHASE + '_' + kind
+
+
+def execute(payload, check_only=False):
+    global PHASE
+    PHASE = 'imports'
     sys.path.insert(0, os.environ.get('HERMES_PYTHON_SRC_ROOT', '/opt/ziwei-runtime/current'))
     from gateway.run import _resolve_runtime_agent_kwargs, _resolve_gateway_model
     from run_agent import AIAgent
+    PHASE = 'runtime'
     runtime = _resolve_runtime_agent_kwargs()
     runtime.pop('_fallback_notice', None)
     model = runtime.pop('model', None) or _resolve_gateway_model()
@@ -18,6 +39,7 @@ def execute(payload):
     required = {'skip_memory', 'skip_context_files', 'skip_background_review', 'max_tokens'}
     if not required <= inspect.signature(AIAgent.__init__).parameters.keys():
         raise RuntimeError('work_isolation_unsupported')
+    PHASE = 'initialization'
     agent = AIAgent(model=model, **runtime, max_iterations=1, max_tokens=900,
                    enabled_toolsets=[], disabled_toolsets=['all'],
                    skip_memory=True, skip_background_review=True, skip_context_files=True,
@@ -57,6 +79,9 @@ def execute(payload):
         return original(*args, **kwargs)
     client.chat.completions.create = once
     try:
+        if check_only:
+            return {'ready': True, 'model': model, 'calls': 0, 'privateHistory': False, 'memoryWrites': False}
+        PHASE = 'conversation'
         result = agent.run_conversation(user_message=json.dumps(payload, ensure_ascii=False), conversation_history=[])
         if calls != 1 or not isinstance(result, dict) or result.get('error'):
             raise RuntimeError('work_agent_failed')
@@ -71,12 +96,11 @@ def execute(payload):
             agent.close()
 
 if __name__ == '__main__':
-    payload = json.loads(sys.stdin.buffer.read(24001))
     try:
         with contextlib.redirect_stdout(sys.stderr):
-            result = execute(payload)
+            activate_runtime()
+            result = execute({} if '--check' in sys.argv else json.loads(sys.stdin.buffer.read(24001)), check_only='--check' in sys.argv)
         print(json.dumps(result, ensure_ascii=False))
     except Exception as exc:
-        allowed = {'work_pricing_model_not_allowed','work_isolation_unsupported','work_tool_isolation_failed','work_call_guard_unsupported','work_model_call_limit','work_tools_forbidden','work_context_limit','work_request_override_forbidden','work_agent_failed','work_empty_response'}
-        print(json.dumps({'error':str(exc) if str(exc) in allowed else 'work_agent_failed'}))
+        print(json.dumps({'error': safe_error(exc)}))
         sys.exit(1)

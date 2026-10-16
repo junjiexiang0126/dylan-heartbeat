@@ -58,6 +58,7 @@
   card.append(title,button('保存配置',()=>save({})),button(t.authorized?'撤销授权':'允许生成文件',()=>save({authorized:!t.authorized})),button(t.enabled?'停用':'启用',()=>save({enabled:!t.enabled})),button('使用',()=>{selected=t.id;$('workToolCurrent').textContent=t.name;$('workToolsPanel').hidden=true;input.focus();}));box.append(card);
  }}
  $('workToolsOpen').onclick=async()=>{await refresh();renderTools();$('workToolsPanel').hidden=false;};$('workToolsClose').onclick=()=>{$('workToolsPanel').hidden=true;};
+ $('workCheckRuntime').onclick=async()=>{const b=$('workCheckRuntime');b.disabled=true;$('workToolNotice').textContent='正在检查工作连接（不调用模型）…';try{const r=await api('/api/work/runtime');$('workToolNotice').textContent='知微工作连接就绪 · '+r.native.model+' · 白鸦密钥'+(r.glmConfigured?'已配置':'未配置')+'；真实调用仍需任务验收。';}catch(e){$('workToolNotice').textContent='工作连接未就绪：'+e.message;}finally{b.disabled=false;}};
  $('workToolAdd').onclick=()=>{$('workRegister').hidden=!$('workRegister').hidden;};
  $('workRegister').onsubmit=async e=>{e.preventDefault();try{await api('/api/work/tools/register','POST',{kind:$('workRegisterKind').value,name:$('workRegisterName').value});await refresh();renderTools();$('workRegister').hidden=true;}catch(err){$('workToolNotice').textContent=err.message;}};
  $('workSearchToggle').onclick=()=>{$('workSearchBar').hidden=!$('workSearchBar').hidden;if(!$('workSearchBar').hidden)$('workSearchInput').focus();};$('workSearchInput').oninput=paint;

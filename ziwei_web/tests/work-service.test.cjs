@@ -40,3 +40,13 @@ test('one reviewed task can deliver four genuine formats with three model transp
  await request(x.svc,'/api/work/tools/configure','POST',{id:'bundle',revision:0,authorized:true,title:'四格式验收'});
  await request(x.svc,'/api/work/send','POST',body('bundle-task',{tool:'bundle'}));const d=await settled(x.svc,'bundle-task');assert.equal(d.tasks[0].state,'completed');assert.equal(d.data.at(-1).attachments.length,4);assert.equal(x.calls.length,3);assert.deepEqual(d.files.map(f=>path.extname(f.name)).sort(),['.docx','.pdf','.pptx','.xlsx']);
  }finally{x.cleanup();}});
+test('native diagnostic failures preserve safe phase codes and redact arbitrary provider errors',async()=>{
+ for(const [error,want] of [['work_initialization_TypeError','work_initialization_TypeError'],['secret-provider-key','hermes_http_502']]){
+  const x=setup({client:{configured:()=>true,fetch:async()=>new Response(JSON.stringify({error}),{status:502})}});
+  try{await request(x.svc,'/api/work/send','POST',body());const d=await settled(x.svc);assert.equal(d.tasks[0].error,want);assert.equal(d.usage.length,0);}finally{x.cleanup();}
+ }
+});
+test('runtime readiness uses a zero-model native check and reports GLM configuration separately',async()=>{
+ const x=setup({client:{configured:()=>true,fetch:async route=>{assert.equal(route,'/ziwei/web/work/status');return new Response(JSON.stringify({ready:true,model:'deepseek-flash',calls:0}));}}});
+ try{const r=await request(x.svc,'/api/work/runtime');assert.equal(r.code,200);assert.equal(r.body.native.calls,0);assert.equal(r.body.glmConfigured,true);assert.equal((await request(x.svc,'/api/work/messages')).body.tasks.length,0);}finally{x.cleanup();}
+});

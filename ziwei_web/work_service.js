@@ -8,6 +8,7 @@ const day=()=>new Date(Date.now()+7*3600000).toISOString().slice(0,10);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const LIMITS={callsPerTask:3,concurrency:1,timeoutMs:120000,dailyCalls:12,dailyCny:6,taskCny:1.5,maxOutputTokens:900};
 function parseJSON(text){return JSON.parse(text.trim().replace(/^```(?:json)?\s*|\s*```$/g,''));}
+const safeNativeError=value=>typeof value==='string'&&(/^work_(?:bootstrap|imports|runtime|initialization|conversation)_(?:ImportError|ModuleNotFoundError|TypeError|ValueError|RuntimeError|AttributeError|AuthenticationError|APIConnectionError|APITimeoutError|BadRequestError|RateLimitError|Error)$/.test(value)||/^work_(?:pricing_model_not_allowed|isolation_unsupported|tool_isolation_failed|call_guard_unsupported|model_call_limit|tools_forbidden|context_limit|request_override_forbidden|agent_failed|empty_response|timeout|busy|daily_limit|admission_uncertain)$/.test(value))?value:null;
 function createWorkService(dataDir,options={}){
  const db=new DatabaseSync(path.join(dataDir,'work.sqlite'));db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000;');
  db.exec(`CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY,role TEXT,text TEXT,at TEXT,extra TEXT);CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY,digest TEXT,state TEXT,created TEXT,updated TEXT,day TEXT,reserved REAL,calls INTEGER DEFAULT 0,error TEXT,result TEXT);CREATE TABLE IF NOT EXISTS usage(id TEXT PRIMARY KEY,task TEXT,stage TEXT,model TEXT,usage TEXT,at TEXT,cost REAL);CREATE TABLE IF NOT EXISTS tools(id TEXT PRIMARY KEY,kind TEXT,name TEXT,enabled INTEGER,authorized INTEGER,revision INTEGER,config TEXT);CREATE TABLE IF NOT EXISTS files(id TEXT PRIMARY KEY,data TEXT);`);
@@ -18,6 +19,15 @@ function createWorkService(dataDir,options={}){
  const fileStore={attachment:id=>{const x=db.prepare('SELECT data FROM files WHERE id=?').get(id);return x?JSON.parse(x.data):null;},attachmentBytes:()=>db.prepare('SELECT data FROM files').all().reduce((n,x)=>n+JSON.parse(x.data).size,0),addAttachment:a=>db.prepare('INSERT INTO files VALUES(?,?)').run(a.id,JSON.stringify(a))};
  const files=new Attachments(path.join(dataDir,'work'),fileStore),client=options.client||new HermesClient();
  const fetcher=options.fetch||fetch;
+ const nativeJSON=async(route,options={})=>{
+  if(!client.fetch)return client.json(route,options); // Dependency-injected test transport.
+  const response=await client.fetch(route,options),chunks=[];let size=0;
+  for await(const chunk of response.body){size+=chunk.length;if(size>32000)throw Error('work_native_response_limit');chunks.push(chunk);}
+  const bytes=Buffer.concat(chunks);
+  let value;try{value=JSON.parse(bytes.toString('utf8'));}catch{throw Error('work_native_invalid_response');}
+  if(!response.ok)throw Error(safeNativeError(value.error)||'hermes_http_'+response.status);
+  return value;
+ };
  const stmt=db.prepare('INSERT INTO messages VALUES(?,?,?,?,?)');
  const append=(role,text,extra={})=>{const m={id:crypto.randomUUID(),role,text,at:new Date().toISOString(),...extra};stmt.run(m.id,role,text,m.at,JSON.stringify(extra));return m;};
  const bubbles=(role,value,extra={})=>{const parts=Array.isArray(value)?value:parse(value).messages;if(!parts.length||parts.length>8||parts.some(t=>typeof t!=='string'||!t.trim()||t.length>16000))throw Error('invalid_work_bubbles');return parts.map(text=>append(role,text,extra));};
@@ -44,7 +54,7 @@ function createWorkService(dataDir,options={}){
    const value={text,model:'glm-4-flash',usage:result.usage};record(id,stage,value);return value;
   }
   if(Buffer.byteLength(JSON.stringify({taskId:id,stage,...payload}))>24000)throw Error('work_context_limit');
-  const value=await client.json('/ziwei/web/work/turn',{method:'POST',signal:AbortSignal.timeout(50000),headers:{'Content-Type':'application/json'},body:JSON.stringify({taskId:id,stage,...payload})});
+  const value=await nativeJSON('/ziwei/web/work/turn',{method:'POST',signal:AbortSignal.timeout(50000),headers:{'Content-Type':'application/json'},body:JSON.stringify({taskId:id,stage,...payload})});
   record(id,stage,value);return parseJSON(value.text);
  };
  async function run(id,body,user){
@@ -79,6 +89,10 @@ function createWorkService(dataDir,options={}){
   }catch(e){state(id,'failed',String(e.message).slice(0,160));append('system','任务未完成：'+String(e.message).slice(0,160),{taskId:id,stage:'failed'});}
  }
  async function handle(req,res,pathname,readBody,json){
+  if(req.method==='GET'&&pathname==='/api/work/runtime'){
+   try{return json(res,200,{native:await nativeJSON('/ziwei/web/work/status',{signal:AbortSignal.timeout(50000)}),glmConfigured:!!process.env.ZHIPU_API_KEY});}
+   catch(e){return json(res,502,{error:e.message});}
+  }
   if(req.method==='GET'&&pathname==='/api/work/messages')return json(res,200,{data:all(),files:db.prepare('SELECT data FROM files').all().map(x=>JSON.parse(x.data)),tasks:db.prepare('SELECT * FROM tasks ORDER BY created DESC LIMIT 100').all(),usage:usageRows(),tools:toolRows(),limits:LIMITS,configured:{glm:!!process.env.ZHIPU_API_KEY,hermes:client.configured()},costNotice:'费用按输入 ¥10/百万 Token、输出 ¥20/百万 Token 的配置上界估算；不是实际账单。失败和中断保留预留额度。'});
   if(req.method==='GET'&&pathname==='/api/work/tools')return json(res,200,{data:toolRows()});
   if(pathname==='/api/work/attachments'&&req.method==='POST'){const a=await files.upload(req);return json(res,201,a);}

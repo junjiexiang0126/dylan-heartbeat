@@ -12,7 +12,7 @@ worker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(worker)
 
 class WorkAgent(unittest.TestCase):
-    def run_worker(self, repeat=False, tools=None):
+    def run_worker(self, repeat=False, tools=None, check_only=False):
         seen = {}
         class Agent:
             def __init__(self, skip_memory=None, skip_context_files=None, skip_background_review=None, max_tokens=None, **kwargs):
@@ -32,7 +32,23 @@ class WorkAgent(unittest.TestCase):
         gateway._resolve_runtime_agent_kwargs = lambda: {'api_key':'fixture','base_url':'https://api.deepseek.com/v1'}
         gateway._resolve_gateway_model = lambda: 'deepseek-flash'
         with patch.dict(sys.modules, {'run_agent':module,'gateway.run':gateway}):
-            return worker.execute({'stage':'plan','task':'普通工作'}), seen
+            return worker.execute({'stage':'plan','task':'普通工作'}, check_only=check_only), seen
+    def test_connection_check_makes_zero_model_calls(self):
+        result, seen = self.run_worker(check_only=True)
+        self.assertTrue(result['ready']); self.assertEqual(result['calls'], 0)
+        self.assertNotIn('conversation', seen); self.assertTrue(seen['closed'])
+    def test_errors_expose_only_phase_and_type(self):
+        worker.PHASE = 'runtime'
+        error = worker.safe_error(TypeError('sensitive-provider-token-and-user-prompt'))
+        self.assertEqual(error, 'work_runtime_TypeError')
+        self.assertEqual(worker.safe_error(RuntimeError('work_tool_isolation_failed')), 'work_tool_isolation_failed')
+    def test_subprocess_activates_official_dependencies_before_overlay(self):
+        from unittest.mock import MagicMock
+        bootstrap = types.ModuleType('hermes_bootstrap')
+        with patch.dict(sys.modules, {'hermes_bootstrap':bootstrap}), patch.object(sys, 'path', []) as paths:
+            worker.activate_runtime()
+            self.assertEqual(paths[-1], '/opt/hermes')
+            self.assertEqual(paths[0], '/opt/ziwei-runtime/current')
     def test_no_private_history_memory_writes_or_tools(self):
         result, seen = self.run_worker()
         self.assertTrue(seen['skip_memory']);self.assertTrue(seen['skip_context_files']);self.assertTrue(seen['skip_background_review'])
