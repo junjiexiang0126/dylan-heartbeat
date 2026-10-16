@@ -13,7 +13,7 @@ test('confirmed anniversary persists; real presence expires independently of net
  await open(page);await expect(page.locator('#chatPresence')).toHaveText('在思考');await expect(page.locator('#chatConnection')).toHaveText('已连接');
  await page.locator('#settingsButton').click();await page.locator('#metOn').fill('2026-10-07');await page.locator('#saveProfile').click();await expect(page.locator('#settingsMessage')).toHaveText('已保存。');await page.locator('#closeSettings').click();
  await page.locator('[data-tab=home]').click();await expect(page.locator('#metOnValue')).toHaveText('2026-10-07');await expect(page.locator('#daysTogether')).not.toHaveText('待确认');
- fresh=false;await page.locator('[data-tab=chat]').click();await expect(page.locator('#chatPresence')).toHaveText('状态已过期');await expect(page.locator('#chatConnection')).toHaveText('已连接');
+ fresh=false;await page.locator('[data-tab=chat]').click();await expect(page.locator('#chatPresence')).toHaveText(/^最后更新于 \d{2}:\d{2}$/);await expect(page.locator('#chatConnection')).toHaveText('已连接');
  await page.reload();await expect(page.locator('#metOnValue')).toHaveText('2026-10-07');
 });
 test('approval shows actual command as text and submits the exact once-only choice',async({page})=>{
@@ -39,4 +39,8 @@ test('voice call records an utterance, sends once, plays a reply and releases it
  let sends=0;page.on('request',r=>{if(r.url().endsWith('/api/chat/send')){sends++;cleanupIds.push(r.postDataJSON().requestId);}});
  await page.route('**/api/chat/speech',r=>r.fulfill({json:{id,name:'reading.wav',mime:'audio/wav',size:wav.length}}));await page.route('**/api/chat/attachments/'+id,r=>r.fulfill({contentType:'audio/wav',body:wav}));
  await open(page);await page.locator('#chatCall').click();await page.locator('#chatCallStart').click();await expect.poll(()=>sends,{timeout:15000}).toBe(1);await expect.poll(()=>page.locator('#chatCallAudio').evaluate(a=>a.currentTime),{timeout:15000}).toBeGreaterThan(.1);await expect(page.locator('#chatCallState')).toHaveText('正在听你说…');expect(sends).toBe(1);await page.locator('#chatCallEnd').click();expect(await page.evaluate(()=>window.__callTracks.every(t=>t.readyState==='ended'))).toBe(true);
+});
+
+test('stale status uses its real last-update time and a missing record stays distinct',async({page})=>{
+ await open(page);await expect(page.locator('#chatConnection')).toHaveText('已连接');await page.evaluate(()=>window.ZiweiChatExtra.presence({state:'在工作',source:'ziwei',updatedAt:'2026-10-16T01:05:00Z',stale:true}));await expect(page.locator('#chatPresence')).toHaveText('最后更新于 08:05');await expect(page.locator('#todayStatus')).toHaveText('最近状态：在工作');await page.evaluate(()=>window.ZiweiChatExtra.presence(null));await expect(page.locator('#chatPresence')).toHaveText('尚无状态记录');
 });

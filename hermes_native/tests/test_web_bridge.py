@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 import json
 import os
@@ -19,7 +20,7 @@ class BridgeFiles(unittest.TestCase):
     def test_voluntary_status_unknown_fresh_and_stale(self):
         self.assertIsNone(bridge.status_record()['state'])
         self.assertEqual(json.loads(bridge.publish_status({'state':'开心'}))['error'],'invalid_status')
-        bridge.publish_status({'state':'在思考'})
+        self.wb.publish_status({'state':'在思考'})
         self.assertEqual(bridge.status_record()['state'],'在思考'); self.assertFalse(bridge.status_record()['stale'])
         file=self.root/'workspace/web-status.json';record=json.loads(file.read_text());record['updatedAt']=(datetime.now(timezone.utc)-timedelta(hours=1)).isoformat();file.write_text(json.dumps(record))
         self.assertTrue(bridge.status_record()['stale'])
@@ -74,7 +75,7 @@ class ToolRegistration(unittest.TestCase):
         bridge.install_status_tool(registry,toolsets)
         for registration,snapshot in registrations:
             self.assertEqual(registration['toolset'],'ziwei_web')
-            self.assertEqual(snapshot['ziwei_web']['tools'],['ziwei_status','ziwei_moment','ziwei_poke'])
+            self.assertEqual(snapshot['ziwei_web']['tools'],['ziwei_status','ziwei_moment','ziwei_poke','ziwei_briefing','ziwei_photo','ziwei_photo_note'])
             self.assertEqual(snapshot['ziwei_web']['includes'],[])
             for bundle in ('hermes-api-server','hermes-cron'):
                 self.assertEqual(snapshot[bundle]['tools'].count('ziwei_status'),1)
@@ -262,4 +263,208 @@ class MemoryFactoryTests(unittest.TestCase):
             module.AIAgent(memory_manager='ordinary')
         self.assertEqual(calls,[(True,True,None),(False,False,'ordinary')])
 
+class MemoryAndLogs(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name)
+        (self.root/'workspace').mkdir();(self.root/'memories').mkdir()
+        self.old=bridge.home;bridge.home=lambda:self.root
+        self.body='## 正常条目\n可以改的内容。\n§\n## 硬规则（受保护）\n这条不许修改。\n'
+        (self.root/'memories/MEMORY.md').write_text(self.body,encoding='utf-8')
+        (self.root/'memories/USER.md').write_text('## 她\n语。\n',encoding='utf-8')
+    def tearDown(self):
+        bridge.home=self.old;self.tmp.cleanup()
+    def audit_lines(self):
+        p=self.root/'workspace/memory_operations.jsonl'
+        return [json.loads(l) for l in p.read_text(encoding='utf-8').splitlines()] if p.exists() else []
+    def test_snapshot_reports_real_numbers_and_marks_protected(self):
+        snap=bridge.memory_snapshot()
+        mem=[f for f in snap['files'] if f['name']=='MEMORY.md'][0]
+        self.assertEqual(mem['chars'],len(self.body));self.assertEqual(mem['lines'],len(self.body.splitlines()))
+        self.assertEqual(mem['budget'],6000);self.assertEqual(len(mem['entries']),2)
+        self.assertEqual([e['index'] for e in mem['entries'] if e['protected']],[1])
+        self.assertEqual(mem['sha256'],hashlib.sha256(self.body.encode()).hexdigest())
+        self.assertEqual(snap['errors'],[]);self.assertEqual(snap['protected_files'],['SOUL.md','care_rules'])
+    def test_edit_audits_and_reports_occupancy_but_refuses_protected(self):
+        refused=json.loads(bridge.edit_memory({'file':'MEMORY.md','op':'remove','old_text':'这条不许修改'}))
+        self.assertEqual(refused['error'],'memory_entry_protected');self.assertEqual(self.audit_lines(),[])
+        self.assertEqual((self.root/'memories/MEMORY.md').read_text(encoding='utf-8'),self.body)
+        ok=json.loads(bridge.edit_memory({'file':'MEMORY.md','op':'replace','old_text':'可以改的内容','content':'## 正常条目\n改过了。'}))
+        self.assertTrue(ok['ok']);self.assertEqual(ok['budget'],6000);self.assertEqual(ok['chars'],len((self.root/'memories/MEMORY.md').read_text(encoding='utf-8')))
+        lines=self.audit_lines();self.assertEqual(len(lines),2)
+        self.assertEqual(lines[0]['verified'],'pending');self.assertTrue(lines[1]['verified'].startswith('ok,'))
+        self.assertIn('改过了',(self.root/'memories/MEMORY.md').read_text(encoding='utf-8'))
+    def test_edit_rejects_bad_inputs(self):
+        cases=[({'file':'SOUL.md','op':'add','content':'x'},'memory_file_not_allowed'),
+               ({'file':'MEMORY.md','op':'nuke','content':'x'},'memory_op_not_allowed'),
+               ({'file':'MEMORY.md','op':'remove','old_text':'没有任何一条包含这段'},'memory_match_not_found'),
+               ({'file':'MEMORY.md','op':'remove','old_text':'\n'},'memory_match_not_unique'),
+               ({'file':'MEMORY.md','op':'add','content':'   '},'memory_content_empty')]
+        for args,code in cases:
+            self.assertEqual(json.loads(bridge.edit_memory(args))['error'],code,args)
+    def test_briefing_and_logs_page_are_truthful(self):
+        self.assertEqual(json.loads(bridge.append_briefing({'did':'   '}))['error'],'briefing_text_empty')
+        self.assertEqual(json.loads(bridge.append_briefing({'did':'x','choice':'nap'}))['error'],'briefing_choice_not_allowed')
+        bridge.append_briefing({'did':'挑了第一件真事。','choice':'self_directed_task','opportunity':1,
+                                'at':'2026-10-15T08:05:00+07:00','evidence':['workspace/diary/2026-10-15.md']})
+        bridge.append_briefing({'did':'休息了一次。','choice':'rest','opportunity':2,'at':'2026-10-15T10:00:00+07:00'})
+        (self.root/'workspace/memory_operations.jsonl').write_text(json.dumps({'time':'2026-10-15T08:10:00+07:00','source':'wecom DM','op':'replace','target':'MEMORY.md 补一条','verified':'ok'},ensure_ascii=False)+'\n',encoding='utf-8')
+        page=bridge.logs_page(limit=10)
+        self.assertEqual(page['errors'],[]);self.assertEqual([r['kind'] for r in page['data']],['briefing','briefing','memory_audit'])
+        self.assertEqual(page['data'][0]['refs'],['workspace/diary/2026-10-15.md'])
+        self.assertFalse(page['has_more'])
+        first=bridge.logs_page(limit=2);self.assertTrue(first['has_more']);self.assertEqual(len(first['data']),2)
+        rest=bridge.logs_page(cursor=first['next_cursor'],limit=2)
+        self.assertEqual([r['kind'] for r in rest['data']],['memory_audit']);self.assertFalse(rest['has_more'])
+        today=bridge.logs_page(date='2026-10-15',limit=10)
+        self.assertEqual(len(today['data']),3)
+    def test_logs_report_a_broken_store_instead_of_an_empty_page(self):
+        (self.root/'workspace/briefings.jsonl').write_text('{ not json',encoding='utf-8')
+        with self.assertRaises(bridge.MemoryError) as caught:bridge.logs_page()
+        self.assertEqual(caught.exception.code,'log_store_corrupt')
+
+class DiaryRecords(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(); self.root = Path(self.tmp.name)
+        self.dir = self.root/'workspace/diary'; self.dir.mkdir(parents=True)
+        self.old = bridge.home; bridge.home = lambda:self.root
+        (self.dir/'2026-10-15.md').write_text('# 今天的日记\n今天把记忆整理做完了。\n', encoding='utf-8')
+        (self.dir/'2026-10-14.md').write_text('十月十四：课很累，但她进步了。\n', encoding='utf-8')
+        (self.dir/'2026-10-13.md').write_text('十月十三：搬机器。\n', encoding='utf-8')
+        (self.dir/'notes.txt').write_text('不是日记\n', encoding='utf-8')
+    def tearDown(self):
+        bridge.home = self.old; self.tmp.cleanup()
+    def test_list_is_newest_first_with_real_metadata(self):
+        page = bridge.diary_page()
+        self.assertEqual([r['date'] for r in page['data']], ['2026-10-15','2026-10-14','2026-10-13'])
+        self.assertEqual(page['total'], 3); self.assertIsNone(page['nextOffset'])
+        self.assertEqual(page['errors'], []); self.assertTrue(page['checkedAt'])
+        first = page['data'][0]
+        self.assertEqual(first['source'], 'workspace/diary/2026-10-15.md')
+        self.assertEqual(first['title'], '今天的日记'); self.assertTrue(first['document'])
+        self.assertEqual(first['revision'], hashlib.sha256((self.dir/'2026-10-15.md').read_bytes()).hexdigest())
+        self.assertNotIn('content', first)
+    def test_id_is_stable_opaque_and_lookup_returns_the_saved_text(self):
+        first = bridge.diary_page()['data'][0]
+        self.assertRegex(first['id'], r'^diary-[0-9a-f]{16}$')
+        self.assertNotIn('2026', first['id'])
+        document = bridge.diary_document(first['id'])
+        self.assertIn('今天把记忆整理做完了', document['content'])
+        self.assertEqual(document['revision'], first['revision'])
+        self.assertEqual(bridge.diary_page()['data'][0]['id'], first['id'])
+    def test_search_and_pagination(self):
+        page = bridge.diary_page(q='搬机器')
+        self.assertEqual([r['date'] for r in page['data']], ['2026-10-13']); self.assertEqual(page['total'], 1)
+        limited = bridge.diary_page(limit='2')
+        self.assertEqual(len(limited['data']), 2); self.assertEqual(limited['nextOffset'], 2)
+        second = bridge.diary_page(limit='2', offset='2')
+        self.assertEqual([r['date'] for r in second['data']], ['2026-10-13']); self.assertIsNone(second['nextOffset'])
+    def test_bad_ids_and_pagination_are_refused_not_guessed(self):
+        for bad in ('diary-0000000000000000', 'workspace/diary/2026-10-15.md', '../memories/MEMORY.md', ''):
+            with self.assertRaises(bridge.MemoryError) as caught:
+                bridge.diary_document(bad)
+            self.assertEqual(caught.exception.code, 'invalid_id' if bad != 'diary-0000000000000000' else 'diary_not_found')
+        for bad in ('0', '101', '-1', 'abc'):
+            with self.assertRaises(bridge.MemoryError) as caught:
+                bridge.diary_page(limit=bad)
+            self.assertEqual(caught.exception.code, 'invalid_pagination')
+    def test_missing_directory_is_empty_not_an_error(self):
+        (self.dir/'2026-10-15.md').unlink(); (self.dir/'2026-10-14.md').unlink(); (self.dir/'2026-10-13.md').unlink()
+        empty = bridge.diary_page()
+        self.assertEqual(empty['data'], []); self.assertEqual(empty['total'], 0); self.assertEqual(empty['errors'], [])
+    def test_unreadable_file_is_reported_not_silently_skipped(self):
+        broken = self.dir/'2026-10-12.md'; broken.write_text('坏文件\n', encoding='utf-8'); broken.chmod(0o000)
+        try:
+            page = bridge.diary_page()
+            codes = [e['code'] for e in page['errors']]
+            self.assertIn('diary_unreadable', codes)
+            self.assertEqual(page['total'], 3)
+        finally:
+            broken.chmod(0o644)
+
 if __name__=='__main__':unittest.main()
+
+
+class MediaManifestEnvelope(unittest.TestCase):
+    """多气泡信封里的 MEDIA: 也必须登记成附件（曾经全漏，表现为"附件尚未收到"、点重试无效）。"""
+
+    def test_media_path_inside_reply_envelope(self):
+        outbox = bridge.home() / 'workspace' / 'outbox'
+        outbox.mkdir(parents=True, exist_ok=True)
+        target = outbox / 'test-envelope-attachment.md'
+        target.write_text('hello', encoding='utf-8')
+        try:
+            envelope = json.dumps({'type': 'ziwei.reply.v1',
+                                   'messages': ['前言', '给你文件：' + chr(10) + 'MEDIA:' + str(target)]},
+                                  ensure_ascii=False)
+            found, errors = bridge.media_manifest(envelope)
+            self.assertEqual(errors, [])
+            self.assertEqual([f['name'] for f in found], ['test-envelope-attachment.md'])
+        finally:
+            target.unlink(missing_ok=True)
+
+
+class DiaryFields(unittest.TestCase):
+    """日记的手写字段与私密页：字段原样透传；私密页连数量都不给。"""
+
+    def _page(self, name, body):
+        root = bridge.home() / 'workspace' / 'diary'
+        root.mkdir(parents=True, exist_ok=True)
+        path = root / name
+        path.write_text(body, encoding='utf-8')
+        return path
+
+    def test_shared_page_shows_heading_title_and_handwritten_fields(self):
+        path = self._page('2099-03-03.md',
+                          '## 一个标题' + chr(10) + '心情：亮着' + chr(10) + '一句：今天很好'
+                          + chr(10) + '标签：讲话、学会的' + chr(10) + chr(10) + '正文。' + chr(10))
+        try:
+            records, errors = bridge.diary_records()
+            self.assertEqual(errors, [])
+            record = next(r for r in records if r['date'] == '2099-03-03')
+            self.assertEqual(record['title'], '一个标题')
+            self.assertEqual(record['mood'], '亮着')
+            self.assertEqual(record['summary'], '今天很好')
+            self.assertEqual(record['tags'], ['讲话', '学会的'])
+            self.assertEqual(record['visibility'], 'shared')
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_private_page_is_invisible_and_its_id_is_404(self):
+        path = self._page('2099-03-04-memo.md', '## 只写给自己' + chr(10) + '心情：不想说' + chr(10))
+        try:
+            records, _ = bridge.diary_records()
+            self.assertFalse([r for r in records if r['date'] == '2099-03-04'])
+            with self.assertRaises(bridge.MemoryError):
+                bridge.diary_document(bridge._diary_id('workspace/diary/2099-03-04-memo.md'))
+        finally:
+            path.unlink(missing_ok=True)
+
+class StatusNote(unittest.TestCase):
+    """她要在“渡鸦的小屋”右边看到两行字：我那句话 + 心情。"""
+
+    def setUp(self):
+        self.root = tempfile.TemporaryDirectory()
+        os.environ['HERMES_HOME'] = self.root.name
+        (Path(self.root.name) / 'workspace').mkdir(parents=True, exist_ok=True)
+        spec = importlib.util.spec_from_file_location('web_bridge_note', Path(__file__).parents[1] / 'web_bridge.py')
+        self.wb = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.wb)
+
+    def tearDown(self):
+        self.root.cleanup()
+
+    def test_note_and_mood_travel_with_the_status(self):
+        self.wb.publish_status({'state': '在想你', 'note': '刚刚还想着你', 'mood': '今天不太想说话'})
+        view = self.wb.status_record()
+        self.assertEqual(view['state'], '在想你')
+        self.assertEqual(view['note'], '刚刚还想着你')
+        self.assertEqual(view['mood'], '今天不太想说话')
+
+    def test_note_is_optional_and_clipped(self):
+        self.wb.publish_status({'state': '在工作'})
+        view = self.wb.status_record()
+        self.assertEqual(view['note'], '')
+        self.wb.publish_status({'state': '在工作', 'note': '字' * 200, 'mood': '字' * 200})
+        view = self.wb.status_record()
+        self.assertEqual(len(view['note']), 60)
+        self.assertEqual(len(view['mood']), 24)

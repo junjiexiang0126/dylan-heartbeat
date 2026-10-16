@@ -2,10 +2,13 @@
 const path=require('node:path'),fs=require('node:fs');
 const {NativeHistory}=require('./native_history'),{VoiceSynthesizer}=require('./voice_synthesizer'),{extract}=require('./document_text');
 const {ChatStore,uuid,hash}=require('./chat_store'),{HermesClient}=require('./hermes_client'),{Attachments}=require('./attachments'),{SSEParser}=require('./sse_parser');
+const presentation=require('./chat_presentation');
+const {ActionLog}=require('./action_log');
 const TERMINAL=['completed','failed','cancelled','interrupted'];
 const {VoiceTranscriber}=require('./voice_transcriber');
 function createChatService(dir,{authorized=()=>true}={}){
  const client=new HermesClient(),store=new ChatStore(dir,hash(client.base+'|'+client.session+'|'+client.key)),files=new Attachments(dir,store),voice=new VoiceTranscriber();
+ const actions=new ActionLog(store.db);store.actions=actions;
  const history=new NativeHistory(client,store),speech=new VoiceSynthesizer(files);
  let presenceCache=null,working=false,closing=false,connected=false,lastError=null,lastCheck=0,checking=null;
  const timers=new Set();
@@ -65,21 +68,29 @@ function createChatService(dir,{authorized=()=>true}={}){
  function finish(id,o){
   if(!TERMINAL.includes(o.status))return false;
   store.db.prepare('DELETE FROM meta WHERE key=?').run('approval:'+id);
-  store.transaction(()=>{if(typeof o.output==='string'&&o.output)store.assistant(id,'reply-'+id,o.output,'final',o.status);store.state(id,o.status,o.status==='completed'?null:'hermes_'+o.status);});return true;
+  store.transaction(()=>{
+   if(typeof o.output==='string'&&o.output){
+    const view=o.status==='completed'?presentation.parse(o.output):{messages:[o.output]};
+    if(view.structured)store.db.prepare('INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run('presentation:'+id,JSON.stringify({raw:o.output,type:'ziwei.reply.v1'}));
+    if(view.summary)store.assistant(id,'summary-'+id,view.summary,'summary',o.status);
+    view.messages.forEach((text,index)=>store.assistant(id,index===view.messages.length-1?'reply-'+id:'reply-'+id+'-part-'+index,text,'final',o.status));
+   }
+   store.state(id,o.status,o.status==='completed'?null:'hermes_'+o.status);
+  });return true;
  }
  async function consume(r){
   const upstream=await client.stream(r.run_id,r.upstream_seq);
   if(!upstream.ok||!upstream.headers.get('content-type')?.includes('text/event-stream'))return finish(r.id,await client.status(r.run_id));
   let bytes=0,terminal=false;
-  const parser=new SSEParser(({data})=>{
-   if(!data||typeof data!=='object')return;const event=data.event||data.type;
+  const parser=new SSEParser(({event:named,data})=>{
+   if(!data||typeof data!=='object')return;const event=data.event||data.type||named;
    store.upstreamEvent(r.id,data.seq,()=>{
-    if(event==='message.delta'&&typeof data.delta==='string')store.event(r.id,'message.delta',{delta:data.delta});
+    if(['message.delta','assistant.delta'].includes(event)&&typeof data.delta==='string')store.event(r.id,'message.delta',{delta:data.delta});
     else if(event==='message.interim'&&typeof data.text==='string'){store.assistant(r.id,'interim-'+r.id+'-'+data.seq,data.text,'commentary');}
     else if(/^run\.(completed|failed|cancelled|interrupted)$/.test(event||'')){terminal=finish(r.id,{...data,status:event.slice(4)});}
     else if(event==='approval.request'){approvalRecord(r.id,data);store.event(r.id,'request.notice',{text:'知微正在等待你的批准。'});}
     else if(event==='approval.responded'){store.db.prepare('DELETE FROM meta WHERE key=?').run('approval:'+r.id);store.event(r.id,'approval.resolved',{});}
-    else if(/^tool\.(started|completed|failed)$/.test(event||''))store.event(r.id,'request.notice',{text:event==='tool.started'?'知微正在处理这条消息。':'知微已更新处理进度。'});
+    else if(/^tool\.(started|completed|failed)$/.test(event||'')&&actions.capture(r.id,event,data))store.event(r.id,'actions.changed',{});
    });
   });
   for await(const c of upstream.body){bytes+=c.length;if(bytes>16*1024*1024)throw Error('stream_limit');parser.feed(c);if(terminal)break;}
@@ -93,7 +104,7 @@ function createChatService(dir,{authorized=()=>true}={}){
      await client.init();connected=true;lastError=null;
      if(r.state==='queued'){
       // Persist the exact transport before admission; a lost response reuses identical bytes.
-      const payload=JSON.parse(r.payload),transcripts=await files.transcripts(payload,voice),documents={};for(const id of payload.attachments){const a=files.get(id),d=await extract(path.join(files.dir,id),a.name);if(d?.text)documents[id]=d;}payload.transport=files.input(payload,transcripts,documents);
+      const payload=JSON.parse(r.payload),transcripts=await files.transcripts(payload,voice),documents={};for(const id of payload.attachments){const a=files.get(id),d=await extract(path.join(files.dir,id),a.name);if(d?.text)documents[id]=d;}payload.transport=presentation.transport(files.input(payload,transcripts,documents));
       store.db.prepare('UPDATE requests SET payload=? WHERE id=?').run(JSON.stringify(payload),r.id);
       store.dispatched(r.id);r=store.request(r.id);
      }
@@ -111,7 +122,7 @@ function createChatService(dir,{authorized=()=>true}={}){
  let pokeSyncing=false,pokeSyncError=null;
  async function syncPokes(){if(pokeSyncing||closing||!client.configured())return;pokeSyncing=true;try{let cursor=store.db.prepare("SELECT value FROM meta WHERE key='poke_cursor'").get()?.value||null;for(let page=0;page<5;page++){const o=await client.json('/ziwei/web/pokes'+(cursor?'?cursor='+encodeURIComponent(cursor):''));if(!Array.isArray(o.data)||o.data.length>100)throw Error('poke_manifest_invalid');if(closing)return;let changes=0;for(const p of o.data){if(!uuid(p.id)||p.author!=='ziwei'||p.target!=='user'||!Number.isFinite(Date.parse(p.at)))throw Error('poke_manifest_invalid');changes+=Number(store.db.prepare("INSERT OR IGNORE INTO messages(id,role,kind,content,created_at,status) VALUES(?,'assistant','poke','知微拍了拍你',?,'recorded')").run('poke-native-'+p.id,p.at).changes);} if(changes)store.event(null,'timeline.changed',{});pokeSyncError=null;if(!o.next_cursor)break;cursor=o.next_cursor;store.db.prepare("INSERT INTO meta VALUES('poke_cursor',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(cursor);}}catch{pokeSyncError='poke_sync_unavailable';}finally{pokeSyncing=false;}}
  const pokeTimer=setInterval(()=>{void syncPokes();},15000);pokeTimer.unref();timers.add(pokeTimer);queueMicrotask(()=>{void syncPokes();});
- const historyTimer=setInterval(()=>{if(!closing&&client.configured())void history.sync();},60000);historyTimer.unref();timers.add(historyTimer);
+ const historyTimer=setInterval(()=>{if(!closing&&client.configured())void history.sync();},300000);historyTimer.unref();timers.add(historyTimer);
  const recoveryTimer=setInterval(()=>work().catch(()=>{}),10000);recoveryTimer.unref();timers.add(recoveryTimer);
  function status(){return client.configured();}
  async function proxy(req,res,pathname,url){
@@ -152,7 +163,7 @@ function createChatService(dir,{authorized=()=>true}={}){
     const limit=Number(url.searchParams.get('limit')||50),before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER),q=url.searchParams.get('q')||'',source=url.searchParams.get('source')||'live';
     if(!Number.isSafeInteger(limit)||limit<1||limit>100||!Number.isSafeInteger(before)||before<1||q.length>200||!['live','archive'].includes(source))throw Error('invalid_pagination');
     const data=store.list({limit,before,q,source,favorite:url.searchParams.get('favorite')==='true',trash:url.searchParams.get('trash')==='true'});
-    return json(res,200,{data,before:data[0]?.seq||null,hasMore:data.length===limit});
+    return json(res,200,{data,before:data[0]?.seq||null,hasMore:data.length===limit,requests:store.db.prepare("SELECT id,state FROM requests WHERE state NOT IN ('completed','failed','cancelled','interrupted') ORDER BY seq").all(),eventCursor:store.db.prepare('SELECT coalesce(max(seq),0) seq FROM events').get().seq});
    }
    const requestIdMatch=/^\/api\/chat\/requests\/([a-f0-9-]{36})$/.exec(pathname);if(requestIdMatch&&req.method==='GET'){const r=store.request(requestIdMatch[1]);if(!r)return json(res,404,{error:'request_not_found'});return json(res,200,{requestId:r.id,state:r.state,error:r.error});}
    if(pathname==='/api/chat/requests'&&req.method==='GET')return json(res,200,{data:store.db.prepare("SELECT id,state,run_id,error,created_at FROM requests WHERE state NOT IN ('completed','failed','cancelled','interrupted') ORDER BY seq").all()});
@@ -167,8 +178,8 @@ function createChatService(dir,{authorized=()=>true}={}){
     json(res,result.replayed?200:202,{requestId:b.requestId,state:result.request.state,replayed:result.replayed});void work();return;
    }
    if(pathname==='/api/chat/events'&&req.method==='GET'){
-    let after=Number(req.headers['last-event-id']||url.searchParams.get('after')||0);if(!Number.isSafeInteger(after)||after<0)throw Error('invalid_event_cursor');
-    res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'});res.write(': connected\n\n');let ticks=0;
+    const supplied=req.headers['last-event-id']||url.searchParams.get('after');let after=Number(supplied||(url.searchParams.get('tail')==='true'?store.db.prepare('SELECT coalesce(max(seq),0) seq FROM events').get().seq:0));if(!Number.isSafeInteger(after)||after<0)throw Error('invalid_event_cursor');
+    res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'});res.write('id: '+after+'\nevent: cursor\ndata: {}\n\n');let ticks=0;
     const timer=setInterval(()=>{
      if(!authorized(req)){res.end();return;}
      for(const e of store.events(after)){after=e.seq;if(!res.write('id: '+e.seq+'\nevent: '+e.kind+'\ndata: '+JSON.stringify({requestId:e.request_id,...e.data})+'\n\n')){res.end();return;}}
@@ -176,6 +187,8 @@ function createChatService(dir,{authorized=()=>true}={}){
     },300);timers.add(timer);res.on('close',()=>{clearInterval(timer);timers.delete(timer);});return;
    }
    if(pathname==='/api/chat/attachments'&&req.method==='POST')return json(res,201,await files.upload(req));
+   const preview=/^\/api\/chat\/attachments\/([a-f0-9-]{36})\/preview$/.exec(pathname);
+   if(preview&&req.method==='GET'){const a=files.get(preview[1]);const value=await extract(path.join(files.dir,a.id),a.name);return value?.text?json(res,200,{text:value.text.slice(0,200000),truncated:true}):json(res,415,{error:'preview_unavailable'});}
    const metadata=/^\/api\/chat\/attachments\/([a-f0-9-]{36})\/metadata$/.exec(pathname);if(metadata&&req.method==='GET')return json(res,200,files.get(metadata[1]));
    if(pathname.startsWith('/api/chat/attachments/')&&['GET','HEAD'].includes(req.method))return files.serve(req,res,pathname.slice('/api/chat/attachments/'.length));
    if(pathname==='/api/chat/action'&&req.method==='POST'){const b=await body(req);if(Object.keys(b).some(k=>!['id','action'].includes(k))||typeof b.id!=='string'||!['favorite','unfavorite','delete','restore'].includes(b.action))throw Error('invalid_action');store.action(b.id,b.action);return json(res,200,{ok:true});}

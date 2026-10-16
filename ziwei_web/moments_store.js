@@ -14,6 +14,7 @@ class MomentsStore{
   CREATE UNIQUE INDEX IF NOT EXISTS one_native_reply ON comments(reply_to) WHERE author='ziwei';
   CREATE TABLE IF NOT EXISTS likes(post_id TEXT NOT NULL,author TEXT NOT NULL,PRIMARY KEY(post_id,author),FOREIGN KEY(post_id) REFERENCES posts(id));
   CREATE TABLE IF NOT EXISTS native_events(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS skipped_native_events(id TEXT PRIMARY KEY,reason TEXT NOT NULL,record_index INTEGER NOT NULL,source_at TEXT,target_id TEXT,skipped_at TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY,trigger_id TEXT UNIQUE NOT NULL,post_id TEXT NOT NULL,reply_id TEXT NOT NULL,payload TEXT NOT NULL,state TEXT NOT NULL DEFAULT 'queued',run_id TEXT,submitted_at INTEGER,created_at INTEGER NOT NULL,due_at INTEGER NOT NULL,error TEXT,tries INTEGER NOT NULL DEFAULT 0,next_at INTEGER NOT NULL DEFAULT 0);
   CREATE TABLE IF NOT EXISTS images(id TEXT PRIMARY KEY,name TEXT NOT NULL,mime TEXT NOT NULL,size INTEGER NOT NULL,sha256 TEXT NOT NULL,created_at TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS notifications(seq INTEGER PRIMARY KEY AUTOINCREMENT,event_id TEXT UNIQUE NOT NULL,post_id TEXT NOT NULL,kind TEXT NOT NULL,at TEXT NOT NULL,due_at INTEGER NOT NULL,seen INTEGER NOT NULL DEFAULT 0);
@@ -37,6 +38,11 @@ class MomentsStore{
  delete(id){return this.transaction(()=>this.remove(id));}
  job(id){return this.db.prepare('SELECT * FROM jobs WHERE id=?').get(id);}
  updateJob(id,state,error=null){this.db.prepare("UPDATE jobs SET state=?,error=? WHERE id=? AND state<>'cancelled'").run(state,error,id);}
+ skippedID(raw){return typeof raw?.id==='string'&&raw.id.length<=128?raw.id:'invalid-'+hash(JSON.stringify(raw));}
+ wasSkipped(raw){return !!this.db.prepare('SELECT 1 FROM skipped_native_events WHERE id=?').get(this.skippedID(raw));}
+ skipNative(raw,reason,index){const id=this.skippedID(raw),target=raw?.reply_to||raw?.target_id;this.db.prepare('INSERT OR IGNORE INTO skipped_native_events VALUES(?,?,?,?,?,?)').run(id,reason,index,typeof raw?.at==='string'?raw.at.slice(0,64):null,typeof target==='string'?target.slice(0,128):null,new Date(this.now()).toISOString());}
+ pruneSkipped(ids){const list=[...new Set(ids||[])].filter(x=>typeof x==='string'&&x.length&&x.length<=128);if(!list.length)return 0;const marks=list.map(()=>'?').join(',');return this.db.prepare(`DELETE FROM skipped_native_events WHERE id IN (${marks}) OR target_id IN (${marks})`).run(...list,...list).changes;}
+ skipped(){return {total:this.db.prepare('SELECT count(*) n FROM skipped_native_events').get().n,records:this.db.prepare("SELECT *, 'invalidated' AS state FROM skipped_native_events ORDER BY skipped_at DESC,id LIMIT 50").all()};}
  native(raw){if(!raw||!uuid(raw.id)||raw.author!=='ziwei'||!iso(raw.at)||Date.parse(raw.at)>this.now()+60000||!['post','reply','like','unlike','delete'].includes(raw.kind))throw Error('invalid_native_record');
   // context_note is deliberately discarded before hashing and storage.
   const v={id:raw.id,kind:raw.kind,at:new Date(raw.at).toISOString(),text:raw.text||'',images:raw.images||[],reply_to:raw.reply_to||null,target_id:raw.target_id||null},fp=hash(JSON.stringify(v));return this.transaction(()=>{const old=this.db.prepare('SELECT fingerprint FROM native_events WHERE id=?').get(v.id);if(old){if(old.fingerprint!==fp)throw Error('native_edit_rejected');return false;}

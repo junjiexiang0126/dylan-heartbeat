@@ -5,9 +5,12 @@ window.ZiweiChatExtra=(()=>{
  function presence(value){
   const valid=value?.source==='ziwei'&&['在工作','在休息','在思考','在想你'].includes(value.state)&&Number.isFinite(Date.parse(value.updatedAt));
   const fresh=valid&&!value.stale&&Date.now()-Date.parse(value.updatedAt)<1800000;
-  $('#chatPresence').textContent=fresh?value.state:valid?'状态已过期':'状态未同步';$('#chatPresence').title=valid?'知微更新于 '+new Date(value.updatedAt).toLocaleString('zh-CN'):'';
-  $('#todayStatus').textContent=fresh?value.state:valid?'等待知微更新状态':'等待知微同步今日状态';$('#todayStatusTime').textContent=valid?'知微更新于 '+new Date(value.updatedAt).toLocaleString('zh-CN')+(fresh?'':'（已过期）'):'更新时间：暂无';
-  document.querySelector('.today .status-tag').textContent=fresh?'本人更新':valid?'已过期':'待同步';
+  const short=valid?new Intl.DateTimeFormat('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Bangkok'}).format(new Date(value.updatedAt)):null;
+  const full=valid?new Intl.DateTimeFormat('zh-CN',{dateStyle:'short',timeStyle:'short',hour12:false,timeZone:'Asia/Bangkok'}).format(new Date(value.updatedAt)):null;
+  $('#chatPresence').textContent=fresh?value.state:valid?'最后更新于 '+short:'尚无状态记录';$('#chatPresence').title=valid?'知微最后发布：'+value.state+' · '+full:'';
+  $('#todayStatus').textContent=fresh?value.state:valid?'最近状态：'+value.state:'等待知微同步今日状态';$('#todayStatusTime').textContent=valid?'知微更新于 '+full:'更新时间：暂无';
+  document.querySelector('.today .status-tag').textContent=fresh?'本人更新':valid?'最后更新于 '+short:'暂无记录';
+
  }
  async function approvals(){
   if(!api)return;const v=epoch,o=await api('/api/chat/approvals');if(v!==epoch)return;
@@ -22,12 +25,15 @@ window.ZiweiChatExtra=(()=>{
   }
   for(const card of list.children)if(!keep.has(card.dataset.key))card.remove();
  }
- async function history(){if(!api)return;const v=epoch,o=await api('/api/chat/history');if(v!==epoch)return;$('#chatHistoryStatus').textContent=(o.state==='running'?'正在同步':o.state==='completed'?'同步完成':o.state==='failed'?'同步未完成':'尚未同步')+' · '+o.sessions+' 个会话 / '+o.messages+' 条记录'+(o.error?' · '+o.error:'')+'。'+(o.scope||'');}
+ async function history(){if(!api)return;const v=epoch,o=await api('/api/chat/history');if(v!==epoch)return;$('#chatHistoryStatus').textContent=(['running','pending'].includes(o.state)?'正在后台增量同步':o.state==='completed'?'同步完成':o.state==='failed'?'同步未完成':'尚未同步')+' · '+o.sessions+' 个会话 / '+o.messages+' 条记录'+(o.error?' · '+o.error:'')+(o.failedAt?' · 断点：'+(o.failedAt.session||'会话列表')+' / '+o.failedAt.offset:'')+'。'+(o.scope||'');}
  $('#chatImageFull').onerror=()=>{$('#chatImageRetry').hidden=false;};$('#chatImageFull').onload=()=>{$('#chatImageRetry').hidden=true;};$('#chatImageRetry').onclick=()=>{$('#chatImageFull').src=viewer[index].src+'?retry='+Date.now();};
  function paintImage(){const image=viewer[index];if(!image)return;scale=1;$('#chatImageFull').style.width='100%';$('#chatImageFull').src=image.src;$('#chatImageFull').alt=image.alt;$('#chatImageName').textContent=(index+1)+' / '+viewer.length+' · '+image.alt;$('#chatImageSave').href=image.src;$('#chatImageSave').download=image.alt;$('#chatImagePrevious').disabled=index===0;$('#chatImageNext').disabled=index===viewer.length-1;}
  function zoom(value){scale=Math.min(4,Math.max(1,value));$('#chatImageFull').style.width=scale*100+'%';}
  function showImage(img){viewer=[...document.querySelectorAll('#chatMessages img.message-media')].map(i=>({src:i.src,alt:i.alt}));index=viewer.findIndex(i=>i.src===img.src);paintImage();$('#chatImageViewer').showModal();}
  $('#chatImageClose').onclick=()=>$('#chatImageViewer').close();$('#chatImageViewer').addEventListener('close',()=>{$('#chatImageFull').removeAttribute('src');$('#chatImageSave').removeAttribute('href');$('#chatImageName').textContent='';viewer=[];});
+// 「保存原图」也不再同页跳转；点浮层空白处可以关掉（原来只有 × 一个出口）
+$('#chatImageSave').onclick=e=>{e.preventDefault();const art=viewer[index]||{src:$('#chatImageFull').src,alt:'image.png'};window.ZiweiSave&&window.ZiweiSave.saveOrShare(art.src,art.alt);};
+$('#chatImageViewer').addEventListener('click',e=>{if(e.target===$('#chatImageViewer'))$('#chatImageViewer').close();});
  $('#chatImagePrevious').onclick=()=>{if(index>0){index--;paintImage();}};$('#chatImageNext').onclick=()=>{if(index<viewer.length-1){index++;paintImage();}};
  $('#chatImageZoomIn').onclick=()=>zoom(scale+.5);$('#chatImageZoomOut').onclick=()=>zoom(scale-.5);
  const canvas=$('#chatImageCanvas'),distance=e=>Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);

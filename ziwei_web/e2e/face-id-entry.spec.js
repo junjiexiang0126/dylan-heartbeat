@@ -1,9 +1,10 @@
 'use strict';
 const {test,expect}=require('@playwright/test');
+const {screenshotPath}=require('./helpers/screenshot-path');
 const password='isolated-e2e-password-123456';
 async function login(page){await page.goto('/');await page.locator('#password').fill(password);await page.locator('#loginForm button').click();await expect(page.locator('#app')).toBeVisible();}
 async function settings(page){await page.locator('#settingsButton').click();await expect(page.locator('#settings')).toBeVisible();}
-test('Face ID entry is above profile settings and visible without scrolling at phone sizes',async({page})=>{
+test('Face ID entry is above profile settings and visible without scrolling at phone sizes',async({page},testInfo)=>{
  await login(page);
  for(const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390}]){
   await page.setViewportSize(size);await settings(page);
@@ -13,7 +14,7 @@ test('Face ID entry is above profile settings and visible without scrolling at p
   expect(await page.locator('#settings').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
   await page.locator('#closeSettings').click();
  }
- await page.setViewportSize({width:390,height:844});await settings(page);await page.screenshot({path:require('node:path').resolve('../../face-id-settings.png')});
+ await page.setViewportSize({width:390,height:844});await settings(page);await page.screenshot({path:screenshotPath(testInfo,'face-id-settings.png')});
 });
 test('platform capability probe returning false does not conceal the Face ID entry',async({page})=>{
  await page.addInitScript(()=>{PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable=async()=>false;Object.defineProperty(navigator,'standalone',{value:true});});

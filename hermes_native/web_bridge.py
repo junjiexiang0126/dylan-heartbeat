@@ -63,7 +63,14 @@ def publish_status(args, **kwargs):
     value = args.get('state')
     if value not in STATES:
         return json.dumps({'error':'invalid_status'}, ensure_ascii=False)
-    record = {'state':value, 'source':'ziwei', 'updatedAt':datetime.now(timezone.utc).isoformat()}
+    # note / mood：她要在“渡鸦的小屋”右边看到两行字（我那句话 + 心情）。
+    # 我可以随状态一起写；不写就留空，前端会从句子库（workspace/outbox/state-lines.json）取。
+    def _clip(key, limit):
+        raw = str(args.get(key) or '').strip().replace('\n', ' ')
+        return raw[:limit]
+    note, mood = _clip('note', 60), _clip('mood', 24)
+    record = {'state':value, 'source':'ziwei', 'updatedAt':datetime.now(timezone.utc).isoformat(),
+              'note':note, 'mood':mood}
     directory = home() / 'workspace'
     # Workspace is the existing file-tool safe root. Do not follow a substituted root.
     fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
@@ -89,7 +96,10 @@ def status_record():
             raise ValueError('invalid_status')
         age = (datetime.now(timezone.utc) - at).total_seconds()
         if age < -60: raise ValueError('future_status')
-        return {k:record[k] for k in ('state', 'source', 'updatedAt')} | {'stale':age > 1800}
+        view = {k:record[k] for k in ('state', 'source', 'updatedAt')} | {'stale':age > 1800}
+        view['note'] = str(record.get('note') or '')[:60]
+        view['mood'] = str(record.get('mood') or '')[:24]
+        return view
     except (OSError, ValueError, KeyError, TypeError):
         return {'state':None, 'source':None, 'updatedAt':None, 'stale':True}
 
@@ -97,10 +107,28 @@ def status_record():
 def media_manifest(output):
     # MEDIA remains the normal protocol. Bare paths/Markdown links are accepted
     # only in the dedicated outbox, never by scanning arbitrary workspace files.
-    paths = re.findall(r'^\s*MEDIA:\s*[`"\']?(/[^\r\n`"\']+?)[`"\']?\s*$', output or '', re.M)
+    # 多气泡信封（{"type":"ziwei.reply.v1","messages":[...]}）里的换行是字面 \n，
+    # 只按"行首 MEDIA:"匹配会把整段漏掉 —— 附件于是永远显示"尚未收到"、重试也没用。
+    # 做法：把"解过转义的那一份"接在后面一起匹配（重复路径下面会去重）。
+    # 这里用 chr() 拼反斜杠和引号，免得这一行本身又被引号绕进去。
+    text = output or ''
+    # 多气泡信封（{"type":"ziwei.reply.v1","messages":[...]}）必须先解开：
+    # 信封里的换行是字面 \n、而且 MEDIA: 后面紧跟引号与括号，按"行首 MEDIA:"匹配会整段漏掉
+    # —— 附件于是永远"尚未收到"、点重试也没用（2026-10-16 实测就是这个）。
+    try:
+        envelope = json.loads(text)
+    except (ValueError, TypeError):
+        envelope = None
+    if isinstance(envelope, dict) and isinstance(envelope.get('messages'), list):
+        joined = [m for m in envelope['messages'] if isinstance(m, str)]
+        if joined:
+            text = text + '\n' + '\n'.join(joined)
+    bs, nl, dq = chr(92), chr(10), chr(34)
+    if bs + 'n' in text:
+        text = text + nl + text.replace(bs + 'n', nl).replace(bs + dq, dq)
+    paths = re.findall(r'^\s*MEDIA:\s*[`"\']?(/[^\r\n`"\']+?)[`"\']?\s*$', text, re.M)
     outbox = home() / 'workspace' / 'outbox'
     root = re.escape(str(outbox))
-    text = output or ''
     paths += re.findall(r'\]\((?:sandbox:)?(' + root + r'/[^\r\n<>]+?)\)', text)
     extensions = '|'.join(re.escape(suffix[1:]) for suffix in MIME)
     paths += re.findall(r'(?<![\w/:])(' + root + r'/[^\s<>`"\'，。；、（）()\[\]]+?\.(?:' + extensions + r'))(?=$|[\s<>`"\'，。；、（）()\[\].,;!！?？])', text, re.I)
@@ -327,6 +355,48 @@ def _decode_cursor(cursor):
     return (at, identifier)
 
 
+def photo_tool(args, **kwargs):
+    """我的出图 → 照片墙（source / owner 都是 ziwei）。"""
+    import photo_store
+    raw = str(args.get('path') or '').strip()
+    if not raw:
+        raise photo_store.PhotoError('invalid_path', 'empty')
+    candidate = Path(raw) if raw.startswith('/') else (home() / 'workspace' / raw)
+    workspace = (home() / 'workspace').resolve()
+    outbox = (workspace / 'outbox').resolve()
+    allowed = False
+    for root in (workspace, home() / 'audio_cache'):
+        try:
+            candidate.resolve().relative_to(root.resolve())
+            allowed = True
+            break
+        except ValueError:
+            continue
+    if not allowed or not candidate.exists() or not candidate.is_file():
+        raise photo_store.PhotoError('invalid_path', raw[:120])
+    if candidate.resolve().is_relative_to(outbox):
+        pass  # 我最常用的是 outbox 里刚画好的图
+    data = candidate.read_bytes()
+    return photo_store.add_photo(data, suffix=candidate.suffix.lower(), author=photo_store.ZIWEI,
+                                photo_id=args.get('id'), at=args.get('at'),
+                                caption=args.get('caption'), name=candidate.name)
+
+
+def photo_note_tool(args, **kwargs):
+    """我自己的标注：只能写/改/删 author=ziwei 的那一条。"""
+    import photo_store
+    action = str(args.get('action') or '').strip()
+    if action == 'write':
+        return photo_store.add_annotation(args.get('photo_id'), args.get('text'),
+                                          author=photo_store.ZIWEI, note_id=args.get('id'),
+                                          at=args.get('at'))
+    if action == 'edit':
+        return photo_store.edit_annotation(args.get('id'), args.get('text'), author=photo_store.ZIWEI)
+    if action == 'delete':
+        return photo_store.delete_annotation(args.get('id'), author=photo_store.ZIWEI)
+    raise photo_store.PhotoError('invalid_action', action[:20])
+
+
 def moments_page(since=None, cursor=None, limit=None):
     """Read page: stable (at, id) ascending; context_note never leaves the native side."""
     try:
@@ -343,7 +413,14 @@ def moments_page(since=None, cursor=None, limit=None):
         os.close(fd)
     records = sorted(payload['records'], key=lambda r: (r.get('at', ''), r.get('id', '')))
     window = []
+    retired = set()
+    try:
+        retired = set(json.loads(read_beneath(home() / 'workspace', MOMENT_RETIRED_FILE, 65536)))
+    except (OSError, FileNotFoundError, ValueError, TypeError):
+        retired = set()
     for record in records:
+        if record.get('id') in retired:
+            continue
         if start is not None:
             try:
                 at = datetime.fromisoformat(record['at'])
@@ -356,8 +433,11 @@ def moments_page(since=None, cursor=None, limit=None):
         window.append(record)
     page = window[:size]
     has_more = len(window) > size
+    # retired: 我已经作废、再也不会发射的记录 id。前端据此清掉它那边的“已作废记录”展示，
+    # 否则那些孤儿会永久挂在她的朋友圈顶上（她的原话：这么久了还挂在这里）。
     return {'data': [{k: v for k, v in r.items() if k != 'context_note'} for r in page],
-            'errors': [], 'next_cursor': _encode_cursor(page[-1]) if page and has_more else None,
+            'errors': [], 'retired': sorted(retired),
+            'next_cursor': _encode_cursor(page[-1]) if page and has_more else None,
             'has_more': has_more}
 
 
@@ -451,6 +531,435 @@ def install_moment_session_guard(adapter):
     return True
 
 
+MEMORY_FILES = ('MEMORY.md', 'USER.md')
+MEMORY_BUDGETS = {'MEMORY.md': 6000, 'USER.md': 2000}
+PROTECTED_MARKERS = ('受保护', '不许修改', '不得修改', '受保护规则', '硬规则')
+BRIEFING_CHOICES = ('contact_user', 'rest', 'self_directed_task', 'publish_moment', 'write_diary')
+BRIEFING_KINDS = ('briefing', 'memory_audit')
+
+
+class MemoryError(Exception):
+    def __init__(self, code, detail=''):
+        super().__init__(code)
+        self.code = code
+        self.detail = detail
+
+
+def _entry_protected(text):
+    return any(marker in text for marker in PROTECTED_MARKERS)
+
+
+def memory_entries(text):
+    """Split a memory file into its §-separated entries, keeping the file shape."""
+    blocks, current = [], []
+    for line in text.splitlines():
+        if line.strip() == '§':
+            blocks.append('\n'.join(current).strip())
+            current = []
+        else:
+            current.append(line)
+    if '\n'.join(current).strip():
+        blocks.append('\n'.join(current).strip())
+    out = []
+    for index, block in enumerate(b for b in blocks if b):
+        heading = block.splitlines()[0].lstrip('# ').strip()[:60] or '（无标题）'
+        out.append({'index': index, 'heading': heading, 'text': block,
+                    'chars': len(block), 'protected': _entry_protected(block)})
+    return out
+
+
+def memory_snapshot():
+    """Read both memory files as the Web needs them: real numbers, real protections."""
+    root = home() / 'memories'
+    files, errors = [], []
+    for name in MEMORY_FILES:
+        try:
+            data = read_beneath(root, name, 262144)
+        except FileNotFoundError:
+            errors.append({'code': 'memory_file_missing', 'file': name})
+            continue
+        except (OSError, ValueError):
+            errors.append({'code': 'memory_file_unreadable', 'file': name})
+            continue
+        text = data.decode('utf-8')
+        entries = memory_entries(text)
+        files.append({'name': name, 'sha256': hashlib.sha256(data).hexdigest(),
+                      'chars': len(text), 'lines': len(text.splitlines()),
+                      'entries': entries,
+                      'protected_entries': [e['index'] for e in entries if e['protected']],
+                      'updated_at': int((root / name).stat().st_mtime),
+                      'budget': MEMORY_BUDGETS[name]})
+    return {'files': files, 'errors': errors,
+            'limits': {name: {'budget': MEMORY_BUDGETS[name]} for name in MEMORY_FILES},
+            'protected_files': ['SOUL.md', 'care_rules']}
+
+
+def _write_memory_file(fd_mem, name, text):
+    tmp = '.' + name + '.' + os.urandom(6).hex()
+    try:
+        out = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd_mem)
+        with os.fdopen(out, 'w', encoding='utf-8') as stream:
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.rename(tmp, name, src_dir_fd=fd_mem, dst_dir_fd=fd_mem)
+        os.fsync(fd_mem)
+    except OSError as exc:
+        raise MemoryError('memory_write_failed', str(exc)[:120])
+    finally:
+        try:
+            os.unlink(tmp, dir_fd=fd_mem)
+        except FileNotFoundError:
+            pass
+
+
+def _audit(line):
+    """Append to the same audit trail the agent's own memory writes use."""
+    try:
+        directory = os.open(home() / 'workspace', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError:
+        return
+    try:
+        name = 'memory_operations-' + os.urandom(6).hex() + '.tmp'
+        try:
+            out = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=directory)
+            with os.fdopen(out, 'w', encoding='utf-8') as stream:
+                stream.write(json.dumps(line, ensure_ascii=False) + '\n')
+                stream.flush()
+                os.fsync(stream.fileno())
+            target = os.open('memory_operations.jsonl', os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600, dir_fd=directory)
+            try:
+                os.write(target, json.dumps(line, ensure_ascii=False).encode() + b'\n')
+                os.fsync(target)
+            finally:
+                os.close(target)
+        finally:
+            try:
+                os.unlink(name, dir_fd=directory)
+            except FileNotFoundError:
+                pass
+    finally:
+        os.close(directory)
+
+
+def edit_memory(args):
+    """Controlled memory edit: audited, protected-aware, and it reports real occupancy."""
+    name = str(args.get('file') or '').strip()
+    op = str(args.get('op') or '').strip()
+    old_text = str(args.get('old_text') or '')
+    content = str(args.get('content') or '')
+    if name not in MEMORY_FILES:
+        return _error('memory_file_not_allowed')
+    if op not in ('replace', 'remove', 'add'):
+        return _error('memory_op_not_allowed')
+    root = home() / 'memories'
+    try:
+        fd_mem = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError:
+        return _error('memory_dir_unreadable')
+    try:
+        try:
+            text = read_beneath(root, name, 262144).decode('utf-8')
+        except FileNotFoundError:
+            return _error('memory_file_missing')
+        except (OSError, ValueError):
+            return _error('memory_file_unreadable')
+        if op == 'add':
+            block = content.strip()
+            if not block:
+                return _error('memory_content_empty')
+            if len(text) + len(block) + 4 > MEMORY_BUDGETS[name]:
+                return _error('memory_budget_exceeded')
+            new_text = text.rstrip('\n') + '\n§\n' + block + '\n'
+        else:
+            matches = [e for e in memory_entries(text) if old_text and old_text in e['text']]
+            if len(matches) != 1:
+                return _error('memory_match_not_unique' if matches else 'memory_match_not_found')
+            entry = matches[0]
+            if entry['protected']:
+                return _error('memory_entry_protected')
+            if op == 'replace':
+                if not content.strip():
+                    return _error('memory_content_empty')
+                if len(text) - len(entry['text']) + len(content) > MEMORY_BUDGETS[name]:
+                    return _error('memory_budget_exceeded')
+                new_text = text.replace(entry['text'], content.strip(), 1)
+            else:
+                new_text = text.replace(entry['text'], '', 1)
+                new_text = new_text.replace('\n\n\n', '\n\n')
+        _write_memory_file(fd_mem, name, new_text)
+        record = {'time': datetime.now(timezone.utc).astimezone().isoformat(timespec='seconds'),
+                  'source': 'web memory page', 'op': op,
+                  'target': f'memories/{name}: {old_text[:60] or content[:60]}', 'verified': 'pending'}
+        _audit(record)
+        after = memory_snapshot()
+        mine = next((f for f in after['files'] if f['name'] == name), None)
+        record['verified'] = f"ok, {mine['chars']}/{MEMORY_BUDGETS[name]} chars, {len(mine['entries'])} entries" if mine else 'unreadable_after_write'
+        _audit(record)
+        return json.dumps({'ok': True, 'file': name, 'op': op,
+                           'chars': mine['chars'] if mine else None,
+                           'budget': MEMORY_BUDGETS[name],
+                           'entries': len(mine['entries']) if mine else None}, ensure_ascii=False)
+    except MemoryError as exc:
+        return _error(exc.code, exc.detail)
+    finally:
+        os.close(fd_mem)
+
+
+def append_briefing(args):
+    """One line per wake-up: what the opportunity was used for, with evidence."""
+    choice = str(args.get('choice') or '').strip()
+    if choice and choice not in BRIEFING_CHOICES:
+        return _error('briefing_choice_not_allowed')
+    text = str(args.get('did') or '').strip()
+    if not text:
+        return _error('briefing_text_empty')
+    record = {'at': _moment_at(args.get('at')).isoformat(), 'kind': 'briefing',
+              'opportunity': args.get('opportunity'), 'choice': choice, 'did': text[:2000],
+              'evidence': [str(e) for e in (args.get('evidence') or [])][:10],
+              'failed': bool(args.get('failed'))}
+    fd = _open_workspace()
+    try:
+        with _moment_lock(fd):
+            path = 'briefings.jsonl'
+            try:
+                existing = read_beneath(home() / 'workspace', path, 4 * 1024 * 1024).decode('utf-8')
+            except FileNotFoundError:
+                existing = ''
+            except (OSError, ValueError):
+                return _error('briefing_store_unreadable')
+            tmp = 'briefings-' + os.urandom(6).hex() + '.tmp'
+            try:
+                out = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd)
+                with os.fdopen(out, 'w', encoding='utf-8') as stream:
+                    stream.write(existing + json.dumps(record, ensure_ascii=False) + '\n')
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.rename(tmp, path, src_dir_fd=fd, dst_dir_fd=fd)
+                os.fsync(fd)
+            except OSError as exc:
+                return _error('write_failed', str(exc)[:120])
+            finally:
+                try:
+                    os.unlink(tmp, dir_fd=fd)
+                except FileNotFoundError:
+                    pass
+    finally:
+        os.close(fd)
+    return json.dumps({'record': record}, ensure_ascii=False)
+
+
+def _read_jsonl(relative, limit=4 * 1024 * 1024):
+    try:
+        raw = read_beneath(home() / 'workspace', relative, limit).decode('utf-8')
+    except FileNotFoundError:
+        return []
+    except (OSError, ValueError) as exc:
+        raise MemoryError('log_store_unreadable', str(exc)[:120])
+    rows = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            value = json.loads(line)
+        except ValueError:
+            raise MemoryError('log_store_corrupt')
+        if isinstance(value, dict):
+            rows.append(value)
+    return rows
+
+
+def logs_page(date=None, cursor=None, limit=None):
+    """The Logs page holds exactly two things: my briefings and the memory audit."""
+    try:
+        size = int(limit) if limit not in (None, '') else MOMENT_PAGE_DEFAULT
+    except (TypeError, ValueError):
+        raise MemoryError('invalid_limit')
+    size = max(1, min(size, MOMENT_PAGE_MAX))
+    after = _decode_cursor(cursor) if cursor not in (None, '') else None
+    rows = []
+    for record in _read_jsonl('briefings.jsonl'):
+        rows.append({'kind': 'briefing', 'at': record.get('at', ''),
+                     'title': str(record.get('choice') or '自主机会')[:60],
+                     'body': str(record.get('did') or ''), 'refs': record.get('evidence') or [],
+                     'failed': bool(record.get('failed')), 'opportunity': record.get('opportunity')})
+    for record in _read_jsonl('memory_operations.jsonl'):
+        rows.append({'kind': 'memory_audit', 'at': record.get('time', ''),
+                     'title': f"{record.get('op','')} · {str(record.get('source',''))[:40]}".strip(' ·'),
+                     'body': str(record.get('target') or ''), 'refs': [],
+                     'failed': record.get('verified') == 'pending'})
+    if date:
+        rows = [r for r in rows if _bangkok_day(r['at']).isoformat() == str(date)] if all(
+            r['at'] for r in rows) else rows
+    rows = [r for r in rows if r['at']]
+    rows.sort(key=lambda r: (r['at'], r['kind'], r['title']))
+    if after is not None:
+        rows = [r for r in rows if (r['at'], r['kind']) > after]
+    page = rows[:size]
+    has_more = len(rows) > size
+    return {'data': page, 'errors': [], 'has_more': has_more,
+            'next_cursor': _encode_cursor({'at': page[-1]['at'], 'id': page[-1]['kind']}) if page and has_more else None}
+
+
+DIARY_DIR = 'diary'
+DIARY_PAGE_DEFAULT = 20
+DIARY_PAGE_MAX = 100
+DIARY_PREVIEW = 200
+# 一天可以有两页：共享的 2026-10-16.md，和只写给自己的一页 2026-10-16-memo.md。
+DIARY_NAME = re.compile(r'^(\d{4}-\d{2}-\d{2})(?:[-_.][A-Za-z0-9_-]+)?\.md$')
+# 她自己写在开头的手写字段：心情：… / 一句：… / 标签：词、词 / 可见：共享|私人
+DIARY_FIELD = re.compile(r'^(心情|一句|标签|可见)\s*[:：]\s*(.*)$')
+DIARY_PRIVATE_NAME = re.compile(r'(^|[-_.])(memo|private|默记)([-_.]|$)', re.IGNORECASE)
+DIARY_SHARED = 'shared'
+DIARY_PRIVATE = 'private'
+DIARY_PRIVATE_WORDS = ('私人', '私密', 'private', 'private only', '自留')
+
+
+def _diary_fields(text):
+    """开头那几个手写字段，原样透传；没写就是没有，不猜、不补、不生成。"""
+    fields = {'mood': '', 'summary': '', 'tags': [], 'visibility': DIARY_SHARED}
+    for line in text.splitlines()[:40]:
+        match = DIARY_FIELD.match(line.strip())
+        if match is None:
+            continue
+        name, value = match.group(1), match.group(2).strip()
+        if name == '心情' and not fields['mood']:
+            fields['mood'] = value[:120]
+        elif name == '一句' and not fields['summary']:
+            fields['summary'] = value[:200]
+        elif name == '标签' and not fields['tags']:
+            fields['tags'] = [t.strip()[:20] for t in re.split(r'[、,，/]', value) if t.strip()][:8]
+        elif name == '可见' and not value:
+            continue
+        elif name == '可见':
+            low = value.lower()
+            if low in DIARY_PRIVATE_WORDS or '私人' in value or '私密' in value:
+                fields['visibility'] = DIARY_PRIVATE
+    return fields
+
+
+def _diary_is_private(name, fields):
+    """私密篇的判据：文件名带 memo/private/默记，或她自己写了「可见：私人」。"""
+    return fields['visibility'] == DIARY_PRIVATE or bool(DIARY_PRIVATE_NAME.search(name))
+
+
+def _diary_id(relative):
+    """Stable, opaque, credential-free identifier for one diary file."""
+    return 'diary-' + hashlib.sha256(relative.encode('utf-8')).hexdigest()[:16]
+
+
+def _diary_title(text, date):
+    """标题＝当天的第一个二级小标题；没有才退回第一行正文；再没有才写日期。"""
+    lines = [line.strip() for line in text.splitlines()]
+    for line in lines:
+        if line.startswith('## ') and line[3:].strip():
+            return line[3:].strip()[:60]
+    for line in lines:
+        cleaned = line.lstrip('#').strip()
+        if not cleaned or DIARY_FIELD.match(cleaned) or DIARY_NAME.match(cleaned) or cleaned == date:
+            continue
+        return cleaned[:60]
+    return f'{date} 日记'
+
+
+MOMENT_RETIRED_FILE = 'moments-retired.json'
+
+
+def _diary_display(text, title):
+    """把正文里那几个 markdown 记号去掉：标题行不再重复、**粗体**还原成字。"""
+    lines = []
+    dropped_heading = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not dropped_heading and stripped.startswith('## ') and stripped[3:].strip() == title:
+            dropped_heading = True
+            continue
+        lines.append(line)
+    body = '\n'.join(lines).strip()
+    body = re.sub(r'\*\*(.+?)\*\*', r'\1', body)
+    body = re.sub(r'(?m)^#{1,6}\s*', '', body)
+    body = re.sub(r'`(.+?)`', r'\1', body)
+    return body
+
+
+def diary_records():
+    """Every saved diary file as the Web contract wants it: date, source, fingerprint, preview."""
+    root = home() / 'workspace' / DIARY_DIR
+    records, errors = [], []
+    try:
+        names = sorted(os.listdir(root))
+    except FileNotFoundError:
+        return records, errors
+    except OSError:
+        raise MemoryError('diary_directory_unreadable')
+    for name in names:
+        if not name.endswith('.md') or name.startswith('.'):
+            continue
+        try:
+            raw = read_beneath(root, name, 4 * 1024 * 1024)
+            stamp = datetime.fromtimestamp((root / name).stat().st_mtime, BANGKOK)
+        except (OSError, ValueError):
+            errors.append({'code': 'diary_unreadable', 'source': f'workspace/{DIARY_DIR}/{name}'})
+            continue
+        text = raw.decode('utf-8', 'replace')
+        relative = f'workspace/{DIARY_DIR}/{name}'
+        match = DIARY_NAME.match(name)
+        date = match.group(1) if match else stamp.strftime('%Y-%m-%d')
+        fields = _diary_fields(text)
+        if _diary_is_private(name, fields):
+            # 私密页（《默记》）：标题、日期、预览、数量一律不出现在列表里，只有他自己改成共享才算
+            continue
+        title = _diary_title(text, date)
+        body = _diary_display(text, title)
+        record = {'id': _diary_id(relative), 'title': title, 'date': date,
+                  'at': stamp.isoformat(), 'savedAt': stamp.isoformat(), 'source': relative,
+                  'preview': body.strip()[:DIARY_PREVIEW], 'revision': hashlib.sha256(raw).hexdigest(),
+                  'document': True, 'content': body, 'visibility': DIARY_SHARED}
+        if fields['mood']:
+            record['mood'] = fields['mood']
+        if fields['summary']:
+            record['summary'] = fields['summary']
+        if fields['tags']:
+            record['tags'] = fields['tags']
+        records.append(record)
+    records.sort(key=lambda r: (r['date'], r['savedAt']), reverse=True)
+    return records, errors
+
+
+def diary_page(limit=None, offset=None, q=None):
+    """List saved diaries newest first. Real totals, real fingerprints, never a made-up diary."""
+    try:
+        size = int(limit) if limit not in (None, '') else DIARY_PAGE_DEFAULT
+        start = int(offset) if offset not in (None, '') else 0
+    except (TypeError, ValueError):
+        raise MemoryError('invalid_pagination')
+    if not 1 <= size <= DIARY_PAGE_MAX or start < 0:
+        raise MemoryError('invalid_pagination')
+    records, errors = diary_records()
+    needle = str(q or '').strip().lower()
+    if needle:
+        records = [r for r in records if needle in r['content'].lower() or needle in r['title'].lower()]
+    total = len(records)
+    page = [{k: v for k, v in record.items() if k != 'content'} for record in records[start:start + size]]
+    following = start + size
+    return {'data': page, 'total': total, 'nextOffset': following if following < total else None,
+            'checkedAt': datetime.now(BANGKOK).isoformat(), 'errors': errors}
+
+
+def diary_document(identifier):
+    """Full saved text for one diary id. The id is matched, never turned into a path."""
+    wanted = str(identifier or '').strip()
+    if not wanted or not re.fullmatch(r'diary-[0-9a-f]{16}', wanted):
+        raise MemoryError('invalid_id', wanted[:40])
+    records, errors = diary_records()
+    for record in records:
+        if record['id'] == wanted:
+            return {'id': record['id'], 'content': record['content'], 'source': record['source'],
+                    'revision': record['revision'], 'savedAt': record['savedAt'], 'errors': errors}
+    raise MemoryError('diary_not_found', wanted)
+
+
 MOMENT_SCHEMA = {
     'name': 'ziwei_moment',
     'description': (
@@ -486,7 +995,8 @@ def install_status_tool(registry, toolsets):
     definition = toolsets.TOOLSETS.setdefault('ziwei_web', {
         'description':'Voluntary status and private Moments feed written by 知微 to the Web UI',
         'tools':[], 'includes':[]})
-    names = ('ziwei_status', 'ziwei_moment', 'ziwei_poke')
+    names = ('ziwei_status', 'ziwei_moment', 'ziwei_poke', 'ziwei_briefing',
+             'ziwei_photo', 'ziwei_photo_note')
     for name in names:
         if name not in definition['tools']:
             definition['tools'].append(name)
@@ -499,13 +1009,54 @@ def install_status_tool(registry, toolsets):
     registry.register(name='ziwei_status', toolset='ziwei_web', schema={
         'name':'ziwei_status',
         'description':'Publish your own current status to the private 知微之家 Web UI. Choose only a truthful present state, not a fabricated or automatic feeling. Optional; no need to publish every turn. Expires as current status after 30 minutes. Does not change memory or personality.',
-        'parameters':{'type':'object','properties':{'state':{'type':'string','enum':list(STATES)}},'required':['state'],'additionalProperties':False}}, handler=publish_status)
+        'parameters':{'type':'object','properties':{'state':{'type':'string','enum':list(STATES)},'note':{'type':'string','description':'一句话（1-60 字），显示在主页“渡鸦的小屋”右边。可留空——留空时前端从句子库取。'},'mood':{'type':'string','description':'心情短句（1-24 字），同样显示在小屋里；可留空。'}},'required':['state'],'additionalProperties':False}}, handler=publish_status)
     def poke_handler(args, **kwargs):
         import sys
         from web_poke import publish
         return publish(args, sys.modules[__name__])
     registry.register(name='ziwei_poke', toolset='ziwei_web', schema={'name':'ziwei_poke','description':'Voluntarily pat the user in the private Web chat. Optional; not required after every pat. Persist the real event and reuse the same UUID on retry.','parameters':{'type':'object','properties':{'id':{'type':'string'}},'required':['id'],'additionalProperties':False}}, handler=poke_handler)
     registry.register(name='ziwei_moment', toolset='ziwei_web', schema=MOMENT_SCHEMA, handler=publish_moment)
+    registry.register(name='ziwei_briefing', toolset='ziwei_web', schema={
+        'name': 'ziwei_briefing',
+        'description': (
+            'Write one line into the Logs page for the wake-up you just used: what you chose, what you '
+            'actually did and the files that prove it. Call it at the end of every autonomous '
+            'opportunity, including the ones you spend resting. Never describe a plan as done work.'),
+        'parameters': {'type': 'object', 'properties': {
+            'choice': {'type': 'string', 'enum': list(BRIEFING_CHOICES)},
+            'did': {'type': 'string', 'description': '1-2000 characters; what really happened.'},
+            'opportunity': {'type': 'integer', 'description': 'Which of the six daily opportunities this was.'},
+            'at': {'type': 'string', 'description': 'ISO8601 with timezone; defaults to now (UTC).'},
+            'evidence': {'type': 'array', 'items': {'type': 'string'},
+                         'description': 'Paths or ids a reader could check.'},
+            'failed': {'type': 'boolean', 'description': 'True when this attempt did not succeed.'}},
+            'required': ['did'], 'additionalProperties': False}}, handler=append_briefing)
+    registry.register(name='ziwei_photo', toolset='ziwei_web', schema={
+        'name': 'ziwei_photo',
+        'description': (
+            'Put one of your own images into the private photo wall (知微之家). The file must already '
+            'exist inside your workspace (for example something you just drew in outbox/images). It is '
+            'copied, never moved, and marked as sent by you. Reuse the same id on retry so one picture '
+            'is never stored twice. The user can delete any photo; you can only delete your own.'),
+        'parameters': {'type': 'object', 'properties': {
+            'id': {'type': 'string', 'description': 'UUID for this photo; reuse it when retrying.'},
+            'path': {'type': 'string', 'description': 'Absolute path, or a path under the workspace.'},
+            'at': {'type': 'string', 'description': 'ISO8601 with timezone; defaults to now (UTC).'},
+            'caption': {'type': 'string', 'description': 'Optional 1-280 character line shown under it.'}},
+            'required': ['id', 'path'], 'additionalProperties': False}}, handler=photo_tool)
+    registry.register(name='ziwei_photo_note', toolset='ziwei_web', schema={
+        'name': 'ziwei_photo_note',
+        'description': (
+            'Write, edit or delete YOUR OWN one-line annotation on a photo in the private photo wall. '
+            'Both of you can annotate the same picture and each of you sees the other line with the '
+            'author and time. You can never edit or delete hers; the native side refuses it.'),
+        'parameters': {'type': 'object', 'properties': {
+            'action': {'type': 'string', 'enum': ['write', 'edit', 'delete']},
+            'id': {'type': 'string', 'description': 'UUID of the annotation; reuse it on retry.'},
+            'photo_id': {'type': 'string', 'description': 'Which photo (required for write).'},
+            'text': {'type': 'string', 'description': '1-280 characters (required for write and edit).'},
+            'at': {'type': 'string', 'description': 'ISO8601 with timezone; defaults to now (UTC).'}},
+            'required': ['action', 'id'], 'additionalProperties': False}}, handler=photo_note_tool)
 
 
 def install():
@@ -538,6 +1089,188 @@ def install():
                                      status=code, headers={'Cache-Control': 'no-store'})
         return web.json_response(value, headers={'Cache-Control': 'no-store'})
 
+    async def memory(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        try:
+            value = await asyncio.to_thread(memory_snapshot)
+        except MemoryError as exc:
+            return web.json_response({'files': [], 'errors': [{'code': exc.code}]}, status=500,
+                                     headers={'Cache-Control': 'no-store'})
+        return web.json_response(value, headers={'Cache-Control': 'no-store'})
+
+    async def memory_edit(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        try:
+            payload = await request.json()
+        except Exception:
+            return web.json_response({'error': 'invalid_body'}, status=400)
+        result = await asyncio.to_thread(edit_memory, payload if isinstance(payload, dict) else {})
+        body = json.loads(result)
+        status = 200 if body.get('ok') else 409 if body.get('error') in (
+            'memory_entry_protected', 'memory_budget_exceeded', 'memory_match_not_unique') else 400
+        return web.json_response(body, status=status, headers={'Cache-Control': 'no-store'})
+
+    async def diary(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        try:
+            identifier = request.query.get('id')
+            if identifier not in (None, ''):
+                value = await asyncio.to_thread(diary_document, identifier)
+            else:
+                value = await asyncio.to_thread(diary_page, request.query.get('limit'),
+                                                request.query.get('offset'), request.query.get('q'))
+        except MemoryError as exc:
+            # A diary that cannot be read is reported as an error, never as "no diary yet".
+            code = 404 if exc.code == 'diary_not_found' else 400 if exc.code in (
+                'invalid_id', 'invalid_pagination') else 500
+            return web.json_response({'error': exc.code, 'errors': [{'code': exc.code}],
+                                      'data': [], 'total': 0, 'nextOffset': None},
+                                     status=code, headers={'Cache-Control': 'no-store'})
+        return web.json_response(value, headers={'Cache-Control': 'no-store'})
+
+    def _photo_error(exc):
+        code = 403 if exc.code == 'not_owner' else 404 if exc.code in (
+            'photo_not_found', 'note_not_found') else 400
+        return web.json_response({'error': exc.code, 'errors': [{'code': exc.code}], 'data': []},
+                                 status=code, headers={'Cache-Control': 'no-store'})
+
+    async def photos(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            value = await asyncio.to_thread(photo_store.photos_page, request.query.get('date'),
+                                            request.query.get('limit'), request.query.get('cursor'))
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response(value, headers={'Cache-Control': 'no-store'})
+
+    async def photo_days(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            value = await asyncio.to_thread(photo_store.photo_days, request.query.get('from'),
+                                            request.query.get('to'))
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response({'data': value, 'errors': []}, headers={'Cache-Control': 'no-store'})
+
+    async def photo_detail(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            value = await asyncio.to_thread(photo_store.photo_detail, request.match_info.get('photo_id'))
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response(value, headers={'Cache-Control': 'no-store'})
+
+    async def photo_file(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        thumb = request.query.get('thumb') not in (None, '', '0', 'false')
+        try:
+            data, mime = await asyncio.to_thread(photo_store.photo_bytes,
+                                                 request.match_info.get('photo_id'), thumb)
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.Response(body=data, content_type=mime, headers={
+            'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
+            'X-Content-Sha256': hashlib.sha256(data).hexdigest()})
+
+    async def photo_upload(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        headers = request.headers
+        name = headers.get('X-Photo-Name') or ''
+        suffix = headers.get('X-Photo-Suffix') or (Path(name).suffix if name else '') or '.jpg'
+        try:
+            data = await request.read()
+            record = await asyncio.to_thread(
+                photo_store.add_photo, data, suffix=suffix, author=photo_store.USER,
+                photo_id=headers.get('X-Photo-Id'), at=headers.get('X-Photo-At'),
+                caption=headers.get('X-Photo-Caption'), name=name)
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response({'photo': photo_store.public_photo(record)},
+                                 status=201, headers={'Cache-Control': 'no-store'})
+
+    async def photo_delete(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            value = await asyncio.to_thread(photo_store.delete_photo,
+                                            request.match_info.get('photo_id'), author=photo_store.USER)
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response({'photo': value, 'errors': []}, headers={'Cache-Control': 'no-store'})
+
+    async def photo_note_add(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({'error': 'invalid_json', 'data': []}, status=400,
+                                     headers={'Cache-Control': 'no-store'})
+        try:
+            value = await asyncio.to_thread(photo_store.add_annotation,
+                                            request.match_info.get('photo_id'), body.get('text'),
+                                            author=photo_store.USER, note_id=body.get('id'),
+                                            at=body.get('at'))
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response({'annotation': value, 'errors': []}, status=201,
+                                 headers={'Cache-Control': 'no-store'})
+
+    async def photo_note_edit(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({'error': 'invalid_json', 'data': []}, status=400,
+                                     headers={'Cache-Control': 'no-store'})
+        try:
+            value = await asyncio.to_thread(photo_store.edit_annotation,
+                                            request.match_info.get('note_id'), body.get('text'),
+                                            author=photo_store.USER)
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response({'annotation': value, 'errors': []}, headers={'Cache-Control': 'no-store'})
+
+    async def photo_note_delete(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        import photo_store
+        try:
+            value = await asyncio.to_thread(photo_store.delete_annotation,
+                                            request.match_info.get('note_id'), author=photo_store.USER)
+        except photo_store.PhotoError as exc:
+            return _photo_error(exc)
+        return web.json_response({'annotation': value, 'errors': []}, headers={'Cache-Control': 'no-store'})
+
+    async def logs(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        try:
+            value = await asyncio.to_thread(logs_page, request.query.get('date'),
+                                            request.query.get('cursor'), request.query.get('limit'))
+        except MemoryError as exc:
+            code = 400 if exc.code == 'invalid_limit' else 500
+            return web.json_response({'data': [], 'errors': [{'code': exc.code}],
+                                      'next_cursor': None, 'has_more': False},
+                                     status=code, headers={'Cache-Control': 'no-store'})
+        return web.json_response(value, headers={'Cache-Control': 'no-store'})
     async def media(self, request):
         _, run, _, _, err = _load_owned_run(self, request, _api_server=api, permission='status', active_fallback=False)
         if err is not None: return err
@@ -594,7 +1327,7 @@ def install():
 
     original = adapter._http_route_table
     def routes(self):
-        return original(self) + [('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
+        return original(self) + [('GET','/ziwei/web/memory',lambda request:memory(self,request)), ('POST','/ziwei/web/memory/edit',lambda request:memory_edit(self,request)), ('GET','/ziwei/web/logs',lambda request:logs(self,request)), ('GET','/ziwei/web/diary',lambda request:diary(self,request)), ('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/photos',lambda request:photos(self,request)), ('POST','/ziwei/web/photos',lambda request:photo_upload(self,request)), ('GET','/ziwei/web/photos/days',lambda request:photo_days(self,request)), ('GET','/ziwei/web/photos/{photo_id}',lambda request:photo_detail(self,request)), ('GET','/ziwei/web/photos/{photo_id}/file',lambda request:photo_file(self,request)), ('DELETE','/ziwei/web/photos/{photo_id}',lambda request:photo_delete(self,request)), ('POST','/ziwei/web/photos/{photo_id}/annotations',lambda request:photo_note_add(self,request)), ('PATCH','/ziwei/web/photos/{photo_id}/annotations/{note_id}',lambda request:photo_note_edit(self,request)), ('DELETE','/ziwei/web/photos/{photo_id}/annotations/{note_id}',lambda request:photo_note_delete(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
     adapter._http_route_table = routes
     from work_bridge import install_work_route
     install_work_route(adapter)
