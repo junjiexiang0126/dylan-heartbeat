@@ -75,7 +75,7 @@ class ToolRegistration(unittest.TestCase):
         bridge.install_status_tool(registry,toolsets)
         for registration,snapshot in registrations:
             self.assertEqual(registration['toolset'],'ziwei_web')
-            self.assertEqual(snapshot['ziwei_web']['tools'],['ziwei_status','ziwei_moment','ziwei_poke','ziwei_briefing'])
+            self.assertEqual(snapshot['ziwei_web']['tools'],['ziwei_status','ziwei_moment','ziwei_poke','ziwei_briefing','ziwei_photo','ziwei_photo_note'])
             self.assertEqual(snapshot['ziwei_web']['includes'],[])
             for bundle in ('hermes-api-server','hermes-cron'):
                 self.assertEqual(snapshot[bundle]['tools'].count('ziwei_status'),1)
