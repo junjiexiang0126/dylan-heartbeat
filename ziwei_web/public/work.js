@@ -46,7 +46,7 @@
   try{
    const session=await fetch('/api/session',{credentials:'same-origin'}).then(r=>r.json());
    if(!session.authenticated||!session.csrf)throw Error('请重新登录');
-   const r=await fetch('/api/work/send',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':session.csrf},body:JSON.stringify({text,tool:selected})});
+   const r=await fetch('/api/work/send',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Ziwei-CSRF':session.csrf},body:JSON.stringify({text,tool:selected})});
    const data=await r.json();
    if(!r.ok)throw Error(data.error||'发送失败');
    input.value='';status.textContent='GLM 已回复 · Token '+(data.usage?.total_tokens??'未报告');
