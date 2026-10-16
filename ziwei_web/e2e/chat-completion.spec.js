@@ -42,5 +42,5 @@ test('voice call records an utterance, sends once, plays a reply and releases it
 });
 
 test('stale status uses its real last-update time and a missing record stays distinct',async({page})=>{
- await open(page);await page.evaluate(()=>window.ZiweiChatExtra.presence({state:'在工作',source:'ziwei',updatedAt:'2026-10-16T01:05:00Z',stale:true}));await expect(page.locator('#chatPresence')).toHaveText('最后更新于 08:05');await expect(page.locator('#todayStatus')).toHaveText('最近状态：在工作');await page.evaluate(()=>window.ZiweiChatExtra.presence(null));await expect(page.locator('#chatPresence')).toHaveText('尚无状态记录');
+ await open(page);await expect(page.locator('#chatConnection')).toHaveText('已连接');await page.evaluate(()=>window.ZiweiChatExtra.presence({state:'在工作',source:'ziwei',updatedAt:'2026-10-16T01:05:00Z',stale:true}));await expect(page.locator('#chatPresence')).toHaveText('最后更新于 08:05');await expect(page.locator('#todayStatus')).toHaveText('最近状态：在工作');await page.evaluate(()=>window.ZiweiChatExtra.presence(null));await expect(page.locator('#chatPresence')).toHaveText('尚无状态记录');
 });
