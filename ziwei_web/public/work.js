@@ -1,4 +1,4 @@
-/* Work phase one: independent, read-only-safe UI scaffold. No Hermes or private chat API calls. */
+/* Isolated Work transport: GLM task replies, no Hermes private-chat or memory access. */
 'use strict';
 (()=> {
  const root=document.getElementById('work');
@@ -21,7 +21,7 @@
  input.addEventListener('keydown',e=>{if(e.key==='Escape')mentionMenu.hidden=true;});
  // Clear unsent Work drafts whenever the authenticated application is hidden.
  const app=document.getElementById('app');
- if(app){new MutationObserver(()=>{if(app.hidden){input.value='';status.textContent='前端预览阶段 · 尚未连接 Work 消息服务';}}).observe(app,{attributes:true,attributeFilter:['hidden']});}
+ if(app){new MutationObserver(()=>{if(app.hidden){input.value='';status.textContent='Work 已就绪；@知微 委派与文件工具尚待接入';}}).observe(app,{attributes:true,attributeFilter:['hidden']});}
  const conversation=root.querySelector('.work-conversation');
  const show=items=>{
   conversation.replaceChildren();
@@ -34,13 +34,15 @@
   conversation.scrollTop=conversation.scrollHeight;
  };
  const refresh=async()=>{
-  try{const r=await fetch('/api/work/messages',{credentials:'same-origin'});if(r.ok)show((await r.json()).data||[]);}
+  try{const r=await fetch('/api/work/messages',{credentials:'same-origin'});if(r.ok)show((await r.json()).data||[]);else if(r.status!==401)status.textContent='Work 历史读取失败';}
   catch{status.textContent='Work 历史读取失败，请检查网络';}
  };
  refresh();
+ document.querySelector('[data-tab="work"]')?.addEventListener('click',refresh);
  root.querySelector('#workForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const text=input.value.trim();if(!text)return;
+  if(/@知微(?:\\s|$|[，,。！!？?])/.test(text)){status.textContent='知微委派通道尚未接入，消息未发送；目前可直接 @白鸦 测试文本任务。';return;}
   const submit=root.querySelector('#workForm button[type=submit]');submit.disabled=true;
   status.textContent='白鸦正在处理（最多一次调用，12 秒超时）…';
   try{
