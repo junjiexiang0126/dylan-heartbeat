@@ -596,4 +596,6 @@ def install():
     def routes(self):
         return original(self) + [('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
     adapter._http_route_table = routes
+    from work_bridge import install_work_route
+    install_work_route(adapter)
     adapter._ziwei_web_installed = True
