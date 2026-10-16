@@ -12,7 +12,7 @@ function createWorkService(dataDir,options={}){
  const db=new DatabaseSync(path.join(dataDir,'work.sqlite'));db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000;');
  db.exec(`CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY,role TEXT,text TEXT,at TEXT,extra TEXT);CREATE TABLE IF NOT EXISTS tasks(id TEXT PRIMARY KEY,digest TEXT,state TEXT,created TEXT,updated TEXT,day TEXT,reserved REAL,calls INTEGER DEFAULT 0,error TEXT,result TEXT);CREATE TABLE IF NOT EXISTS usage(id TEXT PRIMARY KEY,task TEXT,stage TEXT,model TEXT,usage TEXT,at TEXT,cost REAL);CREATE TABLE IF NOT EXISTS tools(id TEXT PRIMARY KEY,kind TEXT,name TEXT,enabled INTEGER,authorized INTEGER,revision INTEGER,config TEXT);CREATE TABLE IF NOT EXISTS files(id TEXT PRIMARY KEY,data TEXT);`);
  db.exec("UPDATE tasks SET state='interrupted',error='server_restarted_no_automatic_retry' WHERE state IN ('queued','planning','executing','reviewing','generating')");
- for(const [kind,name] of Object.entries({word:'Word 文档',ppt:'PPT 演示',pdf:'PDF 文档',excel:'Excel 表格'}))db.prepare('INSERT OR IGNORE INTO tools VALUES(?,?,?,1,0,0,?)').run(kind,kind,name,JSON.stringify({title:'工作成果'}));
+ for(const [kind,name] of Object.entries({word:'Word 文档',ppt:'PPT 演示',pdf:'PDF 文档',excel:'Excel 表格',bundle:'文档套件（四种格式）'}))db.prepare('INSERT OR IGNORE INTO tools VALUES(?,?,?,1,0,0,?)').run(kind,kind,name,JSON.stringify({title:'工作成果'}));
  // Import the old isolated Work messages exactly once, never private chat.
  if(!db.prepare('SELECT 1 FROM messages LIMIT 1').get())for(const m of load(path.join(dataDir,'work-messages.json'),[]))db.prepare('INSERT OR IGNORE INTO messages VALUES(?,?,?,?,?)').run(m.id,m.role,m.text,m.at,JSON.stringify(m));
  const fileStore={attachment:id=>{const x=db.prepare('SELECT data FROM files WHERE id=?').get(id);return x?JSON.parse(x.data):null;},attachmentBytes:()=>db.prepare('SELECT data FROM files').all().reduce((n,x)=>n+JSON.parse(x.data).size,0),addAttachment:a=>db.prepare('INSERT INTO files VALUES(?,?)').run(a.id,JSON.stringify(a))};
@@ -68,9 +68,11 @@ function createWorkService(dataDir,options={}){
    let artifacts=[];
    if(body.tool!=='auto'){
     const tool=permit(body.tool);state(id,'generating');
-    const bytes=await documentBytes(tool.kind,JSON.parse(tool.config).title,parse(executed.text).messages.join('\n\n'));
-    permit(body.tool);if(Date.now()-started>LIMITS.timeoutMs)throw Error('work_timeout');
-    const a=files.save(bytes,JSON.parse(tool.config).title+'.'+EXT[tool.kind]);db.prepare('UPDATE files SET data=? WHERE id=?').run(JSON.stringify({...a,mime:MIME[tool.kind]}),a.id);artifacts=[a.id];
+    for(const kind of tool.kind==='bundle'?['word','ppt','pdf','excel']:[tool.kind]){
+     const bytes=await documentBytes(kind,JSON.parse(tool.config).title,parse(executed.text).messages.join('\n\n'));
+     permit(body.tool);if(Date.now()-started>LIMITS.timeoutMs)throw Error('work_timeout');
+     const a=files.save(bytes,JSON.parse(tool.config).title+'.'+EXT[kind]);db.prepare('UPDATE files SET data=? WHERE id=?').run(JSON.stringify({...a,mime:MIME[kind]}),a.id);artifacts.push(a.id);
+    }
    }
    const delivered=bubbles('ziwei',review.messages||review.message,{taskId:id,stage:'delivered'});const final=delivered.at(-1);if(artifacts.length){const extra=JSON.parse(db.prepare('SELECT extra FROM messages WHERE id=?').get(final.id).extra);extra.attachments=artifacts;db.prepare('UPDATE messages SET extra=? WHERE id=?').run(JSON.stringify(extra),final.id);}
    db.prepare('UPDATE tasks SET result=? WHERE id=?').run(JSON.stringify({messageId:final.id,attachments:artifacts}),id);state(id,'completed');
@@ -83,7 +85,7 @@ function createWorkService(dataDir,options={}){
   const fileRoute=/^\/api\/work\/attachments\/([a-f0-9-]{36})$/.exec(pathname);
   if(fileRoute&&['GET','HEAD'].includes(req.method))return files.serve(req,res,fileRoute[1]);
   if(pathname==='/api/work/tools/register'&&req.method==='POST'){
-   const b=await readBody(req,4096);if(!b||!['word','ppt','pdf','excel'].includes(b.kind)||typeof b.name!=='string'||!b.name.trim()||b.name.length>40)return json(res,400,{error:'unsupported_tool_registration'});
+   const b=await readBody(req,4096);if(!b||!['word','ppt','pdf','excel','bundle'].includes(b.kind)||typeof b.name!=='string'||!b.name.trim()||b.name.length>40)return json(res,400,{error:'unsupported_tool_registration'});
    const id='tool-'+crypto.randomUUID();db.prepare('INSERT INTO tools VALUES(?,?,?,1,0,0,?)').run(id,b.kind,b.name,JSON.stringify({title:'工作成果'}));return json(res,201,{id});
   }
   if(pathname==='/api/work/tools/configure'&&req.method==='POST'){

@@ -5,7 +5,7 @@
  const element=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
  const button=(label,fn)=>{const b=element('button','text-button',label);b.type='button';b.onclick=()=>Promise.resolve(fn()).catch(e=>status.textContent=e.message);return b;};
  let selected='auto',data=null,profiles={},attachments=[],quote=null,requestId=null,payload=null,sending=false,timer=null,epoch=0,favorites=false;
- const labels={auto:'聊天',word:'Word',ppt:'PPT',pdf:'PDF',excel:'Excel',image:'图片',research:'研究'};
+ const labels={auto:'聊天',word:'Word',ppt:'PPT',pdf:'PDF',excel:'Excel',bundle:'文档套件',image:'图片',research:'研究'};
  const api=async(url,method='GET',body)=>{
   const session=await fetch('/api/session',{cache:'no-store'}).then(r=>r.json());if(!session.authenticated)throw Error('请重新登录');
   const r=await fetch(url,{method,cache:'no-store',headers:{'X-Ziwei-CSRF':session.csrf,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
@@ -51,7 +51,7 @@
  }
  async function refresh(){const v=epoch;try{const d=await api('/api/work/messages');if(v!==epoch)return;const changed=JSON.stringify(data)!==JSON.stringify(d);data=d;if(changed)paint();}catch(e){if(v===epoch)status.textContent=e.message;}}
  async function action(b){await api('/api/work/action','POST',b);await refresh();}
- function renderTools(){const box=$('workToolCatalog');box.replaceChildren();for(const t of data?.tools||[]){
+ function renderTools(){const box=$('workToolCatalog');box.replaceChildren();const ledger=$('workUsageRows');ledger.replaceChildren();for(const u of data?.usage||[]){const row=element('p','',new Date(u.at).toLocaleTimeString('zh-CN',{timeZone:'Asia/Bangkok'})+' · '+({plan:'知微委派',execute:'白鸦执行',review:'知微审核'}[u.stage]||u.stage)+' · '+u.model+' · '+((u.usage?.total_tokens??((u.usage?.prompt_tokens||0)+(u.usage?.completion_tokens||0)))||'未报告')+' Token · 估算 ¥'+u.cost.toFixed(4));ledger.append(row);}for(const t of data?.tools||[]){
   const card=element('section','work-tool-card');card.append(element('strong','',t.name),element('small','',t.enabled?(t.authorized?'已授权 · 可调用':'未授权'):'已停用'));
   const title=element('input');title.value=t.config.title;title.setAttribute('aria-label',t.name+'文件标题');
   const save=b=>api('/api/work/tools/configure','POST',{id:t.id,revision:t.revision,title:title.value,...b}).then(async()=>{await refresh();renderTools();});
