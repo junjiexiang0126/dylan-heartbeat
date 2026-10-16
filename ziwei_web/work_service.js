@@ -26,6 +26,8 @@ function createWorkService(dataDir){
   if(ledger.calls>=dailyCalls||ledger.tokens>=dailyTokens)return json(res,429,{error:'work_daily_limit'});
   const body=await readBody(req,8192);
   if(!body||typeof body.text!=='string'||!body.text.trim()||body.text.length>MAX_TEXT||!['auto','ppt','word','pdf','excel','image','research'].includes(body.tool))return json(res,400,{error:'invalid_work_message'});
+  // Until a dedicated Hermes delegation endpoint exists, never route @知微 to GLM.
+  if(/@知微(?:\\s|$|[，,。！!？?])/.test(body.text))return json(res,409,{error:'ziwei_delegation_not_ready'});
   const key=process.env.ZHIPU_API_KEY||'';
   if(!key)return json(res,503,{error:'glm_not_configured'});
   busy=true;
