@@ -38,7 +38,7 @@ function createWorkService(dataDir){
     response=await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions',{
      method:'POST',signal:controller.signal,headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
      body:JSON.stringify({model:'glm-4-flash',max_tokens:MAX_OUTPUT_TOKENS,temperature:0.5,messages:[
-      {role:'system',content:'你是知微之家 Work 的 GLM 执行助手。只处理当前用户明确提供的工作内容。你不是知微，不要假装知微或写入 Hermes 记忆。不能宣称已生成或上传文件、执行工具或完成外部操作。'},
+      {role:'system',content:'你是知微之家 Work 的执行助手白鸦。你没有跨任务个人记忆，不得索取或推断用户与知微的私人关系。只处理当前用户明确提供的工作内容。你不是知微，不要假装知微或写入 Hermes 记忆。工作结果应交由知微审核，不能宣称已生成或上传文件、执行工具或完成外部操作。'},
       {role:'user',content:body.text}
      ]})
     });
