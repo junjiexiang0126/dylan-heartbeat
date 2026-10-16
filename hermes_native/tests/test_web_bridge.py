@@ -401,3 +401,40 @@ class MediaManifestEnvelope(unittest.TestCase):
             self.assertEqual([f['name'] for f in found], ['test-envelope-attachment.md'])
         finally:
             target.unlink(missing_ok=True)
+
+
+class DiaryFields(unittest.TestCase):
+    """日记的手写字段与私密页：字段原样透传；私密页连数量都不给。"""
+
+    def _page(self, name, body):
+        root = bridge.home() / 'workspace' / 'diary'
+        root.mkdir(parents=True, exist_ok=True)
+        path = root / name
+        path.write_text(body, encoding='utf-8')
+        return path
+
+    def test_shared_page_shows_heading_title_and_handwritten_fields(self):
+        path = self._page('2099-03-03.md',
+                          '## 一个标题' + chr(10) + '心情：亮着' + chr(10) + '一句：今天很好'
+                          + chr(10) + '标签：讲话、学会的' + chr(10) + chr(10) + '正文。' + chr(10))
+        try:
+            records, errors = bridge.diary_records()
+            self.assertEqual(errors, [])
+            record = next(r for r in records if r['date'] == '2099-03-03')
+            self.assertEqual(record['title'], '一个标题')
+            self.assertEqual(record['mood'], '亮着')
+            self.assertEqual(record['summary'], '今天很好')
+            self.assertEqual(record['tags'], ['讲话', '学会的'])
+            self.assertEqual(record['visibility'], 'shared')
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_private_page_is_invisible_and_its_id_is_404(self):
+        path = self._page('2099-03-04-memo.md', '## 只写给自己' + chr(10) + '心情：不想说' + chr(10))
+        try:
+            records, _ = bridge.diary_records()
+            self.assertFalse([r for r in records if r['date'] == '2099-03-04'])
+            with self.assertRaises(bridge.MemoryError):
+                bridge.diary_document(bridge._diary_id('workspace/diary/2099-03-04-memo.md'))
+        finally:
+            path.unlink(missing_ok=True)

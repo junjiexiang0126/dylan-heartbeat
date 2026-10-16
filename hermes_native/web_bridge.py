@@ -744,7 +744,42 @@ DIARY_DIR = 'diary'
 DIARY_PAGE_DEFAULT = 20
 DIARY_PAGE_MAX = 100
 DIARY_PREVIEW = 200
-DIARY_NAME = re.compile(r'^\d{4}-\d{2}-\d{2}\.md$')
+# 一天可以有两页：共享的 2026-10-16.md，和只写给自己的一页 2026-10-16-memo.md。
+DIARY_NAME = re.compile(r'^(\d{4}-\d{2}-\d{2})(?:[-_.][A-Za-z0-9_-]+)?\.md$')
+# 她自己写在开头的手写字段：心情：… / 一句：… / 标签：词、词 / 可见：共享|私人
+DIARY_FIELD = re.compile(r'^(心情|一句|标签|可见)\s*[:：]\s*(.*)$')
+DIARY_PRIVATE_NAME = re.compile(r'(^|[-_.])(memo|private|默记)([-_.]|$)', re.IGNORECASE)
+DIARY_SHARED = 'shared'
+DIARY_PRIVATE = 'private'
+DIARY_PRIVATE_WORDS = ('私人', '私密', 'private', 'private only', '自留')
+
+
+def _diary_fields(text):
+    """开头那几个手写字段，原样透传；没写就是没有，不猜、不补、不生成。"""
+    fields = {'mood': '', 'summary': '', 'tags': [], 'visibility': DIARY_SHARED}
+    for line in text.splitlines()[:40]:
+        match = DIARY_FIELD.match(line.strip())
+        if match is None:
+            continue
+        name, value = match.group(1), match.group(2).strip()
+        if name == '心情' and not fields['mood']:
+            fields['mood'] = value[:120]
+        elif name == '一句' and not fields['summary']:
+            fields['summary'] = value[:200]
+        elif name == '标签' and not fields['tags']:
+            fields['tags'] = [t.strip()[:20] for t in re.split(r'[、,，/]', value) if t.strip()][:8]
+        elif name == '可见' and not value:
+            continue
+        elif name == '可见':
+            low = value.lower()
+            if low in DIARY_PRIVATE_WORDS or '私人' in value or '私密' in value:
+                fields['visibility'] = DIARY_PRIVATE
+    return fields
+
+
+def _diary_is_private(name, fields):
+    """私密篇的判据：文件名带 memo/private/默记，或她自己写了「可见：私人」。"""
+    return fields['visibility'] == DIARY_PRIVATE or bool(DIARY_PRIVATE_NAME.search(name))
 
 
 def _diary_id(relative):
@@ -753,10 +788,16 @@ def _diary_id(relative):
 
 
 def _diary_title(text, date):
-    for line in text.splitlines():
+    """标题＝当天的第一个二级小标题；没有才退回第一行正文；再没有才写日期。"""
+    lines = [line.strip() for line in text.splitlines()]
+    for line in lines:
+        if line.startswith('## ') and line[3:].strip():
+            return line[3:].strip()[:60]
+    for line in lines:
         cleaned = line.lstrip('#').strip()
-        if cleaned:
-            return cleaned[:60]
+        if not cleaned or DIARY_FIELD.match(cleaned) or DIARY_NAME.match(cleaned) or cleaned == date:
+            continue
+        return cleaned[:60]
     return f'{date} 日记'
 
 
@@ -781,11 +822,23 @@ def diary_records():
             continue
         text = raw.decode('utf-8', 'replace')
         relative = f'workspace/{DIARY_DIR}/{name}'
-        date = name[:10] if DIARY_NAME.match(name) else stamp.strftime('%Y-%m-%d')
-        records.append({'id': _diary_id(relative), 'title': _diary_title(text, date), 'date': date,
-                        'at': stamp.isoformat(), 'savedAt': stamp.isoformat(), 'source': relative,
-                        'preview': text.strip()[:DIARY_PREVIEW], 'revision': hashlib.sha256(raw).hexdigest(),
-                        'document': True, 'content': text})
+        match = DIARY_NAME.match(name)
+        date = match.group(1) if match else stamp.strftime('%Y-%m-%d')
+        fields = _diary_fields(text)
+        if _diary_is_private(name, fields):
+            # 私密页（《默记》）：标题、日期、预览、数量一律不出现在列表里，只有他自己改成共享才算
+            continue
+        record = {'id': _diary_id(relative), 'title': _diary_title(text, date), 'date': date,
+                  'at': stamp.isoformat(), 'savedAt': stamp.isoformat(), 'source': relative,
+                  'preview': text.strip()[:DIARY_PREVIEW], 'revision': hashlib.sha256(raw).hexdigest(),
+                  'document': True, 'content': text, 'visibility': DIARY_SHARED}
+        if fields['mood']:
+            record['mood'] = fields['mood']
+        if fields['summary']:
+            record['summary'] = fields['summary']
+        if fields['tags']:
+            record['tags'] = fields['tags']
+        records.append(record)
     records.sort(key=lambda r: (r['date'], r['savedAt']), reverse=True)
     return records, errors
 
