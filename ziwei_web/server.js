@@ -54,6 +54,7 @@ process.on('exit',()=>{
  catch(e){if(e.code!=='ENOENT')console.error('web_lock_cleanup_failed',e.message);}
 });
 const bridge=createChatService(DATA_DIR,{authorized:req=>!!session(req)});
+const workService=require('./work_service').createWorkService(DATA_DIR);
 const home = createHomeStore(DATA_DIR);
 const moments = createMomentsService(DATA_DIR);
 const workbench=require('./workbench').createWorkbench({bridge,moments});
@@ -198,6 +199,7 @@ const server=http.createServer(async(req,res)=>{try{
     if(pathname==='/api/photos'||pathname.startsWith('/api/photos/'))return photos(req,res,url);
     if(pathname.startsWith('/api/records/'))return records(req,res,url);
     if(pathname.startsWith('/api/workbench'))return workbench(req,res,url);
+    if(pathname.startsWith('/api/work/'))return workService.handle(req,res,pathname,readBody,json);
     if(pathname==='/api/moments'||pathname.startsWith('/api/moments/'))return moments.proxy(req,res,pathname,url);
     return bridge.proxy(req,res,pathname,url);
   }
