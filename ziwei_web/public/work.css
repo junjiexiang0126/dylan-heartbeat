@@ -7,3 +7,7 @@
 .work-tools button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
 .work-mentions{display:flex;gap:8px}.work-compose form{display:grid;gap:8px}.work-compose textarea{width:100%;resize:vertical;min-height:65px;border:1px solid var(--border);border-radius:var(--work-radius);background:var(--input);color:var(--ink);padding:10px;font:inherit}
 .work-actions{display:flex;gap:8px;justify-content:flex-end}.work-actions button[type=submit]{background:var(--accent);color:white}
+
+/* Existing navigation was five-column; Work makes it six. */
+nav.glass{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media(max-width:550px){nav.glass button{font-size:9px;letter-spacing:0}}
