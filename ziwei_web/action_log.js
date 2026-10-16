@@ -4,12 +4,12 @@ const labels={terminal:'执行命令',file:'读写文件',read_file:'读文件',
 class ActionLog{
  constructor(db){this.db=db;db.exec(`CREATE TABLE IF NOT EXISTS tool_actions(request_id TEXT NOT NULL,start_seq INTEGER NOT NULL,tool TEXT NOT NULL,call_id TEXT,preview TEXT NOT NULL,at TEXT NOT NULL,state TEXT NOT NULL,end_seq INTEGER,ended_at TEXT,PRIMARY KEY(request_id,start_seq));`);}
  capture(requestId,event,data){
-  const tool=data.tool_name,seq=data.seq;
+  const tool=data.tool_name||data.tool,seq=data.seq;
   if(tool==='_thinking'||typeof tool!=='string'||!tool||tool.length>128||!Number.isSafeInteger(seq)||seq<0)return false;
   const stamp=typeof data.ts==='string'?Date.parse(data.ts):typeof data.ts==='number'?(data.ts<1e12?data.ts*1000:data.ts):NaN;
   const at=new Date(Number.isFinite(stamp)?stamp:Date.now()).toISOString(),call=typeof (data.tool_call_id||data.call_id)==='string'?String(data.tool_call_id||data.call_id).slice(0,200):null;
   if(event==='tool.started'){
-   const preview=typeof data.preview==='string'?data.preview.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g,'').slice(0,300):'';
+   const preview=''; // Never persist tool arguments, results, or private reasoning.
    this.db.prepare('INSERT OR IGNORE INTO tool_actions(request_id,start_seq,tool,call_id,preview,at,state) VALUES(?,?,?,?,?,?,?)').run(requestId,seq,tool,call,preview,at,'in_progress');return true;
   }
   const rows=this.db.prepare("SELECT * FROM tool_actions WHERE request_id=? AND tool=? AND state='in_progress' AND start_seq<? ORDER BY start_seq").all(requestId,tool,seq).filter(r=>!call||r.call_id===call);
