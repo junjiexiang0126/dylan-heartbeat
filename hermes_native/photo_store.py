@@ -14,6 +14,7 @@
 import hashlib
 import json
 import os
+import urllib.parse
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -55,6 +56,16 @@ class PhotoError(Exception):
 def _home():
     return Path(os.environ.get('HERMES_HOME') or '/data/hermes_native')
 
+
+def _text_header(value, limit):
+    """HTTP 头只能是 latin-1，所以中文是 percent-encoded 过来的：这里解回去。"""
+    raw = str(value or '').strip()
+    if '%' in raw:
+        try:
+            raw = urllib.parse.unquote(raw, errors='strict')
+        except Exception:
+            pass
+    return raw[:limit]
 
 def _bangkok_day(value):
     if isinstance(value, str):
@@ -190,11 +201,11 @@ def add_photo(data, *, suffix, author, photo_id=None, at=None, caption=None, nam
     thumb = _make_thumb(path, pid)
     record = {
         'id': pid, 'date': day, 'at': moment.isoformat(), 'source': author, 'owner': author,
-        'file': stored, 'name': (name or '')[:120] or stored,
+        'file': stored, 'name': _text_header(name, 120) or stored,
         'mime': MIME_BY_SUFFIX[suffix], 'size': len(data),
         'sha256': hashlib.sha256(bytes(data)).hexdigest(),
         'width': width, 'height': height, 'thumb': bool(thumb),
-        'caption': (caption or '').strip()[:PHOTO_ANNOT_MAX] or None,
+        'caption': (_text_header(caption, PHOTO_ANNOT_MAX) or None),
         'deleted_at': None,
     }
     records.append(record)

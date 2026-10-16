@@ -172,6 +172,13 @@ class PhotoStoreTest(unittest.TestCase):
         with self.assertRaises(self.ps.PhotoError):
             self.ps.photo_bytes(self._uuid())
 
+    def test_headers_arrive_percent_encoded(self):
+        """HTTP 头只能是 latin-1，中文说明是编码后传进来的，落盘时必须解回来。"""
+        rec = self.ps.add_photo(PNG_1PX, suffix='.png', author=self.ps.USER, photo_id=self._uuid(),
+                                name='%E6%B8%A1%E9%B8%A6.png', caption='%E8%87%AA%E6%A3%80%E6%A0%B7%E6%9C%AC')
+        self.assertEqual(rec['name'], '渡鸦.png')
+        self.assertEqual(rec['caption'], '自检样本')
+
 
 if __name__ == '__main__':
     unittest.main()
