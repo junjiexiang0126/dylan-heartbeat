@@ -97,10 +97,28 @@ def status_record():
 def media_manifest(output):
     # MEDIA remains the normal protocol. Bare paths/Markdown links are accepted
     # only in the dedicated outbox, never by scanning arbitrary workspace files.
-    paths = re.findall(r'^\s*MEDIA:\s*[`"\']?(/[^\r\n`"\']+?)[`"\']?\s*$', output or '', re.M)
+    # 多气泡信封（{"type":"ziwei.reply.v1","messages":[...]}）里的换行是字面 \n，
+    # 只按"行首 MEDIA:"匹配会把整段漏掉 —— 附件于是永远显示"尚未收到"、重试也没用。
+    # 做法：把"解过转义的那一份"接在后面一起匹配（重复路径下面会去重）。
+    # 这里用 chr() 拼反斜杠和引号，免得这一行本身又被引号绕进去。
+    text = output or ''
+    # 多气泡信封（{"type":"ziwei.reply.v1","messages":[...]}）必须先解开：
+    # 信封里的换行是字面 \n、而且 MEDIA: 后面紧跟引号与括号，按"行首 MEDIA:"匹配会整段漏掉
+    # —— 附件于是永远"尚未收到"、点重试也没用（2026-10-16 实测就是这个）。
+    try:
+        envelope = json.loads(text)
+    except (ValueError, TypeError):
+        envelope = None
+    if isinstance(envelope, dict) and isinstance(envelope.get('messages'), list):
+        joined = [m for m in envelope['messages'] if isinstance(m, str)]
+        if joined:
+            text = text + '\n' + '\n'.join(joined)
+    bs, nl, dq = chr(92), chr(10), chr(34)
+    if bs + 'n' in text:
+        text = text + nl + text.replace(bs + 'n', nl).replace(bs + dq, dq)
+    paths = re.findall(r'^\s*MEDIA:\s*[`"\']?(/[^\r\n`"\']+?)[`"\']?\s*$', text, re.M)
     outbox = home() / 'workspace' / 'outbox'
     root = re.escape(str(outbox))
-    text = output or ''
     paths += re.findall(r'\]\((?:sandbox:)?(' + root + r'/[^\r\n<>]+?)\)', text)
     extensions = '|'.join(re.escape(suffix[1:]) for suffix in MIME)
     paths += re.findall(r'(?<![\w/:])(' + root + r'/[^\s<>`"\'，。；、（）()\[\]]+?\.(?:' + extensions + r'))(?=$|[\s<>`"\'，。；、（）()\[\].,;!！?？])', text, re.I)

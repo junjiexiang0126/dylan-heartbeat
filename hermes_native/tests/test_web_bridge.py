@@ -382,3 +382,22 @@ class DiaryRecords(unittest.TestCase):
             broken.chmod(0o644)
 
 if __name__=='__main__':unittest.main()
+
+
+class MediaManifestEnvelope(unittest.TestCase):
+    """多气泡信封里的 MEDIA: 也必须登记成附件（曾经全漏，表现为"附件尚未收到"、点重试无效）。"""
+
+    def test_media_path_inside_reply_envelope(self):
+        outbox = bridge.home() / 'workspace' / 'outbox'
+        outbox.mkdir(parents=True, exist_ok=True)
+        target = outbox / 'test-envelope-attachment.md'
+        target.write_text('hello', encoding='utf-8')
+        try:
+            envelope = json.dumps({'type': 'ziwei.reply.v1',
+                                   'messages': ['前言', '给你文件：' + chr(10) + 'MEDIA:' + str(target)]},
+                                  ensure_ascii=False)
+            found, errors = bridge.media_manifest(envelope)
+            self.assertEqual(errors, [])
+            self.assertEqual([f['name'] for f in found], ['test-envelope-attachment.md'])
+        finally:
+            target.unlink(missing_ok=True)
