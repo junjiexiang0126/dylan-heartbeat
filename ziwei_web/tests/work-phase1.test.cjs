@@ -18,7 +18,7 @@ test('Work controls are present and never silently submit to private chat',()=>{
  const html=read('index.html'),js=read('work.js');
  for(const id of ['workInput','workStatus','workMode','workForm','workVoice','workAttach'])assert.match(html,new RegExp('id="'+id+'"'));
  for(const tool of ['auto','ppt','word','pdf','excel','image','research'])assert.match(html,new RegExp('data-work-tool="'+tool+'"'));
- for(const person of ['知微','GLM'])assert.ok(html.includes('data-work-mention="'+person+'"'));
+ for(const person of ['知微','白鸦'])assert.ok(html.includes('data-work-mention="'+person+'"'));
  assert.match(js,/preventDefault\(\)/);
  assert.doesNotMatch(js,/fetch\s*\(|\/api\/chat|\/api\/message/);
 });
