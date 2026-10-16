@@ -31,7 +31,7 @@ function parse(text){
  const plain={messages:[text],summary:null,structured:false};
  if(typeof text!=='string')return plain;
  const trimmed=text.trim();
- const fenced=/^\`\`\`(?:json)?[ \\t]*\\r?\\n([\\s\\S]*?)\\r?\\n\`\`\`$/i.exec(trimmed);
+ const fenced=/^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```$/i.exec(trimmed);
  const candidate=(fenced?fenced[1]:trimmed).trim();
  if(!candidate.startsWith('{'))return plain;
  let value;
