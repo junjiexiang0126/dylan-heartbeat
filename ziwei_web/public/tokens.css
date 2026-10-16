@@ -155,6 +155,11 @@
   --records-title-size: var(--ui-font-19);
   --records-body-size: var(--ui-font-15);
   --records-diary-size: var(--ui-font-17);
+  --diary-meta-gap: var(--ui-space-18);
+  --diary-meta-margin: var(--ui-space-16);
+  --diary-meta-size: var(--ui-font-12);
+  --diary-meta-color: var(--ink);
+  --diary-meta-label-color: var(--muted);
   --records-memory-size: var(--ui-font-14);
   --records-filter-width: var(--ui-size-145);
   --moments-cover-radius: var(--ui-radius-24);

@@ -23,3 +23,15 @@ test('shared diary uses native title, and log card tokens work at mobile widths 
  for(const theme of ['light','dark']){await page.evaluate(value=>document.documentElement.dataset.theme=value,theme);for(const width of [320,390,900]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect(page.locator('.log-entry').first()).toHaveCSS('border-top-left-radius','9px');await expect(page.locator('.log-entry strong').first()).toHaveCSS('font-size','21px');await expect(page.locator('.log-entry').first()).toHaveCSS('padding-left','17px');await expect(page.locator('.log-entry-label').first()).toHaveCSS('color','rgb(12, 65, 98)');}}
  await expect(page.locator('nav [data-tab]')).toHaveCount(5);
 });
+
+test('diary weather and mood use saved fields, missing values stay explicit, and text is never executed',async({page})=>{
+ let weather='  曼谷 · 阵雨  ',mood='  轻松  ';
+ await page.route('**/api/records/**',route=>route.fulfill({json:result(new URL(route.request().url()).pathname.endsWith('/diary')?[{id:'diary-0000000000000002',title:'日记的天气与心情',date:'2026-10-15',at:now,preview:'原文',document:true,weather,mood}]:[])}));
+ await open(page);await page.locator('[data-log-kind=diary]').click();
+ await expect(page.locator('.diary-weather')).toHaveText('曼谷 · 阵雨');await expect(page.locator('.diary-mood')).toHaveText('轻松');
+ for(const width of [320,390,900]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
+ await page.locator('#logs').evaluate(node=>{node.style.setProperty('--diary-meta-size','17px');node.style.setProperty('--diary-meta-color','rgb(12, 65, 98)');});
+ for(const theme of ['light','dark']){await page.evaluate(value=>document.documentElement.dataset.theme=value,theme);await expect(page.locator('.diary-meta')).toHaveCSS('font-size','17px');await expect(page.locator('.diary-meta')).toHaveCSS('color','rgb(12, 65, 98)');}
+ weather=undefined;mood='   ';await page.locator('#logRefresh').click();await expect(page.locator('.diary-weather')).toHaveText('未记录');await expect(page.locator('.diary-mood')).toHaveText('未记录');
+ weather={description:'没有约定的对象格式'};mood='<img src=x onerror="window.DIARY_META_XSS=true">';await page.locator('#logRefresh').click();await expect(page.locator('.diary-weather')).toHaveText('未记录');await expect(page.locator('.diary-mood')).toHaveText(mood);await expect(page.locator('.diary-meta img')).toHaveCount(0);expect(await page.evaluate(()=>window.DIARY_META_XSS)).toBeUndefined();
+});

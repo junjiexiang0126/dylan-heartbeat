@@ -45,7 +45,15 @@ window.ZiweiRecords=(()=>{
   for(const row of s.data){
    const card=el('article','glass record-card '+(k==='diary'?'diary-card':k==='memory'?'memory-card':'work-card'));card.dataset.id=row.id;
    const date=el('div','record-date');date.append(el('time','',k==='diary'&&row.date?row.date.replaceAll('-','.'):time(row.at||row.savedAt)),el('span','record-date-line'));card.append(date);
-   if(k==='diary'){const author=el('p','record-author');author.textContent=($('#ziweiName').textContent||'知微')+' · 个人日记';card.append(author);}
+   if(k==='diary'){
+    const author=el('p','record-author');author.textContent=($('#ziweiName').textContent||'知微')+' · 个人日记';card.append(author);
+    const meta=el('dl','diary-meta');
+    for(const [field,label] of [['weather','天气'],['mood','心情']]){
+     const value=typeof row[field]==='string'?row[field].trim():'',item=el('div','diary-meta-item');
+     item.append(el('dt','',label),el('dd','diary-'+field,value||'未记录'));meta.append(item);
+    }
+    card.append(meta);
+   }
    card.append(el('h2','record-title',row.title));
    if(k==='work'){card.append(el('span','record-state',row.basis==='memory_audit'&&row.state==='pending'?'等待核验':row.basis==='agent_task_state'&&row.state==='completed'?'标记完成':labels[row.state]||'状态未确认'),el('p','record-basis',bases[row.basis]||'后台原始记录'));if(row.recordedState)card.append(el('p','record-basis','原始状态：'+row.recordedState));if(row.opportunity!==null&&row.opportunity!==undefined)card.append(el('p','record-basis','第 '+row.opportunity+' 次自主机会'));}
    if(k==='memory'&&row.protected===true)card.append(el('span','record-state','后端受保护'));else if(k==='memory'&&row.categories?.includes('protected'))card.append(el('p','record-basis','保护状态尚未由后端确认'));

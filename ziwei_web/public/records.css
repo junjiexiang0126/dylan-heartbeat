@@ -13,6 +13,10 @@
 .record-date{display:flex;gap:var(--ui-space-18);align-items:center;color:var(--muted);font-size:var(--ui-font-11);letter-spacing:var(--ui-tracking-_08);margin-bottom:var(--ui-space-20)}
 .record-date-line{height:var(--ui-size-1);flex:1;background:var(--accent-soft)}
 .record-author{font-size:var(--ui-font-13);margin-bottom:var(--ui-space-17);color:var(--accent)}
+.diary-meta{display:flex;flex-wrap:wrap;gap:var(--diary-meta-gap);margin:0 0 var(--diary-meta-margin);font-size:var(--diary-meta-size);line-height:var(--ui-leading-1_8);color:var(--diary-meta-color)}
+.diary-meta-item{display:flex;flex-wrap:wrap;gap:var(--ui-space-6);min-width:0;max-width:100%}
+.diary-meta dt{color:var(--diary-meta-label-color)}
+.diary-meta dd{margin:0;overflow-wrap:anywhere;min-width:0}
 .record-title{font-family:var(--records-reading-font);font-size:var(--records-title-size);font-weight:var(--ui-weight-medium);line-height:var(--ui-leading-1_8);margin-bottom:var(--ui-space-16);overflow-wrap:anywhere}
 .record-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:var(--ui-leading-2_05);font-size:var(--records-body-size);color:var(--ink)}
 .diary-card .record-body{font-family:var(--records-reading-font);font-size:var(--records-diary-size);line-height:var(--ui-leading-2_15);letter-spacing:var(--ui-tracking-_015)}
