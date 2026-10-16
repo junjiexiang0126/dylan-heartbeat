@@ -1,6 +1,6 @@
 # 四张草图与通透度修正
 
-基线：integration/ziwei-20261016 @ 9fa5f1ced42ce30bc5fbca17afe4f44fccd6f6ec，包含知微已合入的紧凑语音气泡。这里只改 ziwei_web 的前端呈现和相应测试。
+页面基线：48a2f7e1783e923857e93cd1b28cfecb649eb537；当前集成头：integration/ziwei-20261016 @ 69b3efc30d56574cd93466630b24e3ea8825df62，包含知微已合入的紧凑语音气泡、sage/sky 背景色与保存后立即 appearance()。这里只改 ziwei_web 的前端呈现和相应测试。
 
 ## 本次依据
 
@@ -28,12 +28,17 @@
 
 - `npm --prefix ziwei_web run check`：通过。
 - `npm --prefix ziwei_web test`：69 passed / 0 failed。
-- 最终一次完整 Chromium 浏览器回归：99 passed (1.7m) / 0 failed；同一份最终产品代码，没有分批累计。使用隔离 Hermes 测试服务，非真实日记/记忆。
+- 更新基线前的一次完整 Chromium 浏览器回归：99 passed (1.7m) / 0 failed，没有分批累计。使用隔离 Hermes 测试服务，非真实日记/记忆。
 - 标准命令：`npm --prefix ziwei_web run test:e2e -- --project=chromium`。本环境使用等价的外置 Playwright 配置，仅覆盖本机 Chromium 路径、字体与测试输出位置；沿用仓库 e2e_server 和隔离口令/数据目录。环境可复现命令：`FONTCONFIG_FILE=/workspace/scratch/59709d929a4c/qa-fonts/fonts.conf ziwei_web/node_modules/.bin/playwright test --config=/workspace/scratch/59709d929a4c/playwright-verification.cjs`。外置配置与字体未写入项目依赖。
-- 新增 record-sketches.spec.js 三项，覆盖通透度方向、明暗主题、实际截图差异、壁纸与偏好刷新保留、阅读页不遮挡壁纸、降低透明度实底、日记独立原文页与历史、真实记忆摘录/出处/分类筛选，以及原文不执行 HTML。
+- 更新到 48a2f7e 后重新通过语法检查；增量浏览器回归（chat-refinement.spec.js 与 record-sketches.spec.js）：9 passed (11.8s) / 0 failed。新增的背景预设测试逐一通过 light/dark × sage/sky 的真实保存、立即生效、刷新保留及通透度保留断言；没有重复完整测试。
+- record-sketches.spec.js 共四项，覆盖通透度方向、明暗主题、实际截图差异、壁纸与偏好刷新保留、阅读页不遮挡壁纸、降低透明度实底、日记独立原文页与历史、真实记忆摘录/出处/分类筛选，以及原文不执行 HTML。
 - 更新原有日记测试以验收独立全文页、圆角变量；记忆页退出测试通过返回首页进入设置，仍验证锁定清除内容与计数。
 - 浏览器截图含中文字体与隔离示例文字，仅作桌面 Chromium 的移动视口证据，不冒充 iPhone/Safari/PWA 真机截图。
 
 ## 范围与状态
 
-本提交没有修改 native、接口适配器、服务器、记忆文件、SOUL、Cron、环境变量或卷；保留基线语音气泡修改。代码以新 PR 交付，尚未合并或部署；线上文件指纹仍需在部署后另核。iPhone 深浅主题实际显示仍需用户验收，原生侧滑已有用户报告通过。
+本提交没有修改 native、接口适配器、服务器、记忆文件、SOUL、Cron、环境变量或卷；保留基线语音气泡修改。页面补丁 PR #30 已由知微合并为 69b3efc；此后只补背景回归测试与验证记录。线上部署和文件指纹本轮未核验。iPhone 深浅主题实际显示仍需用户验收，原生侧滑已有用户报告通过。
+
+## 基线同步核对
+
+style.css 与 app.js 直接沿用 48a2f7e 原字节，blob 分别为 55c1b011b16eef75e419e1f2c4e6b0e4127485f7 / a3344a47ebd6cea26988cbed787570979101a958；本补丁不改这两个文件。集成头 69b3efc 的父提交为 48a2f7e 与页面补丁 084326b。已逐项比对：所有 public 文件与增量验证使用的版本一致；追加交付只改变本记录和背景回归测试。
