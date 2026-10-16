@@ -122,6 +122,18 @@
   --interaction-dot-color: #e74858;
   --interaction-toast-shadow-color: #0002;
 
+  --log-entry-gap: var(--ui-space-12);
+  --log-entry-height: 176px;
+  --log-entry-padding: var(--ui-space-18);
+  --log-entry-radius: var(--ui-radius-24);
+  --log-entry-fill: linear-gradient(var(--glass),var(--input));
+  --log-entry-title-size: var(--ui-font-18);
+  --log-entry-description-size: var(--ui-font-12);
+  --log-entry-meta-size: var(--ui-font-10);
+  --log-entry-color: var(--ink);
+  --log-entry-accent: var(--accent);
+  --log-entry-selected-fill: var(--accent-soft);
+
   --memory-entry-gap: var(--ui-space-12);
   --memory-entry-height: 202px;
   --memory-entry-padding: var(--ui-space-18);
