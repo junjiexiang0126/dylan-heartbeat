@@ -41,6 +41,7 @@ class MomentsStore{
  skippedID(raw){return typeof raw?.id==='string'&&raw.id.length<=128?raw.id:'invalid-'+hash(JSON.stringify(raw));}
  wasSkipped(raw){return !!this.db.prepare('SELECT 1 FROM skipped_native_events WHERE id=?').get(this.skippedID(raw));}
  skipNative(raw,reason,index){const id=this.skippedID(raw),target=raw?.reply_to||raw?.target_id;this.db.prepare('INSERT OR IGNORE INTO skipped_native_events VALUES(?,?,?,?,?,?)').run(id,reason,index,typeof raw?.at==='string'?raw.at.slice(0,64):null,typeof target==='string'?target.slice(0,128):null,new Date(this.now()).toISOString());}
+ pruneSkipped(ids){const list=[...new Set(ids||[])].filter(x=>typeof x==='string'&&x.length&&x.length<=128);if(!list.length)return 0;const marks=list.map(()=>'?').join(',');return this.db.prepare(`DELETE FROM skipped_native_events WHERE id IN (${marks}) OR target_id IN (${marks})`).run(...list,...list).changes;}
  skipped(){return {total:this.db.prepare('SELECT count(*) n FROM skipped_native_events').get().n,records:this.db.prepare("SELECT *, 'invalidated' AS state FROM skipped_native_events ORDER BY skipped_at DESC,id LIMIT 50").all()};}
  native(raw){if(!raw||!uuid(raw.id)||raw.author!=='ziwei'||!iso(raw.at)||Date.parse(raw.at)>this.now()+60000||!['post','reply','like','unlike','delete'].includes(raw.kind))throw Error('invalid_native_record');
   // context_note is deliberately discarded before hashing and storage.

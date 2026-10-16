@@ -423,8 +423,11 @@ def moments_page(since=None, cursor=None, limit=None):
         window.append(record)
     page = window[:size]
     has_more = len(window) > size
+    # retired: 我已经作废、再也不会发射的记录 id。前端据此清掉它那边的“已作废记录”展示，
+    # 否则那些孤儿会永久挂在她的朋友圈顶上（她的原话：这么久了还挂在这里）。
     return {'data': [{k: v for k, v in r.items() if k != 'context_note'} for r in page],
-            'errors': [], 'next_cursor': _encode_cursor(page[-1]) if page and has_more else None,
+            'errors': [], 'retired': sorted(retired),
+            'next_cursor': _encode_cursor(page[-1]) if page and has_more else None,
             'has_more': has_more}
 
 

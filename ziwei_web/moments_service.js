@@ -14,6 +14,7 @@ function createMomentsService(dir,{client,now=()=>Date.now(),random=Math.random,
   if(closed||!client.configured()){lastError='hermes_not_configured';return {available:false,error:lastError};}if(syncing)return syncing;
   syncing=(async()=>{try{
    let checkpoint=JSON.parse(store.meta('native_cursor')||'{}'),pages=0,imported=0,processed=0;
+   const retired=new Set();
    while(++pages<=10&&!closed){
     const query=new URLSearchParams({limit:'100'});if(checkpoint.cursor)query.set('cursor',checkpoint.cursor);else if(checkpoint.at)query.set('since',new Date(Date.parse(checkpoint.at)-1).toISOString());
     const value=await client.json('/ziwei/web/moments?'+query,{signal:AbortSignal.timeout(12000)});
@@ -30,12 +31,15 @@ function createMomentsService(dir,{client,now=()=>Date.now(),random=Math.random,
      if(reason)store.skipNative(record,reason,processed+index+1);
     }
     processed+=value.data.length;
+    for(const item of Array.isArray(value.retired)?value.retired:[])if(typeof item==='string'&&item.length<=128)retired.add(item);
     if(value.errors.length)throw Error('native_moments_write_error');
     if(value.next_cursor!==undefined&&value.next_cursor!==null&&(typeof value.next_cursor!=='string'||!value.next_cursor||value.next_cursor.length>2048))throw Error('native_moments_cursor_invalid');
     if(value.next_cursor){if(value.next_cursor===checkpoint.cursor)throw Error('native_moments_cursor_stalled');checkpoint={at:latest,cursor:value.next_cursor};}
     else{if(value.has_more===true||value.data.length===100&&value.has_more!==false)throw Error('native_moments_pagination_required');checkpoint={at:latest};}
     store.meta('native_cursor',JSON.stringify(checkpoint));if(!value.next_cursor)break;
    }
+   // 原生已经作废的记录：清掉这边的历史提示，别再永久挂在她页面上
+   if(retired.size)store.pruneSkipped(retired);
    ready=true;lastError=null;lastSync=new Date(now()).toISOString();store.meta('last_native_sync',lastSync);return {available:true,imported};
   }catch(e){lastError=e.message==='hermes_http_404'?'native_moments_not_installed':safeError(e);ready=false;console.warn('MOMENTS_SYNC_ERROR '+JSON.stringify({code:lastError}));return {available:false,error:lastError};}})().finally(()=>syncing=null);return syncing;
  }
