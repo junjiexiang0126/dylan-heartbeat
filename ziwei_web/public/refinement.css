@@ -202,3 +202,9 @@ nav.glass button svg{filter:none}
 .voice-record-wave i{display:block;width:var(--voice-wave-width);height:calc(var(--voice-wave-min) + var(--voice-amplitude,0)*(var(--voice-wave-height) - var(--voice-wave-min)));border-radius:var(--ui-radius-3);background:currentColor;flex:none}
 .voice-recorder[data-cancel=true]{color:var(--voice-cancel-color)}.voice-menu h2{font-size:var(--ui-font-18)}
 @media(prefers-reduced-motion:reduce){.is-playing .voice-play-wave i{animation:none}}
+
+/* A single adjustable material layer, so high transparency reveals the wallpaper. */
+.log-entry.glass{background:transparent}
+.log-entry.glass::before{background:var(--entrance-fill)}
+html[data-reduce-glass=true]{--paper-fill:var(--bg);--record-card-fill:var(--bg);--record-tool-fill:var(--bg)}
+@media(prefers-reduced-transparency:reduce){:root{--glass-opacity:1!important;--paper-fill:var(--bg);--record-card-fill:var(--bg);--record-tool-fill:var(--bg)}}
