@@ -138,7 +138,7 @@ $('#profileForm').onsubmit=async e=>{
   try {
     const body={revision:homeData.revision,relationship:{metOn:$('#metOn').value||null},user:{nickname:$('#userNickname').value},ziwei:{nickname:$('#ziweiNickname').value},preferences:{theme:$('#theme').value,background:$('#background').value}};
     for(const who of ['user','ziwei'])if(Object.hasOwn(pendingAvatars,who))body[who].avatar=pendingAvatars[who];
-    homeData=await api('/api/home','PUT',body);pendingAvatars={};renderHome();$('#settingsMessage').textContent='已保存。';
+    homeData=await api('/api/home','PUT',body);pendingAvatars={};appearance();renderHome();$('#settingsMessage').textContent='已保存。';
   }catch(e){$('#settingsMessage').textContent=e.message;}finally{$('#saveProfile').disabled=false;}
 };
 function decode(v){return Uint8Array.from(atob(v.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(v.length/4)*4,'=')),c=>c.charCodeAt(0));}
