@@ -25,15 +25,15 @@
 .raven-stage canvas[hidden]{display:none}
 /* 她 2026-10-17 凌晨定的：脚下加一块垫子（不是一条横线），外圈换成四角小括号 */
 .raven-stage::before{
-  content:'';position:absolute;left:50%;bottom:13%;transform:translateX(-50%);
+  content:'';position:absolute;left:50%;bottom:8.5%;transform:translateX(-50%);
   width:46%;height:7.5%;min-height:12px;border-radius:50%;z-index:0;
   background:radial-gradient(ellipse at 50% 28%,#ffe6f0,#ffc2d8 72%,#ffb6d1);
   box-shadow:0 6px 12px rgba(186,126,158,.22),inset 0 2px 0 rgba(255,255,255,.85);
 }
 .raven-stage::after{
-  content:'';position:absolute;inset:7px;pointer-events:none;opacity:.5;border-radius:12px;
+  content:'';position:absolute;inset:7px;pointer-events:none;opacity:.85;border-radius:12px;
   background-image:linear-gradient(#c97d9d,#c97d9d),linear-gradient(#c97d9d,#c97d9d),linear-gradient(#c97d9d,#c97d9d),linear-gradient(#c97d9d,#c97d9d),linear-gradient(#c97d9d,#c97d9d),linear-gradient(#c97d9d,#c97d9d),linear-gradient(#c97d9d,#c97d9d),linear-gradient(#c97d9d,#c97d9d);
   background-repeat:no-repeat;
-  background-size:24px 2px,2px 24px,24px 2px,2px 24px,24px 2px,2px 24px,24px 2px,2px 24px;
+  background-size:26px 3px,3px 26px,26px 3px,3px 26px,26px 3px,3px 26px,26px 3px,3px 26px;
   background-position:left top,left top,right top,right top,left bottom,left bottom,right bottom,right bottom;
 }
