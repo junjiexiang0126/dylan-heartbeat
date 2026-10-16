@@ -1,0 +1,25 @@
+:root{--raven-stage-height:260px;--raven-stage-radius:var(--ui-radius-20);--raven-stage-light:#f7ede6;--raven-stage-dark:#211d29;--raven-caption-size:var(--ui-font-12);--raven-stage-max:360px;--raven-control-min:100px}
+.today.raven-home{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--ui-space-8);position:relative;overflow:hidden}
+.raven-home>.status-orbit{display:none}
+.raven-home>.raven-info{min-width:0;align-self:start}
+.raven-home>.raven-info h2{margin-block:var(--ui-space-6);font-size:var(--ui-font-20)}
+.raven-home>.status-tag{align-self:start}
+.raven-stage{grid-column:1/-1;position:relative;width:100%;height:var(--raven-stage-height);max-width:var(--raven-stage-max);margin-inline:auto;border-radius:var(--raven-stage-radius);background:radial-gradient(ellipse at 50% 40%,var(--raven-stage-light),transparent 72%);overflow:hidden}
+.raven-stage canvas{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab;position:relative;z-index:1}
+.raven-stage canvas:active{cursor:grabbing}
+.raven-stage canvas:focus-visible{outline:var(--ui-size-2) solid var(--accent);outline-offset:calc(-1 * var(--ui-space-4));border-radius:var(--raven-stage-radius)}
+.raven-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:0}
+.raven-fallback[hidden]{display:none}
+.raven-caption,.raven-feedback{grid-column:1/-1;text-align:center;font-size:var(--raven-caption-size);color:var(--muted);margin:0;min-height:var(--ui-space-18)}
+.raven-feedback{color:var(--ink)}
+.raven-retry{grid-column:1/-1;justify-self:center}
+:root[data-theme=dark] .raven-stage{background:radial-gradient(ellipse at 50% 40%,var(--raven-stage-dark),transparent 72%)}
+.raven-preview-shell{max-width:720px;margin:0 auto;padding:var(--ui-space-20);color:var(--ink)}
+.raven-preview-shell .raven-stage{--raven-stage-height:400px;--raven-stage-max:520px}
+.raven-preview-controls{display:flex;flex-wrap:wrap;gap:var(--ui-space-8);justify-content:center;margin-block:var(--ui-space-16)}
+.raven-preview-shell h1{font-size:var(--ui-font-25)}
+@media(max-width:360px){:root{--raven-stage-height:230px}.raven-home>.raven-info h2{font-size:var(--ui-font-18)}}
+
+.raven-preview-controls button{width:auto;min-width:var(--raven-control-min);margin:0}
+
+.raven-stage canvas[hidden]{display:none}
