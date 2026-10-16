@@ -25,7 +25,7 @@ test('pinned native runs, cross-tab idempotency, FIFO and durable replies',async
  const second=crypto.randomUUID();await s.api('/api/chat/send',{requestId:second,message:'second',attachments:[]});
  const messages=await until(async()=>{const r=await s.rows();return r.filter(m=>m.kind==='final'&&m.role==='assistant').length===2&&r;});assert.equal(s.fake.executions,2);assert.equal(messages.filter(m=>m.role==='user').length,2);assert.equal(messages.filter(m=>m.kind==='commentary').length,2);
  for(const req of s.fake.seen){assert.equal(req.authorization,'Bearer protocol-fixture-key');assert.equal(req.sessionKey,req.url.startsWith('/ziwei/web/moments?')?'agent:main:web:isolated-test-session-moments':'agent:main:web:isolated-test-session');assert.ok(!req.url.includes('/api/jobs'));}
- const accepted=[...s.fake.keys.values()].map(x=>JSON.parse(x.body));assert.deepEqual(accepted.map(x=>x.input),['test','second']);assert.ok(accepted.every(x=>Object.keys(x).sort().join(',')==='input,session_id'));
+ const accepted=[...s.fake.keys.values()].map(x=>JSON.parse(x.body));assert.ok(accepted.every((x,i)=>x.input.endsWith(['test','second'][i])&&x.input.includes('ziwei.reply.v1')));assert.ok(accepted.every(x=>Object.keys(x).sort().join(',')==='input,session_id'));
  await s.stop();await s.start();assert.equal((await s.rows()).length,messages.length);assert.equal((await s.api('/api/chat/send',b)).status,200);assert.equal(s.fake.executions,2);
 });
 test('browser disconnect and Web process restart continue the existing native run once',async t=>{
@@ -45,7 +45,7 @@ test('private attachments, type/size gates, range downloads and inline image/tex
  assert.equal((await upload('../secret.txt',Buffer.from('bad'))).status,400);assert.equal((await upload('bad.svg',Buffer.from('<svg></svg>'))).status,400);assert.equal((await upload('bad.html',Buffer.from('<html>'))).status,400);assert.equal((await upload('large.txt',Buffer.alloc(20*1024*1024+1))).status,413);
  const a=await (await upload('notes.txt',Buffer.from('附件资料：hello'))).json();assert.equal(a.mime,'text/plain');assert.equal((await fetch(s.origin+'/api/chat/attachments/'+a.id)).status,401);
  const range=await fetch(s.origin+'/api/chat/attachments/'+a.id,{headers:{...s.headers,Range:'bytes=0-3'}});assert.equal(range.status,206);assert.equal((await range.arrayBuffer()).byteLength,4);assert.match(range.headers.get('content-disposition'),/attachment/);
- assert.equal((await fetch(s.origin+'/api/chat/attachments/'+a.id,{headers:{...s.headers,Range:'bytes=9999-'}})).status,416);assert.equal((await s.api('/api/chat/attachments/'+a.id+'/metadata')).status,200);
+ assert.equal((await fetch(s.origin+'/api/chat/attachments/'+a.id,{headers:{...s.headers,Range:'bytes=9999-'}})).status,416);assert.equal((await s.api('/api/chat/attachments/'+a.id+'/metadata')).status,200);assert.equal((await fetch(s.origin+'/api/chat/attachments/'+a.id+'/preview')).status,401);assert.equal((await s.api('/api/chat/attachments/'+a.id+'/preview')).status,415);
  const gif=Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7','base64'),image=await (await upload('sticker.gif',gif)).json();assert.equal(image.mime,'image/gif');
  await s.api('/api/chat/send',{requestId:crypto.randomUUID(),message:'看附件',attachments:[a.id,image.id]});await until(()=>s.fake.executions===1);const parts=JSON.parse([...s.fake.keys.values()][0].body).input[0].content;assert.match(parts[0].text,/hello/);assert.match(parts[1].image_url.url,/^data:image\/gif;base64,/);
  await s.stop();await s.start();assert.equal((await s.api('/api/chat/attachments/'+a.id)).status,200);
@@ -150,4 +150,16 @@ test('unavailable native records remain an explicit failure and SSE tail skips h
  const messages=await (await s.api('/api/chat/messages')).json();assert.ok(messages.eventCursor>0);
  const controller=new AbortController(),stream=await fetch(s.origin+'/api/chat/events?tail=true',{headers:s.headers,signal:controller.signal});
  const text=new TextDecoder().decode((await stream.body.getReader().read()).value);assert.match(text,/event: cursor/);assert.match(text,new RegExp('id: '+messages.eventCursor));assert.doesNotMatch(text,/request.state|message.delta/);controller.abort();
+});
+
+test('Agent-chosen segments persist as independent messages; summaries and exact raw output survive restart',async t=>{
+ const output=JSON.stringify({type:'ziwei.reply.v1',messages:['第一条完整消息','第二条\n```js\nconst x=1;\n```'],summary:'先确认需求，再给出示例。'});
+ const s=await setup(t,{output,interim:false}),id=crypto.randomUUID();
+ await s.api('/api/chat/send',{requestId:id,message:'由你决定消息数量',attachments:[]});
+ const rows=await until(async()=>{const rows=await s.rows();return rows.filter(x=>x.role==='assistant'&&x.kind==='final').length===2&&rows;});
+ assert.deepEqual(rows.filter(x=>x.kind==='final'&&x.role==='assistant').map(x=>x.content),JSON.parse(output).messages);
+ assert.equal(rows.find(x=>x.kind==='summary').content,JSON.parse(output).summary);
+ const final=rows.find(x=>x.id==='reply-'+id);assert.equal(final.content,JSON.parse(output).messages[1]);
+ await s.stop();const db=new DatabaseSync(path.join(s.dir,'chat.sqlite'));assert.equal(JSON.parse(db.prepare('SELECT value FROM meta WHERE key=?').get('presentation:'+id).value).raw,output);db.close();
+ await s.start();assert.deepEqual((await s.rows()).filter(x=>x.role==='assistant'&&x.kind==='final').map(x=>x.content),JSON.parse(output).messages);assert.equal(s.fake.executions,1);
 });

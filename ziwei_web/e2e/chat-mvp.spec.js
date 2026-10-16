@@ -74,8 +74,9 @@ test('accepted message with failed history refresh is not reported as an uncerta
  await expect(page.locator('#chatRetry')).toBeVisible();await expect(page.locator('#chatSend')).toBeEnabled();
 });
 test('existing requests show their actual server state after entry',async({page})=>{
- await noEvents(page);await history(page,[row('恢复中的请求')]);
- await page.route('**/api/chat/requests',r=>r.fulfill({json:{data:[{id:'restored-request',state:'recovering'}]}}));
+ await noEvents(page);
+ // The current client restores request state from the authoritative messages snapshot.
+ await page.route('**/api/chat/messages?*',r=>r.fulfill({json:{data:[row('恢复中的请求')],before:1,hasMore:false,requests:[{id:'restored-request',state:'recovering'}]}}));
  await login(page);await expect(page.locator('#chatWork')).toHaveText('恢复连接中');await expect(page.locator('#chatProgress')).toBeInViewport();
 });
 test('real isolated chat service sends, streams, persists and reloads the reply',async({page})=>{

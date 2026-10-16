@@ -1,0 +1,82 @@
+/* Semantic values live in tokens.css. Wallpaper stays crisp; surfaces carry glass. */
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--ink)}
+.ambient{opacity:var(--home-ambient-opacity)}
+.glass{box-shadow:var(--surface-shadow);border-color:var(--surface-border)}
+.glass::before{border-radius:inherit}
+.section-heading h1,.welcome h1{font-family:var(--ui-serif);font-size:var(--page-title-size);font-weight:var(--ui-weight-medium)}
+.topbar .brand{font-family:var(--ui-serif);font-weight:var(--ui-weight-medium)}
+.topbar .brand small{font-family:var(--ui-sans);letter-spacing:var(--brand-tracking)}
+.home .together{background:var(--home-card-fill);border-radius:var(--home-card-radius);padding:var(--home-card-padding)}
+.home .today,.home .memorial{border-radius:var(--home-card-radius)}
+.home .card-label{font-size:var(--ui-font-12);letter-spacing:var(--ui-tracking-_04)}
+.home .anniversaries strong{font-weight:var(--ui-weight-medium)}
+.home .welcome{margin-block:var(--ui-space-12) var(--ui-space-24)}
+nav.glass{box-shadow:var(--nav-shadow);border:var(--ui-size-1) solid var(--surface-border)}
+nav.glass button.active{background:var(--selected-fill);box-shadow:var(--selected-shadow)}
+.record-card,.moment-post,.memory-entry,.log-entry{box-shadow:var(--surface-shadow)}
+.memory-entry,.log-entry{background:var(--entrance-fill)}
+.memory-entry-icon{background:var(--selected-fill)}
+.memory-entry-link,.log-entry-link{letter-spacing:var(--ui-tracking-_04)}
+.record-tabs,.records-empty{border-radius:var(--ui-radius-24)}
+#logs .record-card,#memory .record-card{border-color:var(--surface-border)}
+dialog{border-color:var(--surface-border);box-shadow:var(--dialog-shadow);border-radius:var(--dialog-radius)}
+dialog .dialog-heading h2{font-family:var(--ui-serif);font-weight:var(--ui-weight-medium)}
+#settings{padding:var(--dialog-padding);scroll-padding:var(--dialog-padding)}
+#settings fieldset{padding-block:var(--ui-space-12);margin-block:var(--ui-space-12)}
+#settings legend{font-family:var(--ui-serif);font-weight:var(--ui-weight-medium)}
+.appearance-options{border-block:var(--ui-size-1) solid var(--border)}
+.thought-toggle{display:flex;align-items:center;gap:var(--ui-space-8);margin:0;line-height:var(--ui-leading-1_8);font-size:var(--ui-font-11);color:var(--muted)}
+.thought-toggle input{width:var(--ui-size-16);height:var(--ui-size-16);padding:0;flex:none;accent-color:var(--accent)}
+.chat-view-options{display:flex;justify-content:space-between;align-items:center;gap:var(--ui-space-8);flex-wrap:wrap;padding:0 var(--ui-space-4) var(--ui-space-8);flex:none}
+.chat-view-options>span{font-size:var(--ui-font-9);color:var(--muted)}
+html:not([data-thoughts=true]) #chat [data-kind=summary],html:not([data-thoughts=true]) #chat [data-kind=commentary],html:not([data-thoughts=true]) #chatWork{display:none}
+#chat [data-kind=summary] .message-bubble,#chat [data-kind=commentary] .message-bubble{border-left:var(--ui-size-2) solid var(--accent);background:var(--summary-fill)}
+#chat .message{gap:var(--chat-avatar-gap);margin-block:var(--chat-message-gap)}
+#chat .message-body{max-width:var(--chat-body-width)}
+#chat .message-label{font-size:var(--chat-meta-size);color:var(--muted);margin:0 var(--ui-space-4) var(--ui-space-6)}
+#chat .message-bubble{padding:var(--chat-bubble-padding-block) var(--chat-bubble-padding-inline);border-radius:var(--chat-bubble-radius);border-start-start-radius:var(--chat-bubble-corner);box-shadow:var(--bubble-shadow);background:var(--assistant-bubble-fill);border-color:var(--bubble-border)}
+#chat .message.user .message-bubble{background:var(--user-bubble-fill);border-start-start-radius:var(--chat-bubble-radius);border-start-end-radius:var(--chat-bubble-corner)}
+#chat .message-content{font-size:var(--chat-font-size);line-height:var(--chat-reading-leading);color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
+#chat .message-actions{display:flex;flex-wrap:wrap;gap:var(--ui-space-10);padding-top:var(--ui-space-6);opacity:var(--chat-actions-opacity)}
+#chat .message-actions button{font-size:var(--chat-meta-size);color:var(--muted)}
+#chat .message-actions button:hover{color:var(--accent)}
+#chat .message-avatar{box-shadow:var(--avatar-shadow);border:var(--ui-size-1) solid var(--surface-border)}
+#chatForm{border-color:var(--surface-border);border-radius:var(--composer-radius);box-shadow:var(--composer-shadow)}
+#chatForm textarea{line-height:var(--ui-leading-1_8)}
+#chat .compose-icon{background:var(--selected-fill);color:var(--accent)}
+#chat #chatSend{background:var(--accent);color:var(--bg)}
+#chat .file-card{border-radius:var(--file-card-radius);padding:var(--ui-space-14);background:var(--file-card-fill)}
+.file-card-download{font-size:var(--ui-font-11)}
+.chat-code{white-space:normal;max-width:100%;min-width:0;background:var(--code-fill);border-radius:var(--code-radius);margin-block:var(--ui-space-10);padding:var(--ui-space-12)}
+.chat-code>small{font-size:var(--ui-font-10);color:var(--muted)}
+.chat-code>button{float:right;font-size:var(--ui-font-10);border:0;background:transparent;color:var(--accent)}
+.chat-code pre{white-space:pre;overflow-x:auto;max-width:100%;font:var(--code-font-size)/var(--chat-reading-leading) ui-monospace,SFMono-Regular,Consolas,monospace;margin:var(--ui-space-10) 0 0}
+dialog.file-viewer{position:fixed;inset:0;width:100%;max-width:var(--file-viewer-max-width);height:100dvh;max-height:100dvh;margin:auto;padding:calc(var(--dialog-padding) + env(safe-area-inset-top,0px)) var(--dialog-padding) calc(var(--dialog-padding) + env(safe-area-inset-bottom,0px));border-radius:0;background:var(--bg)!important;overflow:hidden}
+dialog.file-viewer[open]{display:flex;flex-direction:column;gap:var(--ui-space-14)}
+.file-viewer-heading{display:flex;justify-content:space-between;gap:var(--ui-space-14);align-items:start;flex:none}
+.file-viewer-heading>div{min-width:0}.file-viewer-heading h2{font-size:var(--ui-font-18);line-height:var(--ui-leading-1_8);overflow-wrap:anywhere;margin-top:var(--ui-space-8)}
+.file-viewer-heading .icon-button{flex:none;min-width:var(--ui-size-40);min-height:var(--ui-size-40)}
+.file-preview{overflow:auto;flex:1;min-height:0;border-block:var(--ui-size-1) solid var(--border);padding-block:var(--ui-space-14);overscroll-behavior:contain}
+.file-text-preview{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font:var(--file-preview-size)/var(--chat-reading-leading) var(--ui-sans);color:var(--ink)}
+.file-viewer-actions{display:flex;gap:var(--ui-space-12);flex:none}
+.file-viewer-actions button{margin:0;flex:1}
+html[data-reduce-glass=true]{--glass-opacity:1!important;--glass:var(--bg);--assistant-bubble-fill:var(--bg);--user-bubble-fill:var(--accent-soft)}
+html[data-reduce-glass=true] .glass::before{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--bg)!important}
+@media(prefers-reduced-transparency:reduce){.glass::before{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--bg)!important}}
+@media(min-width:375px){.chat-header-title::before,.chat-header-title::after{content:"";position:absolute;top:var(--ecg-top);width:var(--ecg-width);height:var(--ecg-height);background:var(--accent);opacity:var(--ecg-opacity);clip-path:polygon(0 48%,25% 48%,35% 20%,45% 80%,58% 8%,70% 48%,100% 48%,100% 55%,67% 55%,59% 28%,45% 100%,35% 42%,28% 55%,0 55%)}.chat-header-title::before{right:calc(100% + var(--ui-space-8))}.chat-header-title::after{left:calc(100% + var(--ui-space-8));transform:scaleX(-1)}}
+
+:root:not([data-theme=dark]){--glass:rgb(255 250 252 / var(--glass-opacity))}
+:root[data-theme=dark]{--glass:rgb(48 37 50 / var(--glass-opacity))}
+
+.file-image-preview{display:block;max-width:100%;height:auto;margin:auto;border-radius:var(--ui-radius-14)}
+
+#chat .message-arrival{animation:message-arrival var(--bubble-arrival-duration) ease-out backwards;animation-delay:calc(var(--bubble-arrival-index,0) * var(--bubble-arrival-stagger))}
+@keyframes message-arrival{from{opacity:0;transform:translateY(var(--bubble-arrival-distance))}to{opacity:1;transform:translateY(0)}}
+.thought-toggle{font-size:var(--ui-font-12);padding-block:var(--ui-space-4)}
+
+.shell{z-index:1}
+.space-wallpaper{position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--bg)}
+.space-wallpaper img{width:100%;height:100%;object-fit:cover;display:block;filter:none}
+body.has-space-wallpaper .ambient{display:none}
+body.chat-has-wallpaper .space-wallpaper{display:none}

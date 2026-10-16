@@ -60,6 +60,7 @@
   /** 返回 'shared' | 'opened' | 'cancelled' | 'failed'，调用方据此给提示。 */
   async function saveOrShare(url, name, env) {
     if (!url) return 'failed';
+    if (!env && global.ZiweiFiles) { await global.ZiweiFiles.open(url, name || '文件'); return 'prepared'; }
     try {
       const result = await shareFile(url, name, env);
       if (result === 'shared') return 'shared';
@@ -84,8 +85,8 @@
     }
     element.addEventListener('click', function (event) {
       const url = typeof getUrl === 'function' ? getUrl() : getUrl;
-      if (!url) return;                       // 没准备好就交给默认行为（例如重试按钮）
       event.preventDefault();
+      if (!url) return;
       const name = typeof getName === 'function' ? getName() : getName;
       saveOrShare(url, name, e).then(function (result) {
         element.dispatchEvent(new CustomEvent('ziwei-save-result', { detail: { result: result, name: name } }));

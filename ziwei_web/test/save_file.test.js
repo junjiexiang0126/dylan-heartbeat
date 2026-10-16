@@ -4,6 +4,12 @@ const test = require('node:test');
 const assert = require('node:assert');
 const save = require('../public/save-file.js');
 
+test('默认保存入口交给站内文件面板，不直接导航或尝试异步分享',async t=>{
+ const prior=globalThis.ZiweiFiles,calls=[];globalThis.ZiweiFiles={open:async(...args)=>calls.push(args)};
+ t.after(()=>{if(prior===undefined)delete globalThis.ZiweiFiles;else globalThis.ZiweiFiles=prior;});
+ assert.equal(await save.saveOrShare('/api/chat/attachments/example','纸条.txt'),'prepared');assert.deepEqual(calls,[['/api/chat/attachments/example','纸条.txt']]);
+});
+
 function fakeDocument() {
   const created = [];
   const body = {

@@ -2,6 +2,7 @@
 const path=require('node:path'),fs=require('node:fs');
 const {NativeHistory}=require('./native_history'),{VoiceSynthesizer}=require('./voice_synthesizer'),{extract}=require('./document_text');
 const {ChatStore,uuid,hash}=require('./chat_store'),{HermesClient}=require('./hermes_client'),{Attachments}=require('./attachments'),{SSEParser}=require('./sse_parser');
+const presentation=require('./chat_presentation');
 const TERMINAL=['completed','failed','cancelled','interrupted'];
 const {VoiceTranscriber}=require('./voice_transcriber');
 function createChatService(dir,{authorized=()=>true}={}){
@@ -65,7 +66,15 @@ function createChatService(dir,{authorized=()=>true}={}){
  function finish(id,o){
   if(!TERMINAL.includes(o.status))return false;
   store.db.prepare('DELETE FROM meta WHERE key=?').run('approval:'+id);
-  store.transaction(()=>{if(typeof o.output==='string'&&o.output)store.assistant(id,'reply-'+id,o.output,'final',o.status);store.state(id,o.status,o.status==='completed'?null:'hermes_'+o.status);});return true;
+  store.transaction(()=>{
+   if(typeof o.output==='string'&&o.output){
+    const view=o.status==='completed'?presentation.parse(o.output):{messages:[o.output]};
+    if(view.structured)store.db.prepare('INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run('presentation:'+id,JSON.stringify({raw:o.output,type:'ziwei.reply.v1'}));
+    if(view.summary)store.assistant(id,'summary-'+id,view.summary,'summary',o.status);
+    view.messages.forEach((text,index)=>store.assistant(id,index===view.messages.length-1?'reply-'+id:'reply-'+id+'-part-'+index,text,'final',o.status));
+   }
+   store.state(id,o.status,o.status==='completed'?null:'hermes_'+o.status);
+  });return true;
  }
  async function consume(r){
   const upstream=await client.stream(r.run_id,r.upstream_seq);
@@ -93,7 +102,7 @@ function createChatService(dir,{authorized=()=>true}={}){
      await client.init();connected=true;lastError=null;
      if(r.state==='queued'){
       // Persist the exact transport before admission; a lost response reuses identical bytes.
-      const payload=JSON.parse(r.payload),transcripts=await files.transcripts(payload,voice),documents={};for(const id of payload.attachments){const a=files.get(id),d=await extract(path.join(files.dir,id),a.name);if(d?.text)documents[id]=d;}payload.transport=files.input(payload,transcripts,documents);
+      const payload=JSON.parse(r.payload),transcripts=await files.transcripts(payload,voice),documents={};for(const id of payload.attachments){const a=files.get(id),d=await extract(path.join(files.dir,id),a.name);if(d?.text)documents[id]=d;}payload.transport=presentation.transport(files.input(payload,transcripts,documents));
       store.db.prepare('UPDATE requests SET payload=? WHERE id=?').run(JSON.stringify(payload),r.id);
       store.dispatched(r.id);r=store.request(r.id);
      }
@@ -176,6 +185,8 @@ function createChatService(dir,{authorized=()=>true}={}){
     },300);timers.add(timer);res.on('close',()=>{clearInterval(timer);timers.delete(timer);});return;
    }
    if(pathname==='/api/chat/attachments'&&req.method==='POST')return json(res,201,await files.upload(req));
+   const preview=/^\/api\/chat\/attachments\/([a-f0-9-]{36})\/preview$/.exec(pathname);
+   if(preview&&req.method==='GET'){const a=files.get(preview[1]);const value=await extract(path.join(files.dir,a.id),a.name);return value?.text?json(res,200,{text:value.text.slice(0,200000),truncated:true}):json(res,415,{error:'preview_unavailable'});}
    const metadata=/^\/api\/chat\/attachments\/([a-f0-9-]{36})\/metadata$/.exec(pathname);if(metadata&&req.method==='GET')return json(res,200,files.get(metadata[1]));
    if(pathname.startsWith('/api/chat/attachments/')&&['GET','HEAD'].includes(req.method))return files.serve(req,res,pathname.slice('/api/chat/attachments/'.length));
    if(pathname==='/api/chat/action'&&req.method==='POST'){const b=await body(req);if(Object.keys(b).some(k=>!['id','action'].includes(k))||typeof b.id!=='string'||!['favorite','unfavorite','delete','restore'].includes(b.action))throw Error('invalid_action');store.action(b.id,b.action);return json(res,200,{ok:true});}
