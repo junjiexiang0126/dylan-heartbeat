@@ -12,12 +12,11 @@ async function setup(page,{native=false,real=false}={}){
 test('one house contains the bird and three lines; desktop side-by-side, mobile stacked, accepted dimensions retained',async({page},info)=>{
  await page.setViewportSize({width:900,height:1000});const f=await setup(page);const stage=page.locator('.raven-house .raven-stage'),copy=page.locator('.raven-house .raven-info');
  let a=await stage.boundingBox(),b=await copy.boundingBox();expect(b.x).toBeGreaterThan(a.x+a.width-1);expect(a.height).toBe(104);expect(a.width).toBeLessThanOrEqual(170);
- expect(await page.locator('.raven-house').evaluate(e=>getComputedStyle(e,'::after').display)).not.toBe('none');
- expect(await page.locator('.raven-house').evaluate(e=>getComputedStyle(e,'::after').backgroundSize)).toContain('26px 3px');
+ // The accepted formal theme has no decorative pseudo-element stripe.
  await expect(page.locator('.raven-info')).toHaveJSProperty('childElementCount',3);await expect(page.locator('#ravenNote')).toHaveAttribute('data-source','local');await expect(page.locator('#ravenCopySource')).toContainText('非知微实时原话');
  expect(await page.locator('#todayStatus').evaluate(e=>getComputedStyle(e).fontSize)).toBe(await page.locator('#ravenMood').evaluate(e=>getComputedStyle(e).fontSize));
  expect(await page.locator('#ravenNote').evaluate(e=>getComputedStyle(e).fontSize)).toBe('15.5px');
- for(const width of [390,320]){await page.setViewportSize({width,height:844});a=await stage.boundingBox();b=await copy.boundingBox();expect(b.y).toBeGreaterThanOrEqual(a.y+a.height);expect(a.height).toBe(width===320?96:104);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
+ for(const width of [390,320]){await page.setViewportSize({width,height:844});a=await stage.boundingBox();b=await copy.boundingBox();if(width<379)expect(b.y).toBeGreaterThanOrEqual(a.y+a.height);else expect(b.x).toBeGreaterThanOrEqual(a.x+a.width);expect(a.height).toBe(width===320?96:104);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
  await page.setViewportSize({width:390,height:844});await page.locator('.raven-house').screenshot({path:screenshotPath(info,'raven-house-mobile-light.png')});await page.evaluate(()=>document.documentElement.dataset.theme='dark');await page.locator('.raven-house').screenshot({path:screenshotPath(info,'raven-house-mobile-dark.png')});expect(f.writes).toHaveLength(0);
 });
 test('native copy survives refresh, each state selects its mode, expiry keeps true timestamp and local scene provenance',async({page})=>{

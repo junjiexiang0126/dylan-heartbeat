@@ -28,7 +28,7 @@ function createWorkService(dataDir,options={}){
  const state=(id,value,error=null)=>db.prepare('UPDATE tasks SET state=?,error=?,updated=? WHERE id=?').run(value,error,new Date().toISOString(),id);
  const catalog=id=>db.prepare('SELECT * FROM tools WHERE id=?').get(id);
  const permit=id=>{const t=catalog(id);if(!t||!t.enabled||!t.authorized)throw Error('tool_permission_denied');return t;};
- const record=(id,stage,result)=>{const u=result.usage||{},input=Number(u.prompt_tokens),output=Number(u.completion_tokens),known=Number.isSafeInteger(input)&&Number.isSafeInteger(output)&&input>=0&&output>=0;
+ const record=(id,stage,result)=>{const u=result.usage||{},input=u.prompt_tokens,output=u.completion_tokens,known=Number.isSafeInteger(input)&&Number.isSafeInteger(output)&&input>=0&&output>0;
   // Conservative configured ceiling, not a claim about the provider's billed price.
   const cost=known?(input*10+output*20)/1000000:0.5;
   db.prepare('INSERT INTO usage VALUES(?,?,?,?,?,?,?)').run(crypto.randomUUID(),id,stage,result.model||'unknown',JSON.stringify(u),new Date().toISOString(),cost);
