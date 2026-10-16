@@ -28,5 +28,18 @@ window.ZiweiChatRender=(()=>{
    else{const span=document.createElement('span');span.textContent=chunk;node.append(span);}
   }
  }
- return {text};
+ function actions(node){
+  const paths={
+   '拍一拍':'M7 12V7a2 2 0 0 1 4 0v5m0-3V5a2 2 0 0 1 4 0v7m0-3a2 2 0 0 1 4 0v6c0 4-2 6-6 6h-1c-2 0-3-1-4-2l-4-5a2 2 0 0 1 3-3l2 2',
+   '引用':'M10 7H5v6h4c0 3-1 4-3 5m15-11h-5v6h4c0 3-1 4-3 5',
+   '复制':'M9 8V3h12v13h-5M3 8h13v13H3Z',
+   '收藏':'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z',
+   '删除':'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7',
+   '恢复':'M4 9a8 8 0 1 1 0 7M4 3v6h6',
+   '朗读回复':'M4 9h4l5-5v16l-5-5H4Zm13-1a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14',
+   '重新发送':'M20 9a8 8 0 1 0 0 7m0-13v6h-6'
+  };
+  for(const button of node.querySelectorAll('button')){const label=button.textContent,key=label==='取消收藏'?'收藏':label;if(!paths[key])continue;button.setAttribute('aria-label',label);button.title=label;button.classList.add('message-action-icon');if(key==='收藏')button.setAttribute('aria-pressed',String(label==='取消收藏'));const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS(svg.namespaceURI,'path');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');path.setAttribute('d',paths[key]);svg.append(path);button.replaceChildren(svg);}
+ }
+ return {text,actions};
 })();

@@ -249,3 +249,59 @@
 }
 
 :root{--bubble-arrival-duration:.22s;--bubble-arrival-stagger:.09s;--bubble-arrival-distance:var(--ui-space-5);}
+
+/* Reference-led paper journal. Components share these values across five tabs. */
+:root {
+ --paper-background:#fcf6f0;
+ --paper-ink:#654d57;
+ --paper-muted:#866d77;
+ --paper-rose:#ae6f85;
+ --paper-blush:#f1d7df;
+ --paper-cream:#fffcf6;
+ --paper-texture:url('/paper.svg');
+ --paper-texture-size:400px 600px;
+ --paper-texture-opacity:.8;
+ --paper-rule:color-mix(in srgb,var(--accent) 22%,transparent);
+ --paper-fill:color-mix(in srgb,var(--bg) 84%,var(--glass));
+ --paper-shadow:0 5px 14px color-mix(in srgb,var(--accent) 8%,transparent);
+ --paper-shadow-stack:0 5px 0 color-mix(in srgb,var(--bg) 90%,var(--accent-soft)),0 6px 0 var(--paper-rule),0 11px 0 color-mix(in srgb,var(--bg) 95%,var(--accent-soft)),0 14px 20px color-mix(in srgb,var(--accent) 8%,transparent);
+ --paper-tape-fill:color-mix(in srgb,var(--accent-soft) 70%,transparent);
+ --paper-tape-width:var(--ui-size-64);
+ --paper-tape-height:var(--ui-size-18);
+ --paper-script-font:"Snell Roundhand","Apple Chancery","URW Chancery L",Georgia,serif;
+ --paper-script-size:clamp(38px,10vw,54px);
+ --paper-day-size:var(--ui-size-25);
+ --paper-calendar-font:var(--ui-font-12);
+ --paper-gap:var(--ui-space-18);
+ --paper-section-gap:var(--ui-space-28);
+ --surface-shadow:var(--paper-shadow);
+ --surface-border:var(--paper-rule);
+ --home-card-fill:transparent;
+ --home-card-padding:var(--ui-space-18);
+ --home-card-radius:var(--ui-radius-18);
+ --entrance-fill:linear-gradient(150deg,var(--paper-fill),var(--glass));
+ --bubble-shadow:0 3px 12px color-mix(in srgb,var(--accent) 5%,transparent);
+ --assistant-bubble-fill:color-mix(in srgb,var(--paper-fill) 82%,var(--glass));
+ --user-bubble-fill:color-mix(in srgb,var(--accent-soft) 62%,var(--paper-fill));
+ --bubble-border:var(--paper-rule);
+ --chat-message-gap:var(--ui-space-10);
+ --chat-actions-opacity:1;
+ --message-action-size:var(--ui-size-34);
+ --message-action-icon-size:var(--ui-size-16);
+ --nav-shadow:0 4px 22px color-mix(in srgb,var(--accent) 10%,transparent);
+ --composer-shadow:var(--paper-shadow);
+ --records-card-radius:var(--ui-radius-18);
+ --log-entry-radius:var(--ui-radius-18);
+ --memory-entry-radius:var(--ui-radius-18);
+}
+:root[data-theme=dark] {
+ --paper-background:#292129;
+ --paper-ink:#f3e2e8;
+ --paper-muted:#d1b6c2;
+ --paper-rose:#e5a5be;
+ --paper-blush:#543847;
+ --paper-cream:#352b33;
+ --paper-texture-opacity:.16;
+}
+#chat{--chat-bubble-block-scale:.85;--chat-bubble-inline-scale:1.1;--chat-bubble-radius-scale:1.6}
+@media(max-width:360px){:root{--paper-gap:var(--ui-space-12);--paper-calendar-font:var(--ui-font-11);--paper-day-size:var(--ui-size-22)}}

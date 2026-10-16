@@ -79,7 +79,7 @@ window.ZiweiChat=(()=>{
  }
  function element(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;}
  function button(label,fn){const b=element('button','text-button',label);b.type='button';b.onclick=()=>Promise.resolve(fn()).catch(e=>$('#chatError').textContent=e.message);return b;}
- function timestamp(at){try{return new Intl.DateTimeFormat('zh-CN',{dateStyle:'short',timeStyle:'short'}).format(new Date(at));}catch{return '时间未知';}}
+ function timestamp(at){try{return new Intl.DateTimeFormat('zh-CN',{dateStyle:'short',timeStyle:'medium',hour12:false,timeZone:'Asia/Bangkok'}).format(new Date(at));}catch{return '时间未知';}}
  async function copy(text){
   try{await navigator.clipboard.writeText(text);return;}catch{}
   // Some Safari/embedded/headless contexts deny the asynchronous API despite a click.
@@ -139,7 +139,7 @@ window.ZiweiChat=(()=>{
   if(m.source==='live')actions.append(button(m.deleted?'恢复':'删除',async()=>{if(!m.deleted&&!confirm('将这条消息移入回收站？原始记录与知微已有上下文会保留。'))return;await request('/api/chat/action','POST',{id:m.id,action:m.deleted?'restore':'delete'});await load();}));
   if(m.role==='assistant'&&m.status==='completed'&&m.content.trim()&&!['commentary','summary'].includes(m.kind))actions.append(button('朗读回复',async()=>{const epoch=version,a=await request('/api/chat/speech','POST',{messageId:m.id});if(epoch===version&&!bubble.querySelector('[data-reading]')){const box=element('div');box.dataset.reading='true';bubble.append(box);await media(box,a.id);}}));
   if(m.role==='user'&&m.status==='failed'&&m.source==='live')actions.append(button('重新发送',async()=>{if(pending||busy)throw Error('请先确认当前发送状态。');attachments=[];for(const id of m.attachments)attachments.push(await request('/api/chat/attachments/'+id+'/metadata'));$('#chatInput').value=m.content;chips();$('#chatError').textContent='内容与原录音已准备好，核对后点纸飞机重新发送。';compose();}));
-  body.append(actions);rememberMessage(card,m);return card;
+  window.ZiweiChatRender.actions(actions);body.append(actions);rememberMessage(card,m);return card;
  }
  async function load(older=false,retain=false){
   const epoch=version,loadEpoch=++loadVersion,params=new URLSearchParams({q:$('#chatSearch').value,source,favorite:String(favorite),trash:String(trash),limit:'50'});if(older&&before)params.set('before',before);
