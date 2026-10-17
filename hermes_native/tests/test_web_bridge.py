@@ -23,6 +23,10 @@ if "hermes_constants" not in sys.modules:
 spec = importlib.util.spec_from_file_location('web_bridge_test', Path(__file__).parents[1] / 'web_bridge.py')
 bridge = importlib.util.module_from_spec(spec); spec.loader.exec_module(bridge)
 
+_has_aiohttp = importlib.util.find_spec("aiohttp") is not None
+
+
+@unittest.skipUnless(_has_aiohttp, "aiohttp 是原生运行时依赖；纯 Web CI 无它，跳过该路由用例")
 class BridgeFiles(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(); self.root = Path(self.tmp.name)
