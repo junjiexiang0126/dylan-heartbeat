@@ -86,3 +86,26 @@ class ResumeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FairnessTests(unittest.TestCase):
+    def test_oldest_resumable_wins(self):
+        import tempfile, json
+        from datetime import datetime, timedelta
+        tmp = tempfile.TemporaryDirectory()
+        ws = Path(tmp.name); (ws / "dev").mkdir()
+        now = datetime.now(TZ).replace(microsecond=0)
+        old = (now - timedelta(hours=3)).isoformat()
+        new = (now - timedelta(hours=2)).isoformat()
+        dead = (now - timedelta(minutes=20)).isoformat()
+        tasks = [{"id": "N", "title": "n", "status": "in_progress", "autonomy": True, "note": "",
+                  "started_at": new, "updated_at": new},
+                 {"id": "O", "title": "o", "status": "in_progress", "autonomy": True, "note": "",
+                  "started_at": old, "updated_at": old}]
+        (ws / "tasks.json").write_text(json.dumps(tasks), encoding="utf-8")
+        (ws / "dev" / "leases.json").write_text(json.dumps(
+            {"N": {"pid": 999998, "at": dead}, "O": {"pid": 999999, "at": dead}}), encoding="utf-8")
+        mod = load(ws)
+        picked = mod.next_task()
+        self.assertEqual(picked["task"]["id"], "O")
+        tmp.cleanup()

@@ -1,0 +1,15 @@
+--- a/cron/scheduler.py	2026-10-08 17:46:21.000000000 +0700
++++ b/cron/scheduler.py	2026-10-18 01:07:16.976735114 +0700
+@@ -2429,7 +2429,11 @@
+ 
+     # resolve_turn_limit() honors none/unlimited (sys.maxsize) and explicit 0 / null.
+     from hermes_cli.config import resolve_turn_limit as _resolve_turn_limit
+-    _mt = _cfg.get("agent", {}).get("max_turns")
++    # 作业级覆盖：cron 任务可以在自己的配置里指定 max_iterations，
++    # 未指定时沿用全局 agent.max_turns（聊天不受影响）。
++    _mt = (job or {}).get("max_iterations")
++    if _mt is None:
++        _mt = _cfg.get("agent", {}).get("max_turns")
+     if _mt is None:
+         _mt = _cfg.get("max_turns")
+     setup.max_iterations = _resolve_turn_limit(_mt)
