@@ -1,3 +1,4 @@
+@font-face{font-family:'MemorialSerif';src:url('/EBGaramond.woff2') format('woff2');font-display:swap}
 /* ---- 首页：名字下方的两个手绘入口（鲸鱼+水波） ---- */
 .note-actions{display:flex;justify-content:center;gap:14px;margin:0;padding:7px 0 0}
 .note-actions button{border:0;background:transparent;padding:2px;color:#c2748f;
@@ -44,6 +45,6 @@ body.notes-open{overflow:hidden}
   font-size:13.5px;padding:0 18px}
 #noteSheet .err{color:#b4453f;font-size:12.5px;padding:8px 0}
 
-/* 永久纪念那段改成英文，用系统手写体（与 Days with you 同一族） */
-#memorialText{font-family:var(--paper-script-font);font-style:italic;font-weight:normal;
-  font-size:clamp(19px,5.2vw,23px);line-height:1.75;letter-spacing:.005em;color:var(--ink)}
+/* 永久纪念那段：英文 + EB Garamond（只作用于这一段） */
+#memorialText{font-family:'MemorialSerif',Georgia,serif;font-style:normal;font-weight:400;
+  font-size:clamp(19px,5.1vw,22px);line-height:1.72;letter-spacing:.005em;color:var(--ink)}
