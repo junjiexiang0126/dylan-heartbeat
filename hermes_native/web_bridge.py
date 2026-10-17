@@ -955,8 +955,14 @@ def diary_document(identifier):
     records, errors = diary_records()
     for record in records:
         if record['id'] == wanted:
-            return {'id': record['id'], 'content': record['content'], 'source': record['source'],
-                    'revision': record['revision'], 'savedAt': record['savedAt'], 'errors': errors}
+            document = {'id': record['id'], 'title': record['title'], 'date': record['date'],
+                        'visibility': record['visibility'], 'content': record['content'],
+                        'source': record['source'], 'revision': record['revision'],
+                        'savedAt': record['savedAt'], 'errors': errors}
+            for key in ('mood', 'summary', 'tags'):
+                if record.get(key):
+                    document[key] = record[key]
+            return document
     raise MemoryError('diary_not_found', wanted)
 
 
