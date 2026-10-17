@@ -27,7 +27,7 @@ spec.loader.exec_module(worker)
 
 @unittest.skipUnless(AVAILABLE, 'requires the official Hermes source and OpenAI SDK')
 class RequestClientContract(unittest.TestCase):
-    def execute(self, repeat=False, finish='stop', content='{"message":"委派","instruction":"完成任务"}', status=200, swallow=False, stage='plan'):
+    def execute(self, repeat=False, finish='stop', content='{"message":"委派","instruction":"完成任务"}', status=200, swallow=False, stage='plan', presented=None):
         seen = []
         self.seen = seen
         clients = []
@@ -68,7 +68,7 @@ class RequestClientContract(unittest.TestCase):
                     return {'final_response':'invalid recovery placeholder'}
                 self.session_input_tokens = result.usage.prompt_tokens
                 self.session_output_tokens = result.usage.completion_tokens
-                return {'final_response':result.choices[0].message.content}
+                return {'final_response':presented or result.choices[0].message.content}
             def close(self):
                 for client in clients:
                     client.close()
@@ -112,6 +112,15 @@ class RequestClientContract(unittest.TestCase):
         self.assertEqual(seen[0]['max_tokens'], 6000)
         self.assertEqual(seen[0]['thinking'], {'type':'disabled'})
         self.assertEqual(result['usage']['completion_tokens'], 20)
+
+    def test_long_document_survives_sdk_decoding_and_chat_presentation_changes(self):
+        text='\n'.join(f'## 第{n}页 标题\n正文中保留"引号"、竖线 |、反斜线 \\ 和换行。' for n in range(1,21))
+        command={'approved':True,'message':'修订后交付，未做视觉检查','toolCall':{'name':'work_document_create','arguments':{'text':text}}}
+        raw=json.dumps(command,ensure_ascii=False).replace('\\n','\n')
+        result,seen=self.execute(stage='review',content=raw,presented='这里是聊天展示结果，不能当作JSON')
+        self.assertEqual(json.loads(result['text']),command)
+        self.assertEqual(len(seen),1)
+        self.assertEqual(seen[0]['max_tokens'],6000)
 
 
 if __name__ == '__main__':

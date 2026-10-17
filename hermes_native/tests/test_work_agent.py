@@ -13,7 +13,7 @@ worker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(worker)
 
 class WorkAgent(unittest.TestCase):
-    def run_worker(self, repeat=False, tools=None, check_only=False, request_factory=False, override=None, swallow=False, finish='stop', content='{"approved":true}', wire_error=None):
+    def run_worker(self, repeat=False, tools=None, check_only=False, request_factory=False, override=None, swallow=False, finish='stop', content='{"approved":true}', wire_error=None, presented=None):
         seen = {}
         class Agent:
             def __init__(self, skip_memory=None, skip_context_files=None, skip_background_review=None, max_tokens=None, **kwargs):
@@ -52,7 +52,7 @@ class WorkAgent(unittest.TestCase):
                         pass
                 self.session_input_tokens = 40
                 self.session_output_tokens = 20
-                return {'final_response':json.dumps({'message':'审核','approved':True})}
+                return {'final_response':presented or json.dumps({'message':'审核','approved':True})}
             def close(self):
                 seen['closed'] = True
         module = types.ModuleType('run_agent');module.AIAgent = Agent
@@ -101,6 +101,22 @@ class WorkAgent(unittest.TestCase):
     def test_content_refusal_is_not_delivered(self):
         with self.assertRaisesRegex(RuntimeError, 'work_provider_refusal'):
             self.run_worker(finish='content_filter')
+    def test_work_command_is_not_changed_by_natural_language_output_hooks(self):
+        command={'approved':False,'message':'必须修正，不能交付'}
+        result, seen=self.run_worker(content=json.dumps(command,ensure_ascii=False),presented='用于聊天显示的格式，无法当JSON解析')
+        self.assertEqual(json.loads(result['text']),command)
+        self.assertEqual(seen['wire_calls'],1)
+    def test_complete_document_with_literal_newlines_is_losslessly_canonicalized(self):
+        text='## 第1页 标题\n正文包含"引号"、竖线 | 与反斜线 \\。\n## 第2页 标题\n第二页正文'
+        command={'approved':True,'message':'已修订，未做视觉检查','toolCall':{'name':'work_document_create','arguments':{'text':text}}}
+        raw=json.dumps(command,ensure_ascii=False).replace('\\n','\n')
+        result, seen=self.run_worker(content=raw)
+        self.assertEqual(json.loads(result['text']),command)
+        self.assertEqual(seen['wire_calls'],1)
+    def test_partial_or_prose_commands_never_become_approved_json(self):
+        for raw in ['{"approved":true','说明：{"approved":true}', '[{"approved":true}]','{"approved":true,"message":"unfinished']:
+            with self.subTest(raw=raw),self.assertRaisesRegex(RuntimeError,'work_response_invalid'):
+                self.run_worker(content=raw,swallow=True)
     def test_errors_expose_only_phase_and_type(self):
         worker.PHASE = 'runtime'
         error = worker.safe_error(TypeError('sensitive-provider-token-and-user-prompt'))
