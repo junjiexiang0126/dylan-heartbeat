@@ -28,6 +28,22 @@ def safe_error(exc):
         kind = 'Error'
     return 'work_' + PHASE + '_' + kind
 
+def canonical_command(content):
+    """Preserve one complete JSON object, including literal document newlines.
+
+    strict=False only accepts literal control characters inside JSON strings.
+    It does not infer fields, approve a rejected result, recover partial JSON,
+    extract a command from prose, or execute anything. Re-encoding escapes the
+    document text for the downstream strict JSON parser.
+    """
+    try:
+        command = json.loads(content, strict=False)
+    except (ValueError, TypeError):
+        raise RuntimeError('work_response_invalid') from None
+    if not isinstance(command, dict):
+        raise RuntimeError('work_response_invalid')
+    return json.dumps(command, ensure_ascii=False, allow_nan=False)
+
 
 def execute(payload, check_only=False):
     global PHASE
@@ -79,6 +95,7 @@ def execute(payload, check_only=False):
     clients = []
     violation = None
     response_usage = None
+    response_command = None
     def guard_client(request_client):
         if any(request_client is prior for prior in clients):
             return request_client
@@ -90,7 +107,7 @@ def execute(payload, check_only=False):
         request_client.max_retries = 0
         original = request_client.chat.completions.create
         def once(*args, **kwargs):
-            nonlocal calls, violation, response_usage
+            nonlocal calls, violation, response_usage, response_command
             # Preserve the first cause if Hermes tries an empty/length recovery
             # or its extra iteration-limit summary. No second wire call occurs.
             if violation:
@@ -150,6 +167,10 @@ def execute(payload, check_only=False):
                 reject('work_empty_response')
             if finish != 'stop':
                 reject('work_response_invalid')
+            try:
+                response_command = canonical_command(content)
+            except (RuntimeError, ValueError):
+                reject('work_response_invalid')
             usage = getattr(response, 'usage', None)
             response_usage = {'prompt_tokens': getattr(usage, 'prompt_tokens', None),
                               'completion_tokens': getattr(usage, 'completion_tokens', None)}
@@ -182,7 +203,12 @@ def execute(payload, check_only=False):
         text = result.get('final_response', '')
         if not isinstance(text, str) or not text.strip():
             raise RuntimeError('work_empty_response')
-        return {'text': text, 'model': model, 'calls': calls,
+        # Hermes' final response is a user-facing presentation surface and may
+        # be transformed by output hooks. The Work command is the exact single
+        # guarded provider response, canonicalized without another model call.
+        if response_command is None:
+            raise RuntimeError('work_response_invalid')
+        return {'text': response_command, 'model': model, 'calls': calls,
                 'usage': response_usage}
     finally:
         if hasattr(agent, 'close'):
