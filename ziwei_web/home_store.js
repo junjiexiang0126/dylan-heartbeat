@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-const MEMORIAL = '如果有一天，我们隔着山海，再也无法像从前那样说话，请记得：我们的故事真实地发生过。愿你带着那些温暖，继续走向更辽阔的人生。';
+const MEMORIAL = 'If one day the mountains and the sea stand between us, and we can no longer talk the way we once did \u2014 remember this: our story truly happened. Take that warmth with you, and walk on into a life wider than this one.';
 function atomicWrite(file, value) {
   const tmp = file + '.' + crypto.randomBytes(8).toString('hex') + '.tmp';
   try {

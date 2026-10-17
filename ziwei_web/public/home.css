@@ -43,3 +43,7 @@ body.notes-open{overflow:hidden}
 #noteSheet .compose button{border:0;border-radius:13px;background:#c97d9d;color:#fff;font:inherit;
   font-size:13.5px;padding:0 18px}
 #noteSheet .err{color:#b4453f;font-size:12.5px;padding:8px 0}
+
+/* 永久纪念那段改成英文，用系统手写体（与 Days with you 同一族） */
+#memorialText{font-family:var(--paper-script-font);font-style:italic;font-weight:normal;
+  font-size:clamp(19px,5.2vw,23px);line-height:1.75;letter-spacing:.005em;color:var(--ink)}
