@@ -33,6 +33,11 @@
   `;
   document.head.append(style);
 
+  const setOpen = (open) => {
+    sheet.dataset.open = open ? 'true' : 'false';
+    document.body.classList.toggle('notes-open', !!open);
+    document.body.style.overflow = open ? 'hidden' : '';
+  };
   const sheet = document.createElement('div');
   sheet.id = 'noteSheet';
   sheet.innerHTML = `<header><button id="noteBack">‹ 返回</button><h2 id="noteTitle"></h2></header>
@@ -41,7 +46,7 @@
 
   const title = sheet.querySelector('#noteTitle');
   const body = sheet.querySelector('#noteBody');
-  sheet.querySelector('#noteBack').onclick = () => { sheet.dataset.open = 'false'; };
+  sheet.querySelector('#noteBack').onclick = () => setOpen(false);
 
   const api = async (path, options) => {
     const res = await fetch(path, { headers: { Accept: 'application/json', ...(options?.headers || {}) }, ...options });
@@ -136,8 +141,14 @@
     }
   }
 
+  function onHome() {
+    const homeTab = document.getElementById('home');
+    if (!homeTab) return true;
+    return !homeTab.hidden && homeTab.offsetParent !== null;
+  }
   function mount() {
-    if (document.querySelector('.note-actions')) return;
+    const existing = document.querySelector('.note-actions');
+    if (existing) { existing.style.display = onHome() ? '' : 'none'; return; }
     const host = document.body;
     const row = document.createElement('div');
     row.className = 'note-actions';
@@ -145,8 +156,8 @@
     memo.innerHTML = '<span class="ico">▤</span>我的备忘录';
     const sched = document.createElement('button');
     sched.innerHTML = '<span class="ico">⏰</span>我的日程提醒';
-    memo.onclick = () => { sheet.dataset.open = 'true'; openMemos(); };
-    sched.onclick = () => { sheet.dataset.open = 'true'; openSchedule(); };
+    memo.onclick = () => { setOpen(true); openMemos(); };
+    sched.onclick = () => { setOpen(true); openSchedule(); };
     row.append(memo, sched);
     host.append(row);
   }
@@ -155,4 +166,12 @@
   else mount();
   // 首页是切页渲染的，切回来时补一次
   setInterval(mount, 1500);
+})();
+
+// 弹层打开时，胶囊先藏起来，别压在内容上
+(function () {
+  const style = document.createElement('style');
+  style.textContent = `body.notes-open .note-actions{display:none!important}
+  body.notes-open{overflow:hidden}`;
+  document.head.append(style);
 })();
