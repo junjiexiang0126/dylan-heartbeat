@@ -47,6 +47,7 @@
   const latest=active||data.tasks[0];$('workTaskStatus').textContent=latest?(names[latest.state]||latest.state)+(latest.error?' · '+latest.error:''):'';
   $('workUsage').textContent='累计模型请求 '+data.usage.length+' 次 · 配置上界估算 ¥'+data.usage.reduce((n,u)=>n+u.cost,0).toFixed(4)+(data.budget?' · 今日预算剩余 ¥'+data.budget.remaining.toFixed(2):'')+' · 实际账单待供应商核对';
   $('workSend').disabled=sending||!!active;
+  const repairable=!active&&data.tasks.find(t=>t.canRepairDelivery);$('workRepairDelivery').hidden=!repairable;$('workRepairDelivery').dataset.taskId=repairable?repairable.id:'';
   const recoverable=!active&&data.tasks.find(t=>t.canResumeReview);$('workResumeReview').hidden=!recoverable;$('workResumeReview').dataset.taskId=recoverable?recoverable.id:'';
   avatar('ziwei',root.querySelector('[data-work-mention="知微"]'));avatar('glm',root.querySelector('[data-work-mention="白鸦"]'));
  }
@@ -60,6 +61,7 @@
   card.append(title,button('保存配置',()=>save({})),button(t.authorized?'撤销授权':'允许生成文件',()=>save({authorized:!t.authorized})),button(t.enabled?'停用':'启用',()=>save({enabled:!t.enabled})),button('使用',()=>{selected=t.id;$('workToolCurrent').textContent=t.name;$('workToolsPanel').hidden=true;input.focus();}));box.append(card);
  }}
  $('workToolsOpen').onclick=async()=>{await refresh();renderTools();$('workToolsPanel').hidden=false;};$('workToolsClose').onclick=()=>{$('workToolsPanel').hidden=true;};
+ $('workRepairDelivery').onclick=async()=>{const b=$('workRepairDelivery');b.disabled=true;try{const r=await api('/api/work/repair-delivery','POST',{taskId:b.dataset.taskId});status.textContent=r.checked?'明确的页数与字数要求已通过程序检查':'正在按检查结果修订交付文件';await refresh();}catch(e){status.textContent='检查修订未受理：'+e.message;}finally{b.disabled=false;}};
  $('workResumeReview').onclick=async()=>{const b=$('workResumeReview');b.disabled=true;try{await api('/api/work/resume-review','POST',{taskId:b.dataset.taskId});status.textContent='正在继续审核已保存的草稿';await refresh();}catch(e){status.textContent='继续审核未受理：'+e.message;}finally{b.disabled=false;}};
  $('workCheckRuntime').onclick=async()=>{const b=$('workCheckRuntime');b.disabled=true;$('workToolNotice').textContent='正在检查工作连接（不调用模型）…';try{const r=await api('/api/work/runtime');$('workToolNotice').textContent='知微工作连接就绪 · '+r.native.model+' · 白鸦密钥'+(r.glmConfigured?'已配置':'未配置')+'；真实调用仍需任务验收。';}catch(e){$('workToolNotice').textContent='工作连接未就绪：'+e.message;}finally{b.disabled=false;}};
  $('workToolAdd').onclick=()=>{$('workRegister').hidden=!$('workRegister').hidden;};

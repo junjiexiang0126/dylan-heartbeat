@@ -22,3 +22,11 @@ test('saved-draft recovery button submits once and remains inside mobile viewpor
  for(const width of [320,390,430]){await page.setViewportSize({width,height:844});const g=await button.evaluate(n=>{const r=n.getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,navTop:document.querySelector('nav').getBoundingClientRect().top};});expect(g.left).toBeGreaterThanOrEqual(0);expect(g.right).toBeLessThanOrEqual(width);expect(g.bottom).toBeLessThan(g.navTop);}
  await button.click();await expect(button).toBeHidden();await expect(page.locator('#workTaskStatus')).toContainText('知微正在审核');await expect(page.locator('#workSend')).toBeDisabled();expect(resumes).toBe(1);
 });
+
+test('completed-delivery check submits once with CSRF and hides during repair',async({page})=>{
+ const state={...fixture,tasks:[{id:'completed-task',state:'completed',canRepairDelivery:true}],usage:[]};let calls=0;
+ await page.route('**/api/work/repair-delivery',async r=>{expect(r.request().postDataJSON()).toEqual({taskId:'completed-task'});expect(r.request().headers()['x-ziwei-csrf']).toBeTruthy();calls++;state.tasks=[{id:'completed-task',state:'reviewing',canRepairDelivery:false}];await r.fulfill({status:202,json:{task:state.tasks[0]}});});
+ await open(page,state);const b=page.getByRole('button',{name:'检查并修订交付文件',exact:true});await expect(b).toBeVisible();
+ for(const width of [320,390,430]){await page.setViewportSize({width,height:844});const r=await b.boundingBox();expect(r.x).toBeGreaterThanOrEqual(0);expect(r.x+r.width).toBeLessThanOrEqual(width);}
+ await b.click();await expect(b).toBeHidden();await expect(page.locator('#workTaskStatus')).toContainText('知微正在审核');expect(calls).toBe(1);
+});

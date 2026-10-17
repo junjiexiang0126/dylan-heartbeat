@@ -9,11 +9,13 @@ test('real HTTP auth, CSRF, tool authorization, upload/download and durable Work
  t.after(async()=>{await stop();fs.rmSync(dir,{recursive:true,force:true});});await start();
  assert.equal((await fetch(origin+'/api/work/messages')).status,401);
  assert.equal((await fetch(origin+'/api/work/resume-review',{method:'POST',body:'{}'})).status,401);
+ assert.equal((await fetch(origin+'/api/work/repair-delivery',{method:'POST',body:'{}'})).status,401);
  const login=await fetch(origin+'/api/login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({password:env.ZIWEI_WEB_PASSWORD})});const cookie=login.headers.get('set-cookie').split(';')[0],csrf=(await login.json()).csrf;
  const headers={Cookie:cookie,Origin:origin,'X-Ziwei-CSRF':csrf,'Content-Type':'application/json'};
  const post=(route,b)=>fetch(origin+route,{method:'POST',headers,body:JSON.stringify(b)});
  assert.equal((await fetch(origin+'/api/work/action',{method:'POST',headers:{Cookie:cookie,Origin:origin},body:'{}'})).status,403);
  assert.equal((await fetch(origin+'/api/work/resume-review',{method:'POST',headers:{Cookie:cookie,Origin:origin},body:'{}'})).status,403);
+ assert.equal((await fetch(origin+'/api/work/repair-delivery',{method:'POST',headers:{Cookie:cookie,Origin:origin},body:'{}'})).status,403);
  assert.equal((await post('/api/work/send',{requestId:'denied',text:'生成文件',tool:'word'})).status,403);
  assert.equal((await post('/api/work/tools/configure',{id:'word',revision:0,authorized:true,title:'课程'})).status,200);
  const up=await fetch(origin+'/api/work/attachments',{method:'POST',headers:{...headers,'X-Filename':encodeURIComponent('课程.txt'),'Content-Type':'text/plain'},body:'中文资料'});assert.equal(up.status,201);const file=await up.json();

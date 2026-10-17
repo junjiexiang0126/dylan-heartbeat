@@ -1,40 +1,57 @@
 # Work studio acceptance checkpoint — 2026-10-17 (Asia/Bangkok)
 
-PR #40 remains open and unmerged into `integration/ziwei-20261016`. Genuine end-to-end acceptance has not passed. The operator handles Railway deployment. Do not repeat earlier tasks or erase records to reset budgets.
+PR #40 remains open and unmerged into `integration/ziwei-20261016`. Final strict content acceptance has not passed. Real end-to-end delivery and download have now succeeded; see the latest checkpoint below. The operator handles Railway deployment. Do not repeat earlier tasks or erase records to reset budgets.
 
-## Latest confirmed state and prepared Web repair (10:11 onward)
+## Latest closeout checkpoint — 2026-10-17 15:07 onward (Bangkok)
 
-| Test service | Deployment status / ID | Deployed commit |
+PR #40 remains **open and unmerged** into `integration/ziwei-20261016`. The operator handles deployments. Final content acceptance remains blocked by the overlong first slide, not by model connectivity or file download. No new live task/model request was submitted during the 15:07 closeout.
+
+| Test service | Deployment ID / terminal status | Deployed SHA |
 | --- | --- | --- |
-| ziwei-home-web-test | SUCCESS / `3b58c344-7e30-4d01-ad81-ae7f0fa5789a` | `a7be4180c7832000b7454b206b500a6e666e68e8` |
-| ziwei-hermes-test | SUCCESS / `7c4a4977-790e-45aa-9add-40c8f5e60f17` | `de1ac1e4802fe898a631c5c02ab481f7fa081a89` |
+| ziwei-home-web-test | `f83c811a-44d5-4d72-bd42-d749b3a9459c` / SUCCESS | `aa4872a79ebc58487039ee5693b9214550d0d991` |
+| ziwei-hermes-test | `7c4a4977-790e-45aa-9add-40c8f5e60f17` / SUCCESS | `de1ac1e4802fe898a631c5c02ab481f7fa081a89` |
 
-The native cached diagnostic is deployed. Runtime evidence at **2026-10-17T03:11:36.612498875Z** proves the F review selected **work_document_create**, **approved:true**, **arguments:{}**, no text field (`textType:missing_or_not_string`, `textLength:0`). Reading this evidence consumed **zero model calls**. This is now a proven missing-body error, not an inferred extra-field problem. No live task was submitted in this repair turn.
+### Real saved-task recovery succeeded at 10:29
 
-### Prepared repair — deploy Web only
+The operator deployed Web `aa4872a`. After login was visibly restored, the existing F task was resumed once through **继续审核已保存的草稿**, with no new delegation, GLM call, task admission, budget reset or data deletion.
 
-The PR now validates native review commands before publication. A malformed command receives at most one explicit correction request with the concrete validation error and complete Work task/draft. This uses the original task's seven-call limit, original deadline and daily budget. It has a distinct native cache ID. Transport errors are not automatically retried. An invalid final command remains failed and its drafts remain inaccessible. A rejection after protocol correction stops instead of starting another GLM round.
+Native HTTP evidence: **2026-10-17T03:29:58.639210848Z**, `POST /ziwei/web/work/turn`, **200**, **14019 ms**. Native diagnostic at `03:30:00.747356415Z` records `work_document_create`, `approved:true`, `argumentKeys:[text]`, `textType:string`, `textLength:1974`. Its `modelCalls:0` describes the diagnostic inspection, not the real review; the review itself is the counted HTTP request. UI reported **4595 tokens / estimated CNY .0625**. Actual supplier billing is not verified.
 
-Work persists a review checkpoint before review. The authenticated, CSRF-protected **continue saved-draft review** action can recover an eligible same-day command-validation failure exactly once, with **one native request / 90-second review window**, no new task admission, no new delegation/GLM call and no reset of original calls, dates, reservations or fees. Recovery is explicit, not automatic after deployment or restart. Legacy drafts such as F can be reconstructed only from their own text-only Work request, last GLM message and matching unpublished file receipts; missing quotes/attachments are not guessed. This is a separately admitted recovery window after a failed task, not a reset of its original ten-minute run. Permissions, concurrency, seven-call cap, 48 daily calls and CNY 10 budget still apply. Recovery fails honestly if native cannot supply a valid command. File publication, delivery receipt and final message commit atomically.
+The UI reached **已完成交付** at **10:29:59**, with delivery message `657e6442-0469-4173-b4a8-7612e7c2283f`. All four real files were downloaded through the authenticated viewer's Save control. These exact original downloads were parsed and rendered; no locally regenerated document was substituted. Refresh retained the same message ID, four attachment URLs and expense totals. Last observed usage after settlement: **23 cumulative attempts**, configured estimate/reservations **CNY 4.6192**, remaining daily budget approximately **CNY 2.38**, plus the separately retained legacy task reservations described below. These numbers are a historical observation, not a claim about the balance at 15:07.
 
-Only the Web test service needs this repair. Native remains at its successful `de1ac1e` deployment. No production, volume, memory or private-chat change is required. The operator still handles deployment.
+| Format | Attachment ID | Bytes | SHA-256 |
+| --- | --- | ---: | --- |
+| DOCX | `896e2f12-9504-4778-9ef4-e496f44d4a5a` | 9990 | `e49b8862f834dc41d89b4d2f23feaef50fed870b4ac37a84032d734e21a1e666` |
+| PPTX | `d54c4286-4f69-4b8e-b89d-26f27e5e21fa` | 188729 | `f4cf311fa5db35ec83bc6a9648458303f64c0970b3ebc18dd181548326ef429b` |
+| PDF | `312119e0-4f25-4506-b7ee-5da442d292e5` | 120733 | `6bb5690db13ea7047c86ce5b9cde2f1b1b4a287d2845b14644b1a3ae0ba7117b` |
+| XLSX | `3905a8a7-5d95-4359-b9f0-296a3c7463cd` | 10133 | `1e047b38140b94795e43df99b24a83aebca67c4d4f6af875121f3c4a4e922abe` |
 
-### Verification of this repair
+### Actual file inspection and remaining failure
 
-- Work automated suite **34/34 passed**, including authentic local Office/PDF bytes, local HTTP auth/CSRF/upload/download/persistence, bounded correction, distinct native IDs, reopen-and-resume without GLM replay, eight-task admission retention, idempotency, call/budget exhaustion and permission denial. **All model responses in this suite are mocked.**
-- Focused Chromium mobile **3/3 passed**, widths 320/390/430, light/dark shared formal-chat geometry, existing controls, plus the new recovery action sending once with CSRF and hiding during review. This uses isolated local fixture data, not live model acceptance.
-- Syntax/whitespace checks passed. Unchanged native suites were not repeated.
-- **Live end-to-end delivery remains unaccepted:** no four final files have yet been downloaded or visually inspected. Do not merge PR #40 until that is done.
+- **PPTX:** 20 slides; all 20 numbered headings preserved. LibreOffice rendered all slides, and their contact sheet was visually inspected. Plain text teaching slides, no claim of illustrated or presentation-designer quality.
+- **DOCX:** 90 paragraphs and 20 logical page headings; LibreOffice rendered 4 physical pages as flowing teaching notes.
+- **PDF:** original export is 4 physical A4 pages containing the same 20 logical sections. Parsed Chinese text and all pages were inspected. It is not a 20-page slide PDF.
+- **XLSX:** 90 rows / 3 columns, 104 populated cells, no formula cells. LibreOffice rendered 5 printed pages; wrapping and Chinese text were visible.
+- **Failure:** first slide has **141 Han characters** including its timetable, exceeding the requested 50–80. Slides 2–20 have 53–73 Han characters by the same count. The native claim of compliance therefore did not establish strict acceptance. Do not merge or call this fully accepted.
 
-### Next action after the operator deploys the prepared Web commit
+Original download hashes and page counts were observed in this session. Temporary render/screenshot files did not survive an execution-environment restoration later in the session. They must not be linked as though they still exist. Source files remain accessible through the recorded authenticated Work attachment URLs; the original render observations above remain historical evidence, not a fresh 15:07 render. The first-slide regression fixture is explicitly a transcription of the observed source, not a replacement live artifact.
 
-1. Verify terminal SUCCESS and exact new Web SHA; retain native `de1ac1e`.
-2. Refresh the authenticated Work UI. Choose **继续审核已保存的草稿** for the latest eligible failed task F. Do not send F again. The existing F plan and GLM output remain the evidence for real delegation/execution; the recovery adds only one real native review.
-3. If the review corrects and approves the draft, download the four actual published files, check 20 slides and task content, then render actual downloads using `soffice`/`pdftoppm`. Never substitute regenerated local files. If rejected/invalid, report the exact new evidence; do not replay recovery or reset limits.
-4. Check refresh/re-login preserves message/task/file/receipt/usage identities; existing live revocation already passed. Deployment itself provides a persistence boundary without an unsolicited volume restart.
-5. Merge only after real acceptance, then report exact SHAs, PR state, deployed IDs, live evidence and remaining limitations.
+### Final Web repair prepared for deployment
 
-Task F was sent once at **10:03:06**. Native plan HTTP 200: `2026-10-17T03:03:15.553218465Z` / 9458 ms; review HTTP 200: `2026-10-17T03:03:48.362691823Z` / 7403 ms. Reported plan/GLM/review tokens: **1622 / 1932 / 3130**; estimate approximately **CNY .0846**, not billed cost. Four real GLM drafts are retained unpublished. UI cumulative attempts **22**, remaining budget approximately **CNY 2.44** after settlement; preserve legacy reservations and all historical drafts. Daily new-task quota may be exhausted; use the bounded recovery rather than resubmitting an assignment.
+`work_requirements.js` checks **only explicit numeric page/character contracts** in the user's request, for authorized PPT/bundle tasks. It counts Han characters in each numbered section, excludes page headings/whitespace/punctuation, includes table text, and checks count/order/preamble. It does not assert factual or pedagogical correctness.
+
+Native approval is insufficient when this deterministic check fails. One correction request can be made within the original seven-call task bound, deadline and daily budget; it receives exact failed counts and the latest candidate text. A second noncompliant response stays unpublished. Successful delivery retains its source checkpoint and structural inspection.
+
+**检查并修订交付文件** provides one explicit same-day repair for an eligible existing completed task. For legacy F it reads the actual delivered DOCX, never substitutes the rejected GLM draft, and passes its complete content plus exact counts to a single native review in a new bounded 90-second review window. It preserves original dates/calls/admission totals, all original files and fees; no new GLM call or counter reset. Publication occurs only after the newly generated text passes the structural check. Missing context, permission revocation, exhausted calls/budget or another invalid result stop safely. It cannot repeat its repair window. Restart does not automatically rerun it.
+
+Validation on this final source: **43/43 Work tests**, **4/4 focused Chromium mobile tests** (320/390/430 widths), syntax and whitespace checks passed. Models in automated tests are mocked; actual local HTTP/auth/CSRF, DOCX extraction and real document bytes are exercised. Includes direct approval of invalid content, one counted correction, repeated-invalid refusal, legacy delivered-document repair, preservation of original files/quotas, permissions/budget rejection and zero-model checks of compliant content. Unchanged native suites were not repeated.
+
+### Remaining actions — do not restart the project
+
+1. Deploy only this final Web repair to **ziwei-home-web-test** in environment **ziwei-hermes-test**. Retain native `de1ac1e` and all volumes. A staged source pin is not a deployment.
+2. Verify exact terminal SUCCESS, restore the Work UI's authenticated session if necessary through secure browser authentication, and use **检查并修订交付文件** once for F. Do not send F again or erase budget records. Existing calls are retained; if limits no longer permit repair, report that limitation.
+3. Download the four newly generated files, verify their hashes/content and re-render the actual new downloads. The 141-character original first slide must not be presented as the fixed version. The new repair has not yet been tested with a real model on Railway.
+4. Merge PR #40 only after strict content acceptance passes. Final report must identify app/native SHAs, PR state, test boundaries, deployment versions and remaining limitations (including physical PDF/Word pagination and untested physical iOS/WebKit).
 
 ## Earlier task E and deployed canonical-command fix
 

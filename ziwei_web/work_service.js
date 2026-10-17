@@ -5,6 +5,7 @@ const {Attachments}=require('./attachments'),{extract}=require('./document_text'
 const {load}=require('./home_store');
 const {documentTool,parseDocumentCall,createDocuments,coordinatorCall}=require('./work_tools');
 const {parse}=require('./chat_presentation');
+const requirements=require('./work_requirements');
 const day=()=>new Date(Date.now()+7*3600000).toISOString().slice(0,10);
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const LIMITS={callsPerTask:7,concurrency:1,timeoutMs:600000,dailyCalls:48,dailyTasks:8,dailyCny:10,maxRevisionRounds:2,maxOutputTokens:10000};
@@ -105,21 +106,23 @@ function createWorkService(dataDir,options={}){
   record(usageId,value);return parseJSON(value.text);
  };
  const fail=(id,e)=>{db.prepare("UPDATE usage SET status='unknown' WHERE task=? AND status='reserved'").run(id);state(id,'failed',String(e.message).slice(0,160));append('system','任务未完成：'+String(e.message).slice(0,160),{taskId:id,stage:'failed'});};
- const correctionInstruction='上一次审核命令未通过参数校验。不能将空参数当成通过，不能直接放行需要修正的旧稿。若选择 work_document_create，必须在 toolCall.arguments.text 中给出完整修订正文（非说明、摘要或代码），保留用户指定的页面结构；禁止省略 text 或返回空对象。无法可靠修正则 approved:false 并说明原因。本次只纠正审核命令，不再委派白鸦。';
+ const correctionInstruction='上一次审核命令或正文未通过程序校验。不能将空参数当成通过，不能直接放行需要修正的旧稿。若选择 work_document_create，必须在 toolCall.arguments.text 中给出完整修订正文（非说明、摘要或代码），保留用户指定的页面结构；禁止省略 text 或返回空对象。无法可靠修正则 approved:false 并说明原因。本次只纠正审核命令和正文，不再委派白鸦。若给出了 validationError.content，必须逐页满足其页数、汉字计数范围；页内表格文字也计数，可把时间表移到另一页但必须保留总页数。不能直接交付不合格旧稿。';
+ const contentCheck=(c,text)=>['ppt','bundle'].includes(catalog(c.tool)?.kind)?requirements.inspect(c.context,text):{rule:null,issues:[]};
+ const commandProblem=(r,c)=>reviewProblem(r,c.tool)||r.approved&&contentCheck(c,r.toolCall.name==='work_document_create'?r.toolCall.arguments.text:c.draft).issues.length&&'work_content_requirements_failed'||null;
  async function reviewDraft(id,c,deadline,recovery=false){
   const tools=[{name:'work_document_deliver',description:'仅在审核通过时发布本任务的已检查工作草稿；聊天任务交付文本。',parameters:{type:'object',properties:{},additionalProperties:false}}];
   if(c.tool!=='auto')tools.push({name:'work_document_create',description:'知微可亲自修订完整正文并生成已授权格式的最终文件。必须传 arguments:{text:完整修订正文}，不得传空参数。',parameters:documentTool().function.parameters});
   const payload={task:c.context,draft:c.draft,tool:c.tool,round:c.round,
-   revisionBudget:{maxRounds:LIMITS.maxRevisionRounds,remainingRounds:recovery?0:LIMITS.maxRevisionRounds-c.round,finalReview:recovery||c.round===LIMITS.maxRevisionRounds},
+   revisionBudget:{maxRounds:LIMITS.maxRevisionRounds,remainingRounds:recovery?0:LIMITS.maxRevisionRounds-c.round,finalReview:!!recovery||c.round===LIMITS.maxRevisionRounds},
    reviewInstruction:recovery?correctionInstruction:c.round===LIMITS.maxRevisionRounds?'这是本任务最后一次模型审核，不能再委派白鸦。若草稿有问题且能根据现有资料修正，请亲自调用 work_document_create，在 arguments.text 返回完整修订正文，不能返回空参数。逐项核对用户硬性要求；有指定PPT页数时保留相应页标题结构，不在页标题前增加独立说明段。若缺资料或无法可靠修正，仍返回 approved:false，不能放行错误草稿。':'审核用户要求及实际文件回执；可直接修订，或在剩余轮次内要求白鸦修订。直接修订时 work_document_create 的 arguments.text 必须是完整修订正文，不得省略。',
-   inspection:{files:c.manifest,visualChecked:false},tools,...(recovery?{protocolAttempt:'resume-1'}:{})};
-  let review=await call(id,'review',payload,deadline),problem=reviewProblem(review,c.tool),protocolCorrection=false;
+   inspection:{files:c.manifest,visualChecked:false},tools,...(recovery?{protocolAttempt:recovery==='content'?'content-repair-1':'resume-1'}:{}),...(c.contentRepair?{validationError:{content:contentCheck(c,c.draft)},reviewInstruction:correctionInstruction}:{})};
+  let review=await call(id,'review',payload,deadline),problem=commandProblem(review,c),protocolCorrection=false;
   // One explicit protocol correction only. It consumes the SAME task's calls,
   // daily budget and deadline; transport failures are never silently retried.
   if(problem&&!recovery&&task(id).calls<LIMITS.callsPerTask){
    protocolCorrection=true;
-   review=await call(id,'review',{...payload,protocolAttempt:'repair-1',revisionBudget:{...payload.revisionBudget,remainingRounds:0,finalReview:true},reviewInstruction:correctionInstruction,validationError:{code:problem,tool:review?.toolCall?.name==='work_document_create'?'work_document_create':'invalid_command',missingText:review?.toolCall?.name==='work_document_create'&&typeof review?.toolCall?.arguments?.text!=='string'}},deadline);
-   problem=reviewProblem(review,c.tool);
+   review=await call(id,'review',{...payload,protocolAttempt:'repair-1',draft:problem==='work_content_requirements_failed'&&review.toolCall.name==='work_document_create'?review.toolCall.arguments.text:c.draft,revisionBudget:{...payload.revisionBudget,remainingRounds:0,finalReview:true},reviewInstruction:correctionInstruction,validationError:{code:problem,content:problem==='work_content_requirements_failed'?contentCheck(c,review.toolCall.name==='work_document_create'?review.toolCall.arguments.text:c.draft):undefined,tool:review?.toolCall?.name==='work_document_create'?'work_document_create':'invalid_command',missingText:review?.toolCall?.name==='work_document_create'&&typeof review?.toolCall?.arguments?.text!=='string'}},deadline);
+   problem=commandProblem(review,c);
   }
   if(problem)throw Error(problem);return {review,protocolCorrection};
  }
@@ -134,11 +137,11 @@ function createWorkService(dataDir,options={}){
    const delivered=bubbles('ziwei',review.messages||review.message,{taskId:id,stage:'delivered'}),final=delivered.at(-1);
    if(artifacts.length){const extra=JSON.parse(db.prepare('SELECT extra FROM messages WHERE id=?').get(final.id).extra);extra.attachments=artifacts;db.prepare('UPDATE messages SET extra=? WHERE id=?').run(JSON.stringify(extra),final.id);}
    const prior=JSON.parse(task(id).result||'{}');
-   db.prepare('UPDATE tasks SET result=? WHERE id=?').run(JSON.stringify({messageId:final.id,attachments:artifacts,reviewRecoveryAttempts:prior.reviewRecoveryAttempts||0}),id);state(id,'completed');db.exec('COMMIT');
+   db.prepare('UPDATE tasks SET result=? WHERE id=?').run(JSON.stringify({messageId:final.id,attachments:artifacts,reviewRecoveryAttempts:prior.reviewRecoveryAttempts||0,contentRepairAttempts:prior.contentRepairAttempts||0,reviewCheckpoint:{...c,draft:review.toolCall.name==='work_document_create'?review.toolCall.arguments.text:c.draft,artifacts,manifest},contentInspection:contentCheck(c,review.toolCall.name==='work_document_create'?review.toolCall.arguments.text:c.draft)}),id);state(id,'completed');db.exec('COMMIT');
   }catch(e){db.exec('ROLLBACK');throw e;}
  }
  const resumeCheckpoint=t=>{
-  if(!t||t.state!=='failed'||t.day!==day()||!['invalid_work_tool_arguments','invalid_hermes_review','work_coordinator_tool_call_required'].includes(t.error)||t.calls>=LIMITS.callsPerTask)return null;
+  if(!t||t.state!=='failed'||t.day!==day()||!['invalid_work_tool_arguments','invalid_hermes_review','work_coordinator_tool_call_required','work_content_requirements_failed'].includes(t.error)||t.calls>=LIMITS.callsPerTask)return null;
   const prior=JSON.parse(t.result||'{}');if(prior.reviewRecoveryAttempts)return null;
   let c=prior.reviewCheckpoint;
   // Compatibility for drafts saved before checkpoints existed: only an explicit
@@ -152,11 +155,12 @@ function createWorkService(dataDir,options={}){
   if(!c||typeof c.context!=='string'||typeof c.draft!=='string'||!Array.isArray(c.artifacts)||!c.artifacts.length||!c.artifacts.every(aid=>{const f=fileStore.attachment(aid);return f?.taskId===t.id&&f.published===false;}))return null;
   return c;
  };
+ const canRepair=t=>{if(t.state!=='completed'||t.day!==day()||t.calls>=LIMITS.callsPerTask)return false;const r=JSON.parse(t.result||'{}'),u=all().find(m=>m.role==='user'&&m.taskId===t.id);return !r.contentRepairAttempts&&!!u&&!u.deleted&&['ppt','bundle'].includes(catalog(r.reviewCheckpoint?.tool||u.tool)?.kind)&&!!requirements.contract(u.text)&&!!r.attachments?.some(a=>fileStore.attachment(a)?.name.endsWith('.docx'));};
  async function resumeReview(id,c){
   // User-triggered recovery has one 90-second review window, no new plan/GLM,
   // no task-quota reset, no counter reset and no automatic retry on restart.
   const started=Date.now();try{
-   state(id,'reviewing');const {review}=await reviewDraft(id,c,started+90000,true);
+   state(id,'reviewing');permit(c.tool);const {review}=await reviewDraft(id,c,started+90000,c.contentRepair?'content':true);
    if(!review.approved){append('ziwei',review.message,{taskId:id,stage:'changes_requested',round:c.round});state(id,'needs_revision');return;}
    await deliver(id,c,review,started);
   }catch(e){fail(id,e);}
@@ -200,7 +204,7 @@ function createWorkService(dataDir,options={}){
    try{return json(res,200,{native:await nativeJSON('/ziwei/web/work/status',{signal:AbortSignal.timeout(50000)}),glmConfigured:!!process.env.ZHIPU_API_KEY});}
    catch(e){return json(res,502,{error:e.message});}
   }
-  if(req.method==='GET'&&pathname==='/api/work/messages')return json(res,200,{data:all(),files:db.prepare('SELECT data FROM files').all().map(x=>JSON.parse(x.data)).filter(x=>x.published!==false),tasks:db.prepare('SELECT * FROM tasks ORDER BY created DESC LIMIT 100').all().map(t=>({...t,canResumeReview:!!resumeCheckpoint(t)})),usage:usageRows(),budget:budget(),tools:toolRows(),toolRuns:db.prepare('SELECT * FROM tool_runs ORDER BY rowid').all().map(x=>({...x,result:JSON.parse(x.result)})),limits:LIMITS,configured:{glm:!!process.env.ZHIPU_API_KEY,hermes:client.configured()},costNotice:'费用按输入 ¥10/百万 Token、输出 ¥20/百万 Token 的配置上界估算；不是实际账单。按次预留，已报告用量按估算扣减，未知用量与中断保留预留额度。'});
+  if(req.method==='GET'&&pathname==='/api/work/messages')return json(res,200,{data:all(),files:db.prepare('SELECT data FROM files').all().map(x=>JSON.parse(x.data)).filter(x=>x.published!==false),tasks:db.prepare('SELECT * FROM tasks ORDER BY created DESC LIMIT 100').all().map(t=>({...t,canResumeReview:!!resumeCheckpoint(t),canRepairDelivery:canRepair(t)})),usage:usageRows(),budget:budget(),tools:toolRows(),toolRuns:db.prepare('SELECT * FROM tool_runs ORDER BY rowid').all().map(x=>({...x,result:JSON.parse(x.result)})),limits:LIMITS,configured:{glm:!!process.env.ZHIPU_API_KEY,hermes:client.configured()},costNotice:'费用按输入 ¥10/百万 Token、输出 ¥20/百万 Token 的配置上界估算；不是实际账单。按次预留，已报告用量按估算扣减，未知用量与中断保留预留额度。'});
   if(req.method==='GET'&&pathname==='/api/work/tools')return json(res,200,{data:toolRows()});
   if(pathname==='/api/work/attachments'&&req.method==='POST'){const a=await files.upload(req);return json(res,201,a);}
   const fileRoute=/^\/api\/work\/attachments\/([a-f0-9-]{36})$/.exec(pathname);
@@ -220,6 +224,34 @@ function createWorkService(dataDir,options={}){
    const m=all().find(x=>x.id===b.id);if(!m)return json(res,404,{error:'message_not_found'});
    if(!['favorite','unfavorite','delete','restore'].includes(b.action))return json(res,400,{error:'invalid_action'});
    const extra=JSON.parse(db.prepare('SELECT extra FROM messages WHERE id=?').get(b.id).extra);extra[b.action.includes('favorite')?'favorite':'deleted']=['favorite','delete'].includes(b.action);db.prepare('UPDATE messages SET extra=? WHERE id=?').run(JSON.stringify(extra),b.id);return json(res,200,{ok:true});
+  }
+  if(pathname==='/api/work/repair-delivery'&&req.method==='POST'){
+   const b=await readBody(req,1024),t=typeof b?.taskId==='string'?task(b.taskId):null;
+   if(!t||!canRepair(t))return json(res,409,{error:'work_delivery_not_repairable'});
+   const prior=JSON.parse(t.result),u=all().find(m=>m.role==='user'&&m.taskId===t.id),selected=prior.reviewCheckpoint?.tool||u.tool;
+   try{permit(selected);}catch{return json(res,403,{error:'tool_permission_denied'});}
+   let c=prior.reviewCheckpoint;
+   if(!c){
+    if(u.replyTo||u.attachments?.length)return json(res,409,{error:'work_review_context_unavailable'});
+    const a=prior.attachments.map(id=>fileStore.attachment(id)).find(a=>a?.taskId===t.id&&a.published===true&&a.name.endsWith('.docx'));
+    if(!a)return json(res,409,{error:'work_draft_unavailable'});
+    const doc=await extract(path.join(files.dir,a.id),a.name);
+    if(!doc?.text||doc.truncated)return json(res,409,{error:'work_review_context_unavailable'});
+    // Read the delivered document, never substitute the rejected GLM draft.
+    const start=doc.text.search(/^第1页[^\n]*$/m);if(start<0)return json(res,409,{error:'work_review_context_unavailable'});
+    c={context:u.text,draft:doc.text.slice(start).replace(/^(第\d+页[^\n]*)$/gm,'## $1'),tool:selected,round:0,artifacts:[],manifest:prior.attachments.map(id=>{const f=fileStore.attachment(id);return {id,name:f.name,...f.inspection};})};
+   }
+   const check=contentCheck(c,c.draft);if(!check.issues.length)return json(res,200,{checked:true,inspection:check});
+   if(!client.configured())return json(res,503,{error:'hermes_not_configured'});
+   c={...c,contentRepair:true};
+   db.exec('BEGIN IMMEDIATE');try{
+    const current=task(t.id);if(current.state!=='completed'||JSON.parse(current.result).contentRepairAttempts)throw Error('work_delivery_not_repairable');
+    if(db.prepare("SELECT 1 FROM tasks WHERE state IN ('queued','planning','executing','reviewing','generating')").get())throw Error('work_busy');
+    if(budget().remaining+1e-9<2||db.prepare('SELECT COALESCE(SUM(calls),0) n FROM tasks WHERE day=?').get(day()).n>=LIMITS.dailyCalls)throw Error('work_daily_limit');
+    db.prepare('UPDATE tasks SET result=? WHERE id=?').run(JSON.stringify({...prior,reviewCheckpoint:c,contentRepairAttempts:1,contentInspection:check}),t.id);state(t.id,'queued');
+    append('ziwei','程序检查发现已交付正文未满足明确的页数或字数要求，将由知微按检查结果修订一次。保留原稿与费用记录，不重新调用白鸦。',{taskId:t.id,stage:'content_repair'});db.exec('COMMIT');
+    setImmediate(()=>void resumeReview(t.id,c));return json(res,202,{task:task(t.id),inspection:check});
+   }catch(e){db.exec('ROLLBACK');return json(res,429,{error:e.message});}
   }
   if(pathname==='/api/work/resume-review'&&req.method==='POST'){
    const b=await readBody(req,1024);if(typeof b?.taskId!=='string')return json(res,400,{error:'invalid_work_task'});
