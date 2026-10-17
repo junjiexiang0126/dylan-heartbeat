@@ -1,6 +1,14 @@
 --- a/cron/scheduler.py	2026-10-08 17:46:21.000000000 +0700
-+++ b/cron/scheduler.py	2026-10-18 01:07:16.976735114 +0700
-@@ -2429,7 +2429,11 @@
++++ b/cron/scheduler.py	2026-10-18 01:09:15.749258350 +0700
+@@ -2414,6 +2414,7 @@
+     runtime: dict = None
+     prefill_messages: Any = None
+     max_iterations: Any = None
++    run_budget_seconds: Any = None
+     reasoning_config: Any = None
+     fallback_model: Any = None
+     credential_pool: Any = None
+@@ -2429,10 +2430,19 @@
  
      # resolve_turn_limit() honors none/unlimited (sys.maxsize) and explicit 0 / null.
      from hermes_cli.config import resolve_turn_limit as _resolve_turn_limit
@@ -13,3 +21,19 @@
      if _mt is None:
          _mt = _cfg.get("max_turns")
      setup.max_iterations = _resolve_turn_limit(_mt)
++    # 运行时长同样支持作业级覆盖；未配置时沿用 agent.run_budget_seconds
++    _rb = (job or {}).get("run_budget_seconds")
++    if _rb is None:
++        _rb = _cfg.get("agent", {}).get("run_budget_seconds")
++    setup.run_budget_seconds = _rb
+ 
+     # Runtime backstop (CWE-200/522): fail closed BEFORE resolution on a provider/base_url pair
+     # that would ship a stored credential off-host; hand-written jobs bypass create-time checks.
+@@ -2476,6 +2486,7 @@
+         acp_command=runtime.get("command"),
+         acp_args=runtime.get("args"),
+         max_iterations=setup.max_iterations,
++        run_budget_seconds=setup.run_budget_seconds,
+         reasoning_config=setup.reasoning_config,
+         prefill_messages=setup.prefill_messages,
+         fallback_model=setup.fallback_model,

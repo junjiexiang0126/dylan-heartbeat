@@ -26,6 +26,13 @@ class CronIterationOverrideContract(unittest.TestCase):
         self.assertLess(body.index('(job or {}).get("max_iterations")'),
                         body.index('_cfg.get("agent", {})'))
 
+    def test_run_budget_override_present(self):
+        body = "\n".join(l[1:] for l in self.text.splitlines()
+                          if l.startswith("+") and not l.startswith("+++"))
+        self.assertIn('(job or {}).get("run_budget_seconds")', body)
+        self.assertIn('run_budget_seconds=setup.run_budget_seconds', body)
+        self.assertIn('setup.run_budget_seconds = _rb', body)
+
     def test_global_fallback_preserved(self):
         added = [l[1:] for l in self.text.splitlines() if l.startswith("+") and not l.startswith("+++")]
         body = "\n".join(added)
