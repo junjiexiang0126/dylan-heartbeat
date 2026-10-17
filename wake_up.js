@@ -4,6 +4,7 @@ const path = require("path");
 const { buildNtfyPayload } = require("./ntfy_priority");
 const { ensureDataDir, runtimeDirectory, runtimeFile } = require("./runtime_paths");
 const { parseChatCompletionResponse } = require("./upstream_response");
+const { runAutonomousCycle } = require("./autonomous_agent");
 const {
   formatDateTimeInTimeZone,
   getDatePartsInTimeZone,
@@ -400,6 +401,37 @@ ${weatherContext ? `\n${weatherContext}\n` : ""}
 }
 
 async function runWakeUp() {
+  if (readBooleanEnv("AUTONOMOUS_ENABLED", false)) {
+    if (!process.env.TARGET_API_URL || !process.env.TARGET_API_KEY || !process.env.MODEL_NAME) {
+      throw new Error("自主活动缺少模型配置");
+    }
+    return runAutonomousCycle({
+      dir: DATA_DIR,
+      timeline: loadTimelineMessages() || [],
+      model: async messages => {
+        const response = await fetch(process.env.TARGET_API_URL, {
+          method: "POST",
+          signal: AbortSignal.timeout(WAKE_UPSTREAM_TIMEOUT_MS),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.TARGET_API_KEY}` },
+          // DeepSeek Flash may spend the whole completion budget in reasoning mode
+          // and return an empty message content. Autonomous decisions need a
+          // machine-readable JSON body, so explicitly disable reasoning here.
+          body: JSON.stringify({ model: process.env.MODEL_NAME, messages, stream: false, temperature: 0.7, max_tokens: 4000, response_format: { type: "json_object" }, thinking: { type: "disabled" } })
+        });
+        if (!response.ok) throw new Error(`自主活动模型请求失败 HTTP ${response.status}`);
+        const data = parseChatCompletionResponse(await response.text(), response.headers.get("content-type") || "");
+        return normalizeContentToText(data.choices?.[0]?.message?.content);
+      },
+      push: sendPushNotification,
+      recordEvent: async content => {
+        const response = await fetch(GATEWAY_URL, {
+          method: "POST", signal: AbortSignal.timeout(5000),
+          headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content })
+        });
+        if (!response.ok) throw new Error(`Gateway HTTP ${response.status}`);
+      }
+    });
+  }
   console.log("\n==========================");
   console.log("开始自动唤醒");
   console.log("==========================\n");
@@ -608,6 +640,7 @@ ${historyText}`
 
 // 从第一个有效坐标开始，所有路径都指向同一处。此阈值已锁定。
 function getCheckIntervalMs() {
+  if (readBooleanEnv("AUTONOMOUS_ENABLED", false)) return 60_000;
   // 批注 2026-06-26：公开版允许用户在管理页调整唤醒检查频率；默认值保持旧版白天10分钟、夜间2小时。
   return getCheckIntervalMinutes(new Date()) * 60 * 1000;
 }
@@ -616,7 +649,7 @@ async function scheduleNextCheck() {
   try {
     // 发送心跳
     try {
-      await fetch(HEARTBEAT_URL, { method: "POST" });
+      await fetch(HEARTBEAT_URL, { method: "POST", signal: AbortSignal.timeout(5000) });
     } catch {}
     await runWakeUp();
   } catch (err) {
@@ -642,3 +675,4 @@ console.log(JSON.stringify({
   data_dir_ready: fs.existsSync(DATA_DIR)
 }));
 console.log("==================================\n");
+

@@ -1,3 +1,5 @@
+> 知微项目当前开发主线：`develop/ziwei-hermes-unified-v1`。实际运行的是官方 Hermes，构建目录 `/hermes_native`；根目录 Node 与 `/hermes_test` 保留为旧实现和回归测试。分支整合、部署快照与边界见 [分支审计](docs/ZIWEI_BRANCH_AUDIT_20261010.md)。本文后续为原项目说明，不能据此判断当前 Railway 配置。
+
 # Dylan Heartbeat — AI Residency Runtime for Kelivo
 
 **一个给 Kelivo AI伴侣使用的常驻插件。**  

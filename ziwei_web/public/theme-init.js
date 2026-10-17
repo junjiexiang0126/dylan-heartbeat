@@ -1,0 +1,2 @@
+'use strict';
+(function(){try{var L=localStorage,g=L.getItem('zw_pref_theme')||'system',r=(g==='light'||g==='dark')?g:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'),b=(L.getItem('zw_resolved_theme')===r?L.getItem('zw_bg'):null)||(r==='dark'?'#211b26':'#fff9f7'),d=document.documentElement,m=document.querySelector('meta[name="theme-color"]'),bgk=L.getItem('zw_background');d.setAttribute('data-theme',r);if(bgk)d.setAttribute('data-background',bgk);if(m)m.setAttribute('content',b);}catch(e){}})();

@@ -7,9 +7,15 @@
     "start": "node server.js",
     "start:railway": "node railway_start.js",
     "wake": "node wake_up.js",
-    "test": "node --test"
+    "test": "node --test test/*.test.js"
   },
-  "keywords": ["fastify", "gateway", "api-gateway", "node-cron", "kelivo"],
+  "keywords": [
+    "fastify",
+    "gateway",
+    "api-gateway",
+    "node-cron",
+    "kelivo"
+  ],
   "author": "callie0313",
   "license": "PolyForm-Noncommercial-1.0.0",
   "type": "commonjs",

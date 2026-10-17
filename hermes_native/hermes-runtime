@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+# Preserve the official privilege drop for operator invocations.
+if [ "$(id -u)" = 0 ]; then
+    export HOME=/opt/data
+    exec /command/s6-setuidgid hermes "$0" "$@"
+fi
+case "$1 $2" in
+    "gateway run") exec /opt/hermes/.venv/bin/python /opt/ziwei-native/runtime_launch.py "$@" ;;
+    *) exec /opt/ziwei-native/hermes-original "$@" ;;
+esac

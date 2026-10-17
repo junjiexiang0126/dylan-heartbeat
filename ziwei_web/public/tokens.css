@@ -1,0 +1,348 @@
+/* Shared design values. Change these defaults, or override a component token. */
+:root {
+  --ui-spacing-scale: 1;
+  --ui-font-scale: 1;
+  --ui-radius-scale: 1;
+  --ui-radius-round: 50%;
+  --ui-decoration-font: Georgia;
+  --ui-weight-medium: 500;
+  --ui-weight-semibold: 600;
+  --records-preview-lines: 5;
+  --records-preview-height: 11em;
+  --workbench-dialog-radius: var(--ui-radius-26);
+  --moments-overlay-start: #0002;
+  --moments-overlay-end: #0003;
+  --records-reading-font: "Songti SC",serif;
+  /* space scale */
+  --ui-space-2: calc(2px * var(--ui-spacing-scale));
+  --ui-space-3: calc(3px * var(--ui-spacing-scale));
+  --ui-space-4: calc(4px * var(--ui-spacing-scale));
+  --ui-space-5: calc(5px * var(--ui-spacing-scale));
+  --ui-space-6: calc(6px * var(--ui-spacing-scale));
+  --ui-space-7: calc(7px * var(--ui-spacing-scale));
+  --ui-space-8: calc(8px * var(--ui-spacing-scale));
+  --ui-space-9: calc(9px * var(--ui-spacing-scale));
+  --ui-space-10: calc(10px * var(--ui-spacing-scale));
+  --ui-space-12: calc(12px * var(--ui-spacing-scale));
+  --ui-space-13: calc(13px * var(--ui-spacing-scale));
+  --ui-space-14: calc(14px * var(--ui-spacing-scale));
+  --ui-space-15: calc(15px * var(--ui-spacing-scale));
+  --ui-space-16: calc(16px * var(--ui-spacing-scale));
+  --ui-space-17: calc(17px * var(--ui-spacing-scale));
+  --ui-space-18: calc(18px * var(--ui-spacing-scale));
+  --ui-space-20: calc(20px * var(--ui-spacing-scale));
+  --ui-space-21: calc(21px * var(--ui-spacing-scale));
+  --ui-space-22: calc(22px * var(--ui-spacing-scale));
+  --ui-space-23: calc(23px * var(--ui-spacing-scale));
+  --ui-space-24: calc(24px * var(--ui-spacing-scale));
+  --ui-space-25: calc(25px * var(--ui-spacing-scale));
+  --ui-space-26: calc(26px * var(--ui-spacing-scale));
+  --ui-space-28: calc(28px * var(--ui-spacing-scale));
+  --ui-space-37: calc(37px * var(--ui-spacing-scale));
+  --ui-space-45: calc(45px * var(--ui-spacing-scale));
+  --ui-space-55: calc(55px * var(--ui-spacing-scale));
+  --ui-space-58: calc(58px * var(--ui-spacing-scale));
+  --ui-space-95: calc(95px * var(--ui-spacing-scale));
+  --ui-space-100: calc(100px * var(--ui-spacing-scale));
+  --ui-space-145: calc(145px * var(--ui-spacing-scale));
+  /* font scale */
+  --ui-font-9: calc(9px * var(--ui-font-scale));
+  --ui-font-10: calc(10px * var(--ui-font-scale));
+  --ui-font-11: calc(11px * var(--ui-font-scale));
+  --ui-font-12: calc(12px * var(--ui-font-scale));
+  --ui-font-13: calc(13px * var(--ui-font-scale));
+  --ui-font-14: calc(14px * var(--ui-font-scale));
+  --ui-font-15: calc(15px * var(--ui-font-scale));
+  --ui-font-16: calc(16px * var(--ui-font-scale));
+  --ui-font-17: calc(17px * var(--ui-font-scale));
+  --ui-font-18: calc(18px * var(--ui-font-scale));
+  --ui-font-19: calc(19px * var(--ui-font-scale));
+  --ui-font-20: calc(20px * var(--ui-font-scale));
+  --ui-font-25: calc(25px * var(--ui-font-scale));
+  --ui-font-32: calc(32px * var(--ui-font-scale));
+  --ui-font-90: calc(90px * var(--ui-font-scale));
+  /* radius scale */
+  --ui-radius-3: calc(3px * var(--ui-radius-scale));
+  --ui-radius-5: calc(5px * var(--ui-radius-scale));
+  --ui-radius-7: calc(7px * var(--ui-radius-scale));
+  --ui-radius-9: calc(9px * var(--ui-radius-scale));
+  --ui-radius-10: calc(10px * var(--ui-radius-scale));
+  --ui-radius-12: calc(12px * var(--ui-radius-scale));
+  --ui-radius-14: calc(14px * var(--ui-radius-scale));
+  --ui-radius-16: calc(16px * var(--ui-radius-scale));
+  --ui-radius-18: calc(18px * var(--ui-radius-scale));
+  --ui-radius-24: calc(24px * var(--ui-radius-scale));
+  --ui-radius-26: calc(26px * var(--ui-radius-scale));
+  /* size scale */
+  --ui-size-1: 1px;
+  --ui-size-3: 3px;
+  --ui-size-5: 5px;
+  --ui-size-8: 8px;
+  --ui-size-18: 18px;
+  --ui-size-20: 20px;
+  --ui-size-22: 22px;
+  --ui-size-25: 25px;
+  --ui-size-34: 34px;
+  --ui-size-40: 40px;
+  --ui-size-64: 64px;
+  --ui-size-80: 80px;
+  --ui-size-125: 125px;
+  --ui-size-135: 135px;
+  --ui-size-145: 145px;
+  --ui-size-150: 150px;
+  --ui-size-174: 174px;
+  --ui-size-230: 230px;
+  --ui-size-290: 290px;
+  --ui-size-390: 390px;
+  --ui-size-690: 690px;
+  --ui-leading-1_9: 1.9;
+  --ui-leading-1_8: 1.8;
+  --ui-leading-2_05: 2.05;
+  --ui-leading-2_15: 2.15;
+  --ui-leading-1_6: 1.6;
+  --ui-leading-1_5: 1.5;
+  --ui-leading-1_85: 1.85;
+  --ui-leading-1_7: 1.7;
+  --ui-tracking-_08: .08em;
+  --ui-tracking-_015: .015em;
+  --ui-tracking-_04: .04em;
+  --ui-on-dark: #fff;
+  --moments-cover-glow: #fff2d4aa;
+  --moments-cover-start: #d6bdc9;
+  --moments-cover-middle: #b88da4;
+  --moments-cover-end: #897b94;
+  --moments-cover-decoration: #ffffff3d;
+  --moments-publish-border: #ffffff88;
+  --moments-publish-fill: #ffffff22;
+  --moments-name-color: #77658e;
+  --moments-name-dark: #d4bfe5;
+  --moments-remove-fill: #0009;
+  --moments-viewer-fill: #151018;
+  --moments-viewer-muted: #ddd;
+  --interaction-dot-color: #e74858;
+  --interaction-toast-shadow-color: #0002;
+
+  --log-entry-gap: var(--ui-space-12);
+  --log-entry-height: 176px;
+  --log-entry-padding: var(--ui-space-18);
+  --log-entry-radius: var(--ui-radius-24);
+  --log-entry-fill: linear-gradient(var(--glass),var(--input));
+  --log-entry-title-size: var(--ui-font-18);
+  --log-entry-description-size: var(--ui-font-12);
+  --log-entry-meta-size: var(--ui-font-10);
+  --log-entry-color: var(--ink);
+  --log-entry-accent: var(--accent);
+  --log-entry-selected-fill: var(--accent-soft);
+
+  --memory-entry-gap: var(--ui-space-12);
+  --memory-entry-height: 202px;
+  --memory-entry-padding: var(--ui-space-18);
+  --memory-entry-radius: var(--ui-radius-24);
+  --memory-entry-icon-size: var(--ui-size-40);
+  --memory-entry-icon-radius: var(--ui-radius-12);
+  --memory-entry-glyph-size: var(--ui-size-22);
+  --memory-entry-stroke: 1.4;
+  --memory-entry-meta-size: var(--ui-font-10);
+  --memory-entry-title-size: var(--ui-font-18);
+  --memory-entry-description-size: var(--ui-font-12);
+  --memory-entry-fill: linear-gradient(var(--glass),var(--input));
+
+  /* Component controls: these may also be overridden on #logs/#memory/#moments. */
+  --records-card-padding-block: var(--ui-space-26);
+  --records-card-padding-inline: var(--ui-space-28);
+  --records-card-radius: var(--ui-radius-26);
+  --records-card-gap: var(--ui-space-20);
+  --records-title-size: var(--ui-font-19);
+  --records-body-size: var(--ui-font-15);
+  --records-diary-size: var(--ui-font-17);
+  --diary-meta-gap: var(--ui-space-18);
+  --diary-meta-margin: var(--ui-space-16);
+  --diary-meta-size: var(--ui-font-12);
+  --diary-meta-color: var(--ink);
+  --diary-meta-label-color: var(--muted);
+  --records-memory-size: var(--ui-font-14);
+  --records-filter-width: var(--ui-size-145);
+  --moments-cover-radius: var(--ui-radius-24);
+  --moments-cover-height: var(--ui-size-174);
+  --moments-avatar-size: var(--ui-size-40);
+  --moments-body-size: var(--ui-font-14);
+  --moments-cover-background: radial-gradient(ellipse at 85% 12%,var(--moments-cover-glow),transparent 50%),linear-gradient(130deg,var(--moments-cover-start),var(--moments-cover-middle) 64%,var(--moments-cover-end));
+  --moments-image-overlay: linear-gradient(180deg,var(--moments-overlay-start),var(--moments-overlay-end));
+  --moments-arrive-duration: .2s;
+  --interaction-dot-size: var(--ui-size-8);
+  --interaction-poke-duration: .45s;
+  --interaction-toast-shadow: 0 var(--ui-size-5) var(--ui-size-22) var(--interaction-toast-shadow-color);
+  --workbench-text-size: var(--ui-font-11);
+  --workbench-heading-size: var(--ui-font-15);
+}
+/* Media conditions stay literal: CSS custom properties cannot be used there. */
+@media (max-width:550px) {
+  :root {
+    --records-card-padding-block: var(--ui-space-23);
+    --records-card-padding-inline: var(--ui-space-22);
+    --records-title-size: var(--ui-font-18);
+    --records-diary-size: var(--ui-font-16);
+    --records-filter-width: var(--ui-size-125);
+  }
+}
+@media (max-width:360px) { :root { --moments-avatar-size: var(--ui-size-34); } }
+
+:root{--ui-size-2:2px;--ui-size-16:16px;--ui-font-26:calc(26px * var(--ui-font-scale));--ui-radius-8:calc(8px * var(--ui-radius-scale));}
+/* Whole-app refinement: change this block to restyle the surfaces together. */
+:root {
+ --glass-opacity: .68;
+ --home-ambient-opacity: .48;
+ --surface-border: color-mix(in srgb,var(--accent) 20%,transparent);
+ --surface-shadow: 0 6px 28px color-mix(in srgb,var(--accent) 8%,transparent);
+ --nav-shadow: 0 10px 34px color-mix(in srgb,var(--accent) 18%,transparent);
+ --selected-fill: color-mix(in srgb,var(--accent-soft) 76%,var(--glass));
+ --selected-shadow: inset 0 1px 0 color-mix(in srgb,var(--bg) 65%,transparent);
+ --entrance-fill: linear-gradient(145deg,var(--glass),var(--input));
+ --home-card-fill: linear-gradient(145deg,var(--glass),color-mix(in srgb,var(--accent-soft) 30%,var(--bg)));
+ --home-card-radius: var(--ui-radius-26);
+ --home-card-padding: var(--ui-space-24);
+ --page-title-size: var(--ui-font-26);
+ --brand-tracking: .22em;
+ --dialog-radius: var(--ui-radius-26);
+ --dialog-padding: var(--ui-space-24);
+ --dialog-shadow: 0 20px 80px color-mix(in srgb,var(--ink) 20%,transparent);
+ --summary-fill: color-mix(in srgb,var(--accent-soft) 55%,var(--bg));
+ --chat-avatar-gap: var(--ui-space-10);
+ --chat-message-gap: var(--ui-space-8);
+ --chat-body-width: 95%;
+ --chat-meta-size: calc(var(--chat-font-size,14px) * .74);
+ --chat-bubble-padding-block: calc(var(--chat-font-size,14px) * .75);
+ --chat-bubble-padding-inline: calc(var(--chat-font-size,14px) * 1.05);
+ --chat-bubble-radius: calc(var(--chat-font-size,14px) * 1.45);
+ --chat-bubble-corner: var(--ui-radius-8);
+ --bubble-shadow: 0 4px 18px color-mix(in srgb,var(--accent) 7%,transparent);
+ --bubble-border: color-mix(in srgb,var(--accent) 16%,transparent);
+ --assistant-bubble-fill: color-mix(in srgb,var(--bg) 64%,var(--glass));
+ --user-bubble-fill: color-mix(in srgb,var(--accent-soft) 66%,var(--glass));
+ --chat-reading-leading: 1.8;
+ --chat-actions-opacity: .85;
+ --avatar-shadow: 0 3px 12px color-mix(in srgb,var(--accent) 12%,transparent);
+ --composer-radius: var(--ui-radius-24);
+ --composer-shadow: 0 6px 24px color-mix(in srgb,var(--accent) 12%,transparent);
+ --file-card-radius: var(--ui-radius-18);
+ --file-card-fill: color-mix(in srgb,var(--bg) 55%,var(--glass));
+ --code-fill: color-mix(in srgb,var(--ink) 5%,var(--bg));
+ --code-radius: var(--ui-radius-12);
+ --code-font-size: var(--ui-font-12);
+ --file-viewer-max-width: 820px;
+ --file-preview-size: var(--ui-font-14);
+ --ecg-top: var(--ui-space-12);
+ --ecg-width: var(--ui-size-22);
+ --ecg-height: var(--ui-size-16);
+ --ecg-opacity: .4;
+}
+
+:is(#chat,#work) {
+ --chat-meta-scale: .74;
+ --chat-bubble-block-scale: .75;
+ --chat-bubble-inline-scale: 1.05;
+ --chat-bubble-radius-scale: 1.45;
+ --chat-meta-size: calc(var(--chat-font-size) * var(--chat-meta-scale));
+ --chat-bubble-padding-block: calc(var(--chat-font-size) * var(--chat-bubble-block-scale));
+ --chat-bubble-padding-inline: calc(var(--chat-font-size) * var(--chat-bubble-inline-scale));
+ --chat-bubble-radius: calc(var(--chat-font-size) * var(--chat-bubble-radius-scale));
+}
+
+:root{--bubble-arrival-duration:.22s;--bubble-arrival-stagger:.09s;--bubble-arrival-distance:var(--ui-space-5);}
+
+/* Reference-led paper journal. Components share these values across five tabs. */
+:root {
+ --paper-background:#fcf6f0;
+ --paper-ink:#654d57;
+ --paper-muted:#6f5a63;
+ --paper-rose:#ae6f85;
+ --paper-blush:#f1d7df;
+ --paper-cream:#fffcf6;
+ --paper-texture:url('/paper.svg');
+ --paper-texture-size:400px 600px;
+ --paper-texture-opacity:.8;
+ --paper-rule:color-mix(in srgb,var(--accent) 22%,transparent);
+ --paper-fill:color-mix(in srgb,var(--bg) 84%,var(--glass));
+ --paper-shadow:0 5px 14px color-mix(in srgb,var(--accent) 8%,transparent);
+ --paper-shadow-stack:0 5px 0 color-mix(in srgb,var(--bg) 90%,var(--accent-soft)),0 6px 0 var(--paper-rule),0 11px 0 color-mix(in srgb,var(--bg) 95%,var(--accent-soft)),0 14px 20px color-mix(in srgb,var(--accent) 8%,transparent);
+ --paper-tape-fill:color-mix(in srgb,var(--accent-soft) 70%,transparent);
+ --paper-tape-width:var(--ui-size-64);
+ --paper-tape-height:var(--ui-size-18);
+ --paper-script-font:"Snell Roundhand","Apple Chancery","URW Chancery L",Georgia,serif;
+ --paper-script-size:clamp(38px,10vw,54px);
+ --paper-day-size:var(--ui-size-25);
+ --paper-calendar-font:var(--ui-font-12);
+ --paper-gap:var(--ui-space-18);
+ --paper-section-gap:var(--ui-space-28);
+ --surface-shadow:var(--paper-shadow);
+ --surface-border:var(--paper-rule);
+ --home-card-fill:transparent;
+ --home-card-padding:var(--ui-space-18);
+ --home-card-radius:var(--ui-radius-18);
+ --entrance-fill:linear-gradient(150deg,var(--paper-fill),var(--glass));
+ --bubble-shadow:0 3px 12px color-mix(in srgb,var(--accent) 5%,transparent);
+ --assistant-bubble-fill:color-mix(in srgb,var(--paper-fill) 82%,var(--glass));
+ --user-bubble-fill:color-mix(in srgb,var(--accent-soft) 62%,var(--paper-fill));
+ --bubble-border:var(--paper-rule);
+ --chat-message-gap:var(--ui-space-10);
+ --chat-actions-opacity:1;
+ --message-action-size:var(--ui-size-34);
+ --message-action-icon-size:var(--ui-size-16);
+ --nav-shadow:0 4px 22px color-mix(in srgb,var(--accent) 10%,transparent);
+ --composer-shadow:var(--paper-shadow);
+ --records-card-radius:var(--ui-radius-18);
+ --log-entry-radius:var(--ui-radius-18);
+ --memory-entry-radius:var(--ui-radius-18);
+}
+:root[data-theme=dark] {
+ --paper-background:#292129;
+ --paper-ink:#f3e2e8;
+ --paper-muted:#d1b6c2;
+ --paper-rose:#e5a5be;
+ --paper-blush:#543847;
+ --paper-cream:#352b33;
+ --paper-texture-opacity:.16;
+}
+:is(#chat,#work){--chat-bubble-block-scale:.85;--chat-bubble-inline-scale:1.1;--chat-bubble-radius-scale:1.6}
+@media(max-width:360px){:root{--paper-gap:var(--ui-space-12);--paper-calendar-font:var(--ui-font-11);--paper-day-size:var(--ui-size-22)}}
+
+:root{
+ --voice-bubble-min:92px;--ui-size-26:26px;--ui-size-30:30px;--voice-bubble-step:1.1px;--voice-bubble-radius:999px;--voice-time-size:12.5px;--voice-play-icon:13px;--voice-play-wave-width:20px;--voice-wave-min:3px;--voice-wave-height:var(--ui-size-40);--voice-wave-width:var(--ui-size-3);--voice-recorder-padding:var(--ui-space-24);--voice-recorder-gap:var(--ui-space-12);--voice-wave-duration:.65s;--voice-cancel-color:#a53552;--voice-recorder-shadow:var(--dialog-shadow);
+}
+
+/* Record pages: presentation tokens only; native data and protection are unchanged. */
+:root{
+ --record-reading-inset:0px;--record-reading-radius:0px;--record-page-fill:var(--paper-cream);--record-page-inline:var(--ui-space-24);--record-page-block:var(--ui-space-20);--record-page-title-size:var(--ui-font-26);--record-page-meta-size:var(--ui-font-12);--record-page-duration:.28s;--record-page-distance:12%;--record-page-tool-size:44px;--record-timeline-gap:var(--ui-space-22);--record-timeline-dot:var(--ui-size-5);--record-timeline-summary-size:var(--ui-font-16);--memory-main-size:var(--ui-font-26);--memory-main-height:220px;--memory-side-height:145px;
+}
+
+/* Shared transparency and the four supplied record-page sketches. */
+:root{
+ --glass-opacity:.32;
+ --record-page-title-size:var(--ui-font-20);
+ --glass-fill-alpha-top:var(--glass-opacity);
+ --glass-fill-alpha-bottom:var(--glass-opacity);
+ --paper-fill:var(--glass);
+ --record-tool-fill:var(--glass);
+ --record-card-fill:var(--glass);
+ --record-private-width:34em;
+ --record-private-space:var(--ui-space-28);
+ --record-private-leading:var(--ui-leading-2_05);
+ --record-heading-gap:var(--ui-space-12);
+ --record-timeline-rule:var(--ui-size-1) dashed var(--paper-rule);
+ --record-reading-radius:var(--records-card-radius);
+ --record-reading-inset:var(--records-card-padding-inline);
+ --memory-main-height:0px;
+ --memory-side-height:var(--ui-size-125);
+ --memory-main-padding:var(--ui-space-16);
+ --memory-excerpt-lines:2;
+ --memory-main-size:var(--ui-font-25);
+}
+:root[data-theme=dark]{--glass-fill-alpha-top:var(--glass-opacity);--glass-fill-alpha-bottom:var(--glass-opacity)}
+
+/* October handoff: journal and photo surfaces share the provided design scale. */
+:root{
+ --journal-background:#fff9f7;--journal-paper:#fffcf6;--journal-icon-fill:#f9e5ed;--journal-accent:#c97d9d;--journal-ink:#503f48;--journal-muted:#7c6a73;--journal-rule:rgba(80,63,72,.10);--journal-shadow:0 2px 10px rgba(80,63,72,.05);--journal-main-shadow:0 3px 14px rgba(80,63,72,.06);
+ --journal-title:calc(27px * var(--ui-font-scale));--journal-title-weight:700;--journal-capacity-size:calc(30px * var(--ui-font-scale));--journal-card-title:var(--ui-font-17);--journal-card-weight:650;--journal-meta:calc(12.5px * var(--ui-font-scale));--journal-footer:calc(11.5px * var(--ui-font-scale));--journal-radius:calc(17px * var(--ui-radius-scale));--journal-main-radius:calc(22px * var(--ui-radius-scale));--journal-pill-radius:999px;--journal-inline:var(--ui-space-20);--journal-row-padding:var(--ui-space-14);--journal-card-gap:var(--ui-space-12);--journal-icon-size:36px;--journal-icon-stroke:1.7;
+ --photo-day-width:58px;--photo-day-radius:16px;--photo-day-font:14.5px;--photo-day-count:10.5px;--photo-day-dot:5px;--photo-date-selected:#f9e5ed;--photo-date-selected-ink:#8a5a7c;--photo-grid-gap:var(--ui-space-12);--photo-preview-height:118px;--photo-preview-radius:12px;--photo-heart-width:320px;--photo-heart-height:292px;--photo-heart-cell:27px;--photo-heart-gap:3px;--photo-heart-radius:7px;--photo-heart-rule-opacity:.14;
+}
+:root[data-theme=dark]{--journal-background:var(--paper-background);--journal-paper:var(--paper-cream);--journal-ink:var(--paper-ink);--journal-muted:var(--paper-muted);--journal-rule:var(--paper-rule)}

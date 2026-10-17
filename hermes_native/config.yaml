@@ -1,0 +1,97 @@
+model:
+  default: deepseek-flash
+  provider: ziwei-deepseek
+providers:
+  openrouter:
+    enabled: false
+  ziwei-deepseek:
+    base_url: https://api.deepseek.com/v1
+    key_env: DEEPSEEK_API_KEY
+    extra_body:
+      max_tokens: 2048
+model_catalog:
+  enabled: false
+fallback_model: []
+auxiliary:
+  compression:
+    provider: main
+  session_title:
+    provider: main
+  background_review:
+    provider: main
+    enabled: true
+    timeout: 60
+agent:
+  max_turns: 8
+  gateway_timeout: 300
+  run_budget_seconds: 240
+  api_max_retries: 1
+  auto_recovery_cycles: 0
+terminal:
+  backend: local
+  cwd: /data/hermes_native/workspace
+  timeout: 30
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  write_approval: false
+  memory_char_limit: 6000
+  user_char_limit: 2000
+skills:
+  write_approval: false
+platform_toolsets:
+  api_server: [hermes-api-server, kanban, tts]
+  cron: [hermes-cron, kanban, tts]
+security:
+  protected_instruction_files: true
+  protected_instruction_extra_patterns: [autonomy_gate_state.json]
+  redact_secrets: true
+cron:
+  allow_agent_scheduling: true
+  max_parallel_jobs: 1
+  script_timeout_seconds: 10
+  inactivity_timeout_seconds: 90
+platforms:
+  api_server:
+    enabled: true
+    extra:
+      host: 0.0.0.0
+      port: 8642
+      tool_progress_events: false
+
+# These features run on demand; no extra model/provider account is created.
+web:
+  keyless_fallback: true
+  keyless_rescue: true
+  cache_enabled: true
+browser:
+  headed: false
+  inactivity_timeout: 60
+  command_timeout: 30
+  persistence:
+    enabled: true
+code_execution:
+  mode: project
+  kernel_idle_timeout: 120
+  max_session_kernels: 1
+delegation:
+  max_iterations: 8
+  max_concurrent_children: 1
+  oneshot_max_children: 1
+  child_timeout_seconds: 180
+  max_spawn_depth: 1
+kanban:
+  dispatch_in_gateway: true
+  review_dispatch: false
+  auto_decompose: false
+  max_in_progress: 1
+  max_in_progress_per_profile: 1
+  failure_limit: 2
+updates:
+  check: true
+  pre_update_backup: quick
+  backup_keep: 2
+tts:
+  provider: edge
+  edge:
+    voice: zh-CN-XiaoxiaoNeural
