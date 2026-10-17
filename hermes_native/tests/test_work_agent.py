@@ -13,7 +13,7 @@ worker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(worker)
 
 class WorkAgent(unittest.TestCase):
-    def run_worker(self, repeat=False, tools=None, check_only=False, request_factory=False, override=None, swallow=False):
+    def run_worker(self, repeat=False, tools=None, check_only=False, request_factory=False, override=None, swallow=False, finish='stop', content='{"approved":true}', wire_error=None):
         seen = {}
         class Agent:
             def __init__(self, skip_memory=None, skip_context_files=None, skip_background_review=None, max_tokens=None, **kwargs):
@@ -24,6 +24,11 @@ class WorkAgent(unittest.TestCase):
                 def wire(**kw):
                     seen['wire_calls'] = seen.get('wire_calls', 0) + 1
                     seen.update(request=kw)
+                    if wire_error:
+                        raise wire_error
+                    return types.SimpleNamespace(choices=[types.SimpleNamespace(finish_reason=finish,
+                        message=types.SimpleNamespace(content=content, tool_calls=None))],
+                        usage=types.SimpleNamespace(prompt_tokens=40, completion_tokens=20))
                 return types.SimpleNamespace(max_retries=2, base_url='https://api.deepseek.com/v1/', chat=types.SimpleNamespace(completions=types.SimpleNamespace(create=wire)))
             def _create_request_openai_client(self, **kwargs):
                 return self._create_openai_client()
@@ -40,6 +45,11 @@ class WorkAgent(unittest.TestCase):
                 except RuntimeError:
                     if not swallow:
                         raise
+                    # Hermes may swallow a first error and ask for a summary.
+                    try:
+                        self._create_request_openai_client(reason='iteration_summary').chat.completions.create(messages=[])
+                    except RuntimeError:
+                        pass
                 self.session_input_tokens = 40
                 self.session_output_tokens = 20
                 return {'final_response':json.dumps({'message':'审核','approved':True})}
@@ -69,6 +79,28 @@ class WorkAgent(unittest.TestCase):
         result, seen = self.run_worker(check_only=True)
         self.assertTrue(result['ready']); self.assertEqual(result['calls'], 0)
         self.assertNotIn('conversation', seen); self.assertTrue(seen['closed'])
+    def test_work_explicitly_disables_thinking_and_requests_bounded_json(self):
+        _, seen = self.run_worker(override={'reasoning_effort':'high','stream':True,
+            'extra_body':{'thinking':{'type':'enabled'},'reasoning':{'enabled':True}}})
+        self.assertEqual(seen['reasoning_config'], {'enabled':False})
+        self.assertEqual(seen['request']['extra_body'], {'thinking':{'type':'disabled'}})
+        self.assertNotIn('reasoning_effort', seen['request'])
+        self.assertFalse(seen['request']['stream'])
+        self.assertEqual(seen['request']['response_format'], {'type':'json_object'})
+    def test_truncation_cause_survives_swallowed_recovery(self):
+        with self.assertRaisesRegex(RuntimeError, 'work_output_limit'):
+            self.run_worker(finish='length', content='', swallow=True)
+    def test_empty_response_cause_survives_swallowed_recovery(self):
+        with self.assertRaisesRegex(RuntimeError, 'work_empty_response'):
+            self.run_worker(content='', swallow=True)
+    def test_original_provider_error_is_safe_and_survives_swallowed_recovery(self):
+        error_class = type('AuthenticationError', (Exception,), {})
+        with self.assertRaisesRegex(RuntimeError, '^work_conversation_AuthenticationError$') as raised:
+            self.run_worker(wire_error=error_class('secret key and private prompt'), swallow=True)
+        self.assertEqual(worker.safe_error(raised.exception), 'work_conversation_AuthenticationError')
+    def test_content_refusal_is_not_delivered(self):
+        with self.assertRaisesRegex(RuntimeError, 'work_provider_refusal'):
+            self.run_worker(finish='content_filter')
     def test_errors_expose_only_phase_and_type(self):
         worker.PHASE = 'runtime'
         error = worker.safe_error(TypeError('sensitive-provider-token-and-user-prompt'))

@@ -41,7 +41,7 @@ test('one reviewed task can deliver four genuine formats with three model transp
  await request(x.svc,'/api/work/send','POST',body('bundle-task',{tool:'bundle'}));const d=await settled(x.svc,'bundle-task');assert.equal(d.tasks[0].state,'completed');assert.equal(d.data.at(-1).attachments.length,4);assert.equal(x.calls.length,3);assert.deepEqual(d.files.map(f=>path.extname(f.name)).sort(),['.docx','.pdf','.pptx','.xlsx']);
  }finally{x.cleanup();}});
 test('native diagnostic failures preserve safe phase codes and redact arbitrary provider errors',async()=>{
- for(const [error,want] of [['work_initialization_TypeError','work_initialization_TypeError'],['secret-provider-key','hermes_http_502']]){
+ for(const [error,want] of [['work_initialization_TypeError','work_initialization_TypeError'],['work_conversation_AuthenticationError','work_conversation_AuthenticationError'],['work_output_limit','work_output_limit'],['work_empty_response','work_empty_response'],['work_provider_refusal','work_provider_refusal'],['work_response_invalid','work_response_invalid'],['secret-provider-key','hermes_http_502']]){
   const x=setup({client:{configured:()=>true,fetch:async()=>new Response(JSON.stringify({error}),{status:502})}});
   try{await request(x.svc,'/api/work/send','POST',body());const d=await settled(x.svc);assert.equal(d.tasks[0].error,want);assert.equal(d.usage.length,1);assert.equal(d.usage[0].status,'unknown');}finally{x.cleanup();}
  }

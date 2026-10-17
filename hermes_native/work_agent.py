@@ -7,7 +7,9 @@ import sys
 import threading
 
 PHASE = 'bootstrap'
-ALLOWED_ERRORS = {'work_pricing_model_not_allowed','work_isolation_unsupported','work_tool_isolation_failed','work_call_guard_unsupported','work_model_call_limit','work_tools_forbidden','work_context_limit','work_request_override_forbidden','work_agent_failed','work_empty_response'}
+ALLOWED_ERRORS = {'work_pricing_model_not_allowed','work_isolation_unsupported','work_tool_isolation_failed','work_call_guard_unsupported','work_model_call_limit','work_tools_forbidden','work_context_limit','work_request_override_forbidden','work_agent_failed','work_empty_response','work_output_limit','work_response_invalid','work_provider_refusal'}
+SAFE_EXCEPTION_TYPES = {'ImportError','ModuleNotFoundError','TypeError','ValueError','RuntimeError','AttributeError','AuthenticationError','APIConnectionError','APITimeoutError','BadRequestError','RateLimitError','Error'}
+SAFE_PHASES = {'bootstrap','imports','runtime','initialization','conversation'}
 
 def activate_runtime():
     """A fresh subprocess needs the same dependency activation as the Gateway."""
@@ -16,11 +18,13 @@ def activate_runtime():
     sys.path.insert(0, os.environ.get('HERMES_PYTHON_SRC_ROOT', '/opt/ziwei-runtime/current'))
 
 def safe_error(exc):
-    if str(exc) in ALLOWED_ERRORS:
+    if str(exc) in ALLOWED_ERRORS or str(exc) in {
+        'work_' + phase + '_' + kind for phase in SAFE_PHASES for kind in SAFE_EXCEPTION_TYPES
+    }:
         return str(exc)
     # Never include exception text: provider errors can contain credentials/prompts.
     kind = type(exc).__name__
-    if kind not in {'ImportError','ModuleNotFoundError','TypeError','ValueError','RuntimeError','AttributeError','AuthenticationError','APIConnectionError','APITimeoutError','BadRequestError','RateLimitError'}:
+    if kind not in SAFE_EXCEPTION_TYPES:
         kind = 'Error'
     return 'work_' + PHASE + '_' + kind
 
@@ -34,6 +38,9 @@ def execute(payload, check_only=False):
     PHASE = 'runtime'
     runtime = _resolve_runtime_agent_kwargs()
     runtime.pop('_fallback_notice', None)
+    # Work returns a bounded JSON command. Do not inherit a private profile's
+    # thinking budget: DeepSeek defaults to thinking on when unspecified.
+    runtime['reasoning_config'] = {'enabled': False}
     model = runtime.pop('model', None) or _resolve_gateway_model()
     if model != 'deepseek-flash' or runtime.get('base_url', '').rstrip('/') != 'https://api.deepseek.com/v1':
         raise RuntimeError('work_pricing_model_not_allowed')
@@ -71,6 +78,7 @@ def execute(payload, check_only=False):
     call_lock = threading.Lock()
     clients = []
     violation = None
+    response_usage = None
     def guard_client(request_client):
         if any(request_client is prior for prior in clients):
             return request_client
@@ -82,7 +90,11 @@ def execute(payload, check_only=False):
         request_client.max_retries = 0
         original = request_client.chat.completions.create
         def once(*args, **kwargs):
-            nonlocal calls, violation
+            nonlocal calls, violation, response_usage
+            # Preserve the first cause if Hermes tries an empty/length recovery
+            # or its extra iteration-limit summary. No second wire call occurs.
+            if violation:
+                raise RuntimeError(violation)
             with call_lock:
                 calls += 1
             def reject(code):
@@ -102,10 +114,46 @@ def execute(payload, check_only=False):
                 reject('work_request_override_forbidden')
             if 'max_tokens' in extra:
                 extra['max_tokens'] = output_limit
-            if extra:
-                kwargs['extra_body'] = extra
+            extra['thinking'] = {'type': 'disabled'}
+            extra.pop('reasoning_effort', None)
+            extra.pop('reasoning', None)
+            extra.pop('response_format', None)
+            extra.pop('stream_options', None)
+            kwargs['extra_body'] = extra
+            kwargs.pop('reasoning_effort', None)
+            kwargs.pop('stream_options', None)
+            kwargs.pop('max_completion_tokens', None)
             kwargs['max_tokens'] = output_limit
-            return original(*args, **kwargs)
+            kwargs['stream'] = False
+            kwargs['response_format'] = {'type': 'json_object'}
+            try:
+                response = original(*args, **kwargs)
+            except Exception as exc:
+                # safe_error returns phase/type only; never provider text, keys,
+                # prompts, or response bodies. Keep it across swallowed retries.
+                violation = safe_error(exc)
+                raise RuntimeError(violation) from None
+            choices = getattr(response, 'choices', None)
+            if not choices or len(choices) != 1:
+                reject('work_response_invalid')
+            choice = choices[0]
+            finish = getattr(choice, 'finish_reason', None)
+            if finish == 'length':
+                reject('work_output_limit')
+            if finish == 'content_filter':
+                reject('work_provider_refusal')
+            message = getattr(choice, 'message', None)
+            if getattr(message, 'tool_calls', None):
+                reject('work_tools_forbidden')
+            content = getattr(message, 'content', None)
+            if not isinstance(content, str) or not content.strip():
+                reject('work_empty_response')
+            if finish != 'stop':
+                reject('work_response_invalid')
+            usage = getattr(response, 'usage', None)
+            response_usage = {'prompt_tokens': getattr(usage, 'prompt_tokens', None),
+                              'completion_tokens': getattr(usage, 'completion_tokens', None)}
+            return response
         request_client.chat.completions.create = once
         return request_client
     guard_client(client)
@@ -135,8 +183,7 @@ def execute(payload, check_only=False):
         if not isinstance(text, str) or not text.strip():
             raise RuntimeError('work_empty_response')
         return {'text': text, 'model': model, 'calls': calls,
-                'usage': {'prompt_tokens': getattr(agent, 'session_input_tokens', None),
-                          'completion_tokens': getattr(agent, 'session_output_tokens', None)}}
+                'usage': response_usage}
     finally:
         if hasattr(agent, 'close'):
             agent.close()

@@ -27,15 +27,18 @@ spec.loader.exec_module(worker)
 
 @unittest.skipUnless(AVAILABLE, 'requires the official Hermes source and OpenAI SDK')
 class RequestClientContract(unittest.TestCase):
-    def execute(self, repeat=False):
+    def execute(self, repeat=False, finish='stop', content='{"message":"委派","instruction":"完成任务"}', status=200, swallow=False, stage='plan'):
         seen = []
+        self.seen = seen
         clients = []
         def handler(request):
             seen.append(json.loads(request.content))
+            if status != 200:
+                return httpx.Response(status, json={'error':{'message':'fixture secret must never escape','type':'authentication_error'}})
             return httpx.Response(200, json={
                 'id':'chatcmpl-contract', 'object':'chat.completion', 'created':1,
-                'model':'deepseek-flash', 'choices':[{'index':0, 'finish_reason':'stop',
-                    'message':{'role':'assistant', 'content':'{"message":"委派","instruction":"完成任务"}'}}],
+                'model':'deepseek-flash', 'choices':[{'index':0, 'finish_reason':finish,
+                    'message':{'role':'assistant', 'content':content}}],
                 'usage':{'prompt_tokens':10,'completion_tokens':20,'total_tokens':30}})
         class Agent:
             def __init__(self, skip_memory=None, skip_context_files=None, skip_background_review=None, max_tokens=None, **kwargs):
@@ -55,7 +58,14 @@ class RequestClientContract(unittest.TestCase):
                     request = bypass_chat_sdk_request_transform({
                         'model':'deepseek-flash','messages':[{'role':'user','content':kwargs['user_message']}],
                         'max_tokens':999999,'extra_body':{'max_tokens':999999}}, client)
-                    result = client.chat.completions.create(**request)
+                    try:
+                        result = client.chat.completions.create(**request)
+                    except RuntimeError:
+                        if not swallow:
+                            raise
+                        continue
+                if result is None:
+                    return {'final_response':'invalid recovery placeholder'}
                 self.session_input_tokens = result.usage.prompt_tokens
                 self.session_output_tokens = result.usage.completion_tokens
                 return {'final_response':result.choices[0].message.content}
@@ -68,7 +78,7 @@ class RequestClientContract(unittest.TestCase):
         agent_module = types.ModuleType('run_agent')
         agent_module.AIAgent = Agent
         with patch.dict(sys.modules, {'gateway.run':gateway,'run_agent':agent_module}), patch.dict(os.environ):
-            return worker.execute({'stage':'plan','task':'SDK compatibility check'}), seen
+            return worker.execute({'stage':stage,'task':'SDK compatibility check'}), seen
 
     def test_official_request_transform_preserves_guarded_payload_and_token_ceiling(self):
         result, seen = self.execute()
@@ -77,10 +87,31 @@ class RequestClientContract(unittest.TestCase):
         self.assertEqual(len(seen), 1)
         self.assertEqual(seen[0]['max_tokens'], 1500)
         self.assertIn('SDK compatibility check', seen[0]['messages'][0]['content'])
+        self.assertEqual(seen[0]['thinking'], {'type':'disabled'})
+        self.assertEqual(seen[0]['response_format'], {'type':'json_object'})
+        self.assertFalse(seen[0]['stream'])
 
     def test_new_sdk_client_cannot_reset_the_work_call_budget(self):
         with self.assertRaisesRegex(RuntimeError, 'work_model_call_limit'):
             self.execute(repeat=True)
+        self.assertEqual(len(self.seen), 1)
+
+    def test_truncated_response_never_sends_a_recovery_or_summary_request(self):
+        with self.assertRaisesRegex(RuntimeError, '^work_output_limit$'):
+            self.execute(repeat=True, finish='length', content='', swallow=True)
+        self.assertEqual(len(self.seen), 1)
+
+    def test_authentication_failure_is_preserved_without_sdk_or_agent_retry(self):
+        with self.assertRaisesRegex(RuntimeError, '^work_conversation_AuthenticationError$') as raised:
+            self.execute(repeat=True, status=401, swallow=True)
+        self.assertEqual(len(self.seen), 1)
+        self.assertEqual(worker.safe_error(raised.exception), 'work_conversation_AuthenticationError')
+
+    def test_review_has_its_own_output_ceiling(self):
+        result, seen = self.execute(stage='review')
+        self.assertEqual(seen[0]['max_tokens'], 6000)
+        self.assertEqual(seen[0]['thinking'], {'type':'disabled'})
+        self.assertEqual(result['usage']['completion_tokens'], 20)
 
 
 if __name__ == '__main__':
