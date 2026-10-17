@@ -10,9 +10,20 @@ import sys
 import tempfile
 import threading
 import unittest
+
 from unittest.mock import patch
 import urllib.error
 import urllib.request
+
+from unittest.mock import patch as _patch
+
+
+def _valid_price_card(case):
+    """生产的价格卡 2026-10-16 已过期，check_price_card() 会拒绝新调用（必须保留）。
+    测试只在本进程内把有效期临时推到未来，结束自动还原。"""
+    from ziwei.pricing import PRICE_CARD
+    p = _patch.dict(PRICE_CARD, {"expires_utc": "2099-01-01T00:00:00+00:00"})
+    p.start(); case.addCleanup(p.stop)
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ziwei.pricing import PRICE_CARD, NANO_PER_FEN, reservation, usage_cost, check_price_card, request_bounds
 from ziwei.store import Store, BudgetExceeded
@@ -29,6 +40,7 @@ def usage(prompt=1000, output=100, hit=0):
 class BudgetTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(); self.store = Store(self.tmp.name)
+        _valid_price_card(self)
     def tearDown(self): self.tmp.cleanup()
     def reserve(self): return self.store.reserve(4000, 'r', input_bound=2000, output_bound=200)
     def test_settlement_releases_excess_and_retains_original_reservation(self):
@@ -98,7 +110,10 @@ class BudgetTests(unittest.TestCase):
         with self.assertRaises(BudgetExceeded): self.store.reserve(4000,'next')
         restore(self.tmp.name,backup);self.assertTrue(self.store.budget()['halted'])
     def test_expired_tariff_disables_reservation(self):
-        with self.assertRaises(ValueError): check_price_card(datetime(2026,10,16,tzinfo=timezone.utc))
+        # 显式把卡设成已过期，验证“过期即拒绝”这条保护没有被 fixture 掩盖
+        with _patch.dict(PRICE_CARD, {'expires_utc': '2026-10-16T00:00:00+00:00'}):
+            with self.assertRaises(ValueError): check_price_card(datetime(2026,10,16,tzinfo=timezone.utc))
+            with self.assertRaises(ValueError): check_price_card(datetime(2026,10,17,tzinfo=timezone.utc))
         with patch('ziwei.pricing.check_price_card',side_effect=ValueError('expired')):
             self.assertFalse(self.store.can_reserve(4000))
             with self.assertRaises(ValueError): self.reserve()
@@ -138,6 +153,7 @@ class BudgetTests(unittest.TestCase):
 class GatewayBudgetTests(unittest.TestCase):
     """HTTP + actual DB, provider response is a test fixture, not DeepSeek E2E."""
     def test_gateway_settlement_failure_and_admin_breakdown(self):
+        _valid_price_card(self)
         with tempfile.TemporaryDirectory() as data:
             keys=[secrets.token_urlsafe(32) for _ in range(4)]
             app=Application(Settings(Path(data),*keys,port=0))

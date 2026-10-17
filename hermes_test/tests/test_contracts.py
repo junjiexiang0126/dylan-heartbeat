@@ -10,8 +10,19 @@ import tempfile
 import threading
 import time
 import unittest
+
 import urllib.error
 import urllib.request
+
+from unittest.mock import patch as _patch
+
+
+def _valid_price_card(case):
+    """生产的价格卡 2026-10-16 已过期，check_price_card() 会拒绝新调用（必须保留）。
+    测试只在本进程内把有效期临时推到未来，结束自动还原。"""
+    from ziwei.pricing import PRICE_CARD
+    p = _patch.dict(PRICE_CARD, {"expires_utc": "2099-01-01T00:00:00+00:00"})
+    p.start(); case.addCleanup(p.stop)
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from ziwei.config import Settings
@@ -21,7 +32,9 @@ from ziwei.server import Application,create_server
 from ziwei.admin import restore
 
 class StoreTests(unittest.TestCase):
-    def setUp(self): self.tmp=tempfile.TemporaryDirectory();self.store=Store(self.tmp.name)
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.store=Store(self.tmp.name)
+        _valid_price_card(self)
     def tearDown(self): self.tmp.cleanup()
     def test_read_capability_cannot_add(self):
         token=self.store.grant('r')
@@ -101,6 +114,7 @@ class CannedExecutor:
 class HttpTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.keys=[secrets.token_urlsafe(32) for _ in range(4)]
+        _valid_price_card(self)
         self.app=Application(Settings(Path(self.tmp.name),*self.keys,port=0));self.server=create_server(self.app)
         self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
         self.base='http://127.0.0.1:'+str(self.server.server_port)
