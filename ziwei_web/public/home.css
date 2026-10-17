@@ -1,3 +1,7 @@
+@font-face{font-family:'ZiweiBrush';src:url('/ZhiMangXing.woff2') format('woff2');font-display:swap;font-weight:normal;font-style:normal}
+/* 中文标题用手写行书；其余文字不动 */
+#homeTitle{font-family:'ZiweiBrush',var(--ui-serif);font-weight:normal;letter-spacing:.03em;line-height:1.35}
+
 /* 首页与二级页样式（外链文件：CSP 只允许 'self'，不能用内联 style） */
 
 /* ---- 首页：名字下方的两个手绘入口（鲸鱼+水波） ---- */
