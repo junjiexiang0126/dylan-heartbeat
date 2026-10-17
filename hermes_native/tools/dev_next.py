@@ -188,6 +188,12 @@ def update_task(tid, note, done=False, next_action=None):
         if found.get('status') != 'in_progress':
             return {'ok': False, 'error': f'任务不是 in_progress: {tid}'}
         if done:
+            bad = [x.get('op_key') for x in (found.get('steps') or [])
+                   if x.get('status') not in ('done',)]
+            if bad:
+                return {'ok': False, 'error': 'unfinished_steps',
+                        'detail': f'仍有未完成/未核验步骤：{bad}；先核对或补记，不能直接标完成',
+                        'steps': bad}
             found['status'] = 'completed'
             found['completed_at'] = now()
             if note:
@@ -200,6 +206,7 @@ def update_task(tid, note, done=False, next_action=None):
                 found['next_action'] = next_action
         found['updated_at'] = now()
         save_tasks(tasks, wrapper)
+        _lease_touch(tid)
         write_ckpt(found, note or ('标记完成' if done else '保存进度'))
         return {'ok': True, 'completed': tid} if done else {'ok': True, 'id': tid, 'note_len': len(found.get('note') or '')}
 
@@ -259,6 +266,7 @@ def step_start(tid, op_key, action):
         t['updated_at'] = now()
         t['next_action'] = action
         save_tasks(tasks, wrapper)
+        _lease_touch(tid)
         write_ckpt(t, f'开始第 {step["seq"]} 步：{action}')
         return {'ok': True, 'duplicate': False, 'seq': step['seq'], 'op_key': op_key}
 
@@ -280,6 +288,7 @@ def step_done(tid, op_key, result, evidence=None):
         t['updated_at'] = now()
         t['next_action'] = None   # 这一步做完了，下一步由下一次登记决定，别留旧计划
         save_tasks(tasks, wrapper)
+        _lease_touch(tid)
         write_ckpt(t, f'完成第 {step["seq"]} 步：{result}')
         return {'ok': True, 'duplicate': False, 'seq': step['seq']}
 
@@ -327,6 +336,7 @@ def step_verify(tid, op_key, evidence, result=None, evidence_file=None, expect_s
         t['updated_at'] = now()
         t['next_action'] = None
         save_tasks(tasks, wrapper)
+        _lease_touch(tid)
         write_ckpt(t, f'核对产出后补记完成：{op_key}')
         return {'ok': True, 'duplicate': False, 'verified': True}
 
@@ -363,6 +373,17 @@ def _lease_active(lease):
     if _alive(lease.get('pid')):
         return True
     return _lease_age(lease) < LEASE_TTL_SECONDS
+
+
+def _lease_touch(tid):
+    """续租：只要这一轮还在动，就不让 TTL 掉。"""
+    try:
+        data = read_json(LEASES, {})
+        if isinstance(data, dict) and tid in data:
+            data[tid]['at'] = now()
+            atomic_json(LEASES, data)
+    except Exception:
+        pass
 
 
 def _lease_write(tid):
