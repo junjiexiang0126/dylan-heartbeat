@@ -7,6 +7,19 @@ import unittest
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
+import sys
+import types
+
+# web_bridge 在正式环境里从官方 Hermes 取 home()；单测没有那个包，
+# 这里给一个只提供 get_hermes_home() 的替身（各用例会自行 monkeypatch bridge.home）。
+if "hermes_constants" not in sys.modules:
+    const = types.ModuleType("hermes_constants")
+    _default_home = tempfile.mkdtemp(prefix="hermes-home-")
+    # 与官方 hermes_constants 一致：优先 HERMES_HOME，缺省给一个固定目录（不能每次新建，
+    # 否则同一用例内的 home() 前后指向不同路径）
+    const.get_hermes_home = lambda: os.environ.get("HERMES_HOME") or _default_home
+    sys.modules["hermes_constants"] = const
+
 spec = importlib.util.spec_from_file_location('web_bridge_test', Path(__file__).parents[1] / 'web_bridge.py')
 bridge = importlib.util.module_from_spec(spec); spec.loader.exec_module(bridge)
 
