@@ -1,0 +1,48 @@
+/* 首页与二级页样式（外链文件：CSP 只允许 'self'，不能用内联 style） */
+
+/* ---- 首页：入口做成小图标，不写字 ---- */
+.note-actions{display:flex;gap:10px;margin:16px 0 2px;clear:both;width:100%;position:relative;z-index:4}
+.note-actions button{width:46px;height:46px;border-radius:15px;border:1px solid rgba(80,63,72,.12);
+  background:#fffdf8;display:flex;align-items:center;justify-content:center;padding:0;
+  color:#c97d9d;position:relative;z-index:4;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent}
+.note-actions button:active{transform:scale(.96)}
+.note-actions svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---- 二级页：整屏推入，进来时底部导航收起 ---- */
+#noteSheet{position:fixed;inset:0;z-index:60;background:#fff9f7;display:flex;flex-direction:column;
+  visibility:hidden;transform:translateX(100%);
+  transition:transform .26s cubic-bezier(.22,.61,.36,1),visibility 0s linear .26s}
+#noteSheet[data-open="true"]{visibility:visible;transform:none;transition:transform .26s cubic-bezier(.22,.61,.36,1),visibility 0s}
+body.notes-open nav.glass{display:none!important}
+body.notes-open{overflow:hidden}
+
+#noteSheet header{display:flex;align-items:center;gap:6px;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 12px;
+  border-bottom:1px solid rgba(80,63,72,.09);background:#fff9f7;position:relative;z-index:2}
+#noteSheet .back{border:0;background:transparent;font:inherit;font-size:16px;color:#c97d9d;
+  padding:6px 10px 6px 0;display:flex;align-items:center;gap:4px}
+#noteSheet h2{font-size:16.5px;margin:0;flex:1;font-weight:600;color:#503f48;text-align:center;
+  margin-right:44px}
+#noteSheet .body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 24px)}
+
+#noteSheet .empty{color:#7c6a73;font-size:13px;padding:28px 0;text-align:center}
+#noteSheet .day{font-size:12.5px;color:#7c6a73;margin:16px 0 6px;letter-spacing:.02em}
+#noteSheet .item{background:#fffcf6;border:1px solid rgba(80,63,72,.1);border-radius:15px;
+  padding:12px 13px;margin-bottom:9px;box-shadow:0 1px 2px rgba(120,76,95,.04)}
+#noteSheet .item .row{display:flex;gap:9px;align-items:flex-start}
+#noteSheet .item .txt{flex:1;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:#3f3038}
+#noteSheet .item .meta{font-size:11.5px;color:#a8949e;margin-top:5px}
+#noteSheet .item .ops{display:flex;gap:14px;margin-top:8px}
+#noteSheet .item .ops button{border:0;background:transparent;font:inherit;font-size:12.5px;
+  color:#c97d9d;padding:2px 0}
+#noteSheet .item .ops button.danger{color:#b4453f}
+#noteSheet .item textarea{width:100%;box-sizing:border-box;border:1px solid rgba(80,63,72,.16);
+  border-radius:11px;padding:9px 10px;font:inherit;font-size:13.5px;min-height:62px;resize:vertical;background:#fff}
+#noteSheet .compose{position:sticky;bottom:0;display:flex;gap:8px;padding:10px 0 4px;
+  background:linear-gradient(#fff9f700,#fff9f7 22%)}
+#noteSheet .compose textarea{flex:1;min-height:40px;max-height:120px;border:1px solid rgba(80,63,72,.16);
+  border-radius:13px;padding:9px 11px;font:inherit;font-size:13.5px;resize:vertical;background:#fff}
+#noteSheet .compose button{border:0;border-radius:13px;background:#c97d9d;color:#fff;font:inherit;
+  font-size:13.5px;padding:0 18px}
+#noteSheet .err{color:#b4453f;font-size:12.5px;padding:8px 0}

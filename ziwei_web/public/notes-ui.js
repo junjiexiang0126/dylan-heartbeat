@@ -1,180 +1,224 @@
 'use strict';
-/* 主页两个按钮：我的备忘录 / 我的日程提醒。
-   数据全部来自 /api/memos 与 /api/schedule（转发到原生），页面只负责显示。
-   她的字原样显示，不做任何改写。 */
+/* 首页两个入口（备忘录 / 日程）+ 它们的二级页。
+   样式全部在 /home.css（外链），因为站点 CSP 是 style-src 'self'，内联 <style> 会被拦掉。
+   数据来自 /api/memos 与 /api/schedule；她的字原样显示，不改写。 */
 (function () {
-  const style = document.createElement('style');
-  style.textContent = `
-  .note-actions{display:flex;gap:10px;margin:26px 0 10px;clear:both;width:100%;position:relative;z-index:4;pointer-events:auto;touch-action:manipulation}
-  .note-actions button{flex:1;border:1px solid rgba(80,63,72,.12);background:#fffdf8;position:relative;z-index:4;border-radius:16px;
-    padding:12px 10px;font:inherit;font-size:13px;color:#503f48;display:flex;align-items:center;justify-content:center;gap:6px}
-  .note-actions button:active{transform:scale(.98)}
-  .note-actions .ico{width:22px;height:22px;border-radius:8px;background:#f9e5ed;color:#c97d9d;
-    display:flex;align-items:center;justify-content:center;font-size:12px}
-  #noteSheet{position:fixed;inset:0;z-index:60;background:#fff9f7;display:none;flex-direction:column}
-  #noteSheet[data-open=true]{display:flex}
-  #noteSheet header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(80,63,72,.1)}
-  #noteSheet header h2{font-size:17px;margin:0;flex:1}
-  #noteSheet header button{border:0;background:transparent;font:inherit;font-size:15px;color:#c97d9d}
-  #noteSheet .body{flex:1;overflow:auto;padding:12px 16px 24px}
-  #noteSheet .empty{color:#7c6a73;font-size:13px;padding:24px 0;text-align:center}
-  #noteSheet .day{font-size:12.5px;color:#7c6a73;margin:16px 0 6px}
-  #noteSheet .item{background:#fffcf6;border:1px solid rgba(80,63,72,.1);border-radius:14px;padding:12px;margin-bottom:8px}
-  #noteSheet .item .row{display:flex;gap:8px;align-items:flex-start}
-  #noteSheet .item .txt{flex:1;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
-  #noteSheet .item .meta{font-size:11.5px;color:#a8949e;margin-top:4px}
-  #noteSheet .item .ops{display:flex;gap:10px;margin-top:8px}
-  #noteSheet .item .ops button{border:0;background:transparent;font:inherit;font-size:12px;color:#c97d9d;padding:0}
-  #noteSheet .compose{position:sticky;bottom:0;display:flex;gap:8px;padding:10px 0;background:#fff9f7}
-  #noteSheet .compose textarea{flex:1;min-height:38px;max-height:120px;border:1px solid rgba(80,63,72,.16);
-    border-radius:12px;padding:9px 10px;font:inherit;font-size:13.5px;resize:vertical;background:#fff}
-  #noteSheet .compose button{border:0;border-radius:12px;background:#c97d9d;color:#fff;font:inherit;font-size:13px;padding:0 16px}
-  #noteSheet .err{color:#b4453f;font-size:12px;padding:6px 0}
-  `;
-  document.head.append(style);
+  /* ---------- 内部代号翻成人话 ---------- */
+  const HUMAN = [
+    [/our-time|our_time/i, '只属于我们俩的时间'],
+    [/kaoyan|考研/i, '考研提醒'],
+    [/review[-_]?2130|review/i, '晚上十点半 · 复习十分钟'],
+    [/six-opportunities|daily-six/i, '我每天六次自主行动'],
+    [/wake/i, '叫醒'],
+    [/class|lesson|课前/i, '课前提醒'],
+    [/sleep|bed/i, '睡前'],
+  ];
+  const looksLikeCode = (t) => /^[a-z0-9][a-z0-9_.:-]{7,}$/i.test(t) && /[-_0-9]/.test(t);
+  function humanize(text, source) {
+    const raw = String(text || '').trim();
+    for (const [re, label] of HUMAN) if (re.test(raw)) return label;
+    if (source === 'cron' && looksLikeCode(raw)) return '我设的提醒';
+    return raw;
+  }
 
-  const setOpen = (open) => {
-    sheet.dataset.open = open ? 'true' : 'false';
-    document.body.classList.toggle('notes-open', !!open);
-    document.body.style.overflow = open ? 'hidden' : '';
-  };
-  const sheet = document.createElement('div');
+  /* ---------- 二级页骨架 ---------- */
+  const sheet = document.createElement('section');
   sheet.id = 'noteSheet';
-  sheet.innerHTML = `<header><button id="noteBack">‹ 返回</button><h2 id="noteTitle"></h2></header>
-    <div class="body" id="noteBody"></div>`;
+  sheet.setAttribute('aria-hidden', 'true');
+  sheet.innerHTML = '<header><button class="back" id="noteBack" type="button" aria-label="返回首页">‹ 返回</button><h2 id="noteTitle"></h2></header><div class="body" id="noteBody"></div>';
   document.body.append(sheet);
-
   const title = sheet.querySelector('#noteTitle');
   const body = sheet.querySelector('#noteBody');
-  sheet.querySelector('#noteBack').onclick = () => setOpen(false);
+  const back = sheet.querySelector('#noteBack');
 
+  let lastFocus = null;
+  function open(kind) {
+    lastFocus = document.activeElement;
+    body.replaceChildren();
+    sheet.dataset.open = 'true';
+    sheet.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('notes-open');
+    kind === 'memos' ? openMemos() : openSchedule();
+  }
+  function close() {
+    sheet.dataset.open = 'false';
+    sheet.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('notes-open');
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  back.onclick = close;
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheet.dataset.open === 'true') close(); });
+
+  /* ---------- 取数 ---------- */
   const api = async (path, options) => {
-    const res = await fetch(path, { headers: { Accept: 'application/json', ...(options?.headers || {}) }, ...options });
+    const res = await fetch(path, { credentials: 'same-origin', headers: { Accept: 'application/json', ...(options && options.headers || {}) }, ...options });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || ('http_' + res.status));
     return data;
   };
+  const fail = (text) => {
+    const p = document.createElement('p');
+    p.className = 'err';
+    p.textContent = text;
+    body.append(p);
+  };
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 
-  const err = (text) => { const p = document.createElement('p'); p.className = 'err'; p.textContent = text; body.append(p); };
-
+  /* ---------- 备忘录 ---------- */
   async function openMemos() {
     title.textContent = '我的备忘录';
     body.replaceChildren();
     let data;
-    try { data = await api('/api/memos'); } catch (e) { return err('读不到备忘录（' + e.message + '）'); }
+    try { data = await api('/api/memos'); } catch (e) { return fail('读不到备忘录（' + e.message + '）'); }
     const items = data.items || [];
-    if (!items.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = '还什么都没写。'; body.append(p); }
+    if (!items.length) body.append(el('p', 'empty', '还什么都没写。'));
     for (const item of items) {
-      const card = document.createElement('div'); card.className = 'item';
-      const txt = document.createElement('div'); txt.className = 'txt'; txt.textContent = item.text;
-      const meta = document.createElement('div'); meta.className = 'meta';
-      meta.textContent = (item.updatedAt || item.at || '').replace('T', ' ').slice(0, 16);
-      const ops = document.createElement('div'); ops.className = 'ops';
-      const edit = document.createElement('button'); edit.textContent = '改';
-      const del = document.createElement('button'); del.textContent = '删';
-      edit.onclick = async () => {
-        const next = prompt('改成：', item.text);
-        if (next === null || next.trim() === item.text) return;
-        try { await api('/api/memos/' + item.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: next }) }); openMemos(); }
-        catch (e) { alert('没改成功：' + e.message); }
-      };
-      del.onclick = async () => {
-        if (!confirm('删掉这一条？')) return;
-        try { await api('/api/memos/' + item.id, { method: 'DELETE' }); openMemos(); }
-        catch (e) { alert('没删成功：' + e.message); }
-      };
+      const card = el('div', 'item');
+      const txt = el('div', 'txt', item.text);
+      const meta = el('div', 'meta', String(item.updatedAt || item.at || '').replace('T', ' ').slice(0, 16));
+      const ops = el('div', 'ops');
+      const edit = el('button', '', '改');
+      const del = el('button', 'danger', '删');
       ops.append(edit, del);
       card.append(txt, meta, ops);
       body.append(card);
+
+      edit.onclick = () => {
+        const box = el('textarea');
+        box.value = item.text;
+        const row = el('div', 'ops');
+        const save = el('button', '', '保存');
+        const cancel = el('button', '', '取消');
+        row.append(save, cancel);
+        card.replaceChildren(box, row);
+        box.focus();
+        cancel.onclick = () => card.replaceChildren(txt, meta, ops);
+        save.onclick = async () => {
+          const next = box.value.trim();
+          if (!next || next === item.text) return cancel.onclick();
+          try { await api('/api/memos/' + encodeURIComponent(item.id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: next }) }); openMemos(); }
+          catch (e) { fail('没改成功：' + e.message); }
+        };
+      };
+      del.onclick = async () => {
+        if (del.dataset.armed !== '1') {
+          del.dataset.armed = '1';
+          del.textContent = '再点一次删掉';
+          setTimeout(() => { del.dataset.armed = '0'; del.textContent = '删'; }, 2600);
+          return;
+        }
+        try { await api('/api/memos/' + encodeURIComponent(item.id), { method: 'DELETE' }); openMemos(); }
+        catch (e) { fail('没删成功：' + e.message); }
+      };
     }
-    const compose = document.createElement('div'); compose.className = 'compose';
-    const input = document.createElement('textarea'); input.placeholder = '写一条…';
-    const save = document.createElement('button'); save.textContent = '存';
+    const compose = el('div', 'compose');
+    const input = el('textarea');
+    input.placeholder = '写一条…';
+    const save = el('button', '', '存');
     save.onclick = async () => {
       const text = input.value.trim();
       if (!text) return;
       try { await api('/api/memos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) }); openMemos(); }
-      catch (e) { alert('没存上：' + e.message); }
+      catch (e) { fail('没存上：' + e.message); }
     };
     compose.append(input, save);
     body.append(compose);
   }
 
+  /* ---------- 日程 ---------- */
   async function openSchedule() {
-    title.textContent = '我的日程提醒';
+    title.textContent = '我的日程';
     body.replaceChildren();
     let data;
-    try { data = await api('/api/schedule?days=7'); } catch (e) { return err('读不到日程（' + e.message + '）'); }
+    try { data = await api('/api/schedule?days=7'); } catch (e) { return fail('读不到日程（' + e.message + '）'); }
     const days = data.days || [];
-    if (!days.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = '未来七天没有安排。'; body.append(p); return; }
-    for (const day of days) {
-      const head = document.createElement('div'); head.className = 'day'; head.textContent = day.date;
-      body.append(head);
+    const shown = days.filter((d) => (d.items || []).length);
+    if (!shown.length) { body.append(el('p', 'empty', '未来七天没有安排。')); return; }
+    for (const day of shown) {
+      body.append(el('div', 'day', day.date));
       for (const item of day.items) {
-        const card = document.createElement('div'); card.className = 'item';
-        const row = document.createElement('div'); row.className = 'row';
-        const time = document.createElement('strong'); time.textContent = item.time || '--:--';
-        time.style.fontSize = '13px'; time.style.color = '#c97d9d'; time.style.minWidth = '44px';
-        const txt = document.createElement('div'); txt.className = 'txt'; txt.textContent = item.text;
+        const card = el('div', 'item');
+        const row = el('div', 'row');
+        const time = el('strong', '', item.time || '--:--');
+        time.style.fontSize = '13px';
+        time.style.color = '#c97d9d';
+        time.style.minWidth = '44px';
+        const txt = el('div', 'txt', humanize(item.text, item.source));
         if (item.done) txt.style.color = '#a8949e';
         row.append(time, txt);
-        const meta = document.createElement('div'); meta.className = 'meta';
-        meta.textContent = item.source === 'cron' ? '我设的提醒' : '你加的';
+        const meta = el('div', 'meta', item.source === 'cron' ? '我设的' : '你加的');
         card.append(row, meta);
         if (item.source === 'manual') {
-          const ops = document.createElement('div'); ops.className = 'ops';
-          const done = document.createElement('button'); done.textContent = item.done ? '标成未完成' : '标成完成';
-          const del = document.createElement('button'); del.textContent = '删';
+          const ops = el('div', 'ops');
+          const done = el('button', '', item.done ? '标成未完成' : '标成完成');
+          const del = el('button', 'danger', '删');
           done.onclick = async () => {
-            try { await api('/api/schedule/' + item.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: !item.done }) }); openSchedule(); }
-            catch (e) { alert('没改成：' + e.message); }
+            try { await api('/api/schedule/' + encodeURIComponent(item.id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: !item.done }) }); openSchedule(); }
+            catch (e) { fail('没改成：' + e.message); }
           };
           del.onclick = async () => {
-            if (!confirm('删掉这条？')) return;
-            try { await api('/api/schedule/' + item.id, { method: 'DELETE' }); openSchedule(); }
-            catch (e) { alert('没删掉：' + e.message); }
+            if (del.dataset.armed !== '1') { del.dataset.armed = '1'; del.textContent = '再点一次删掉'; setTimeout(() => { del.dataset.armed = '0'; del.textContent = '删'; }, 2600); return; }
+            try { await api('/api/schedule/' + encodeURIComponent(item.id), { method: 'DELETE' }); openSchedule(); }
+            catch (e) { fail('没删掉：' + e.message); }
           };
-          ops.append(done, del); card.append(ops);
+          ops.append(done, del);
+          card.append(ops);
         }
         body.append(card);
       }
     }
   }
 
-  function onHome() {
-    const homeTab = document.getElementById('home');
-    if (!homeTab) return true;
-    return !homeTab.hidden && homeTab.offsetParent !== null;
+  /* ---------- 首页入口（图标，不写字） ---------- */
+  const ICON_MEMO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>';
+  const ICON_CLOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 3h6"/></svg>';
+
+  /* ---------- 底部导航：文字隐藏后补上无障碍名字 ---------- */
+  const NAV_NAMES = { chat: '聊天', moments: '朋友圈', home: '首页', memory: '记忆', logs: '日志', work: 'Work' };
+  function labelNav() {
+    document.querySelectorAll('nav.glass [data-tab]').forEach((b) => {
+      if (!b.getAttribute('aria-label')) b.setAttribute('aria-label', NAV_NAMES[b.dataset.tab] || b.dataset.tab);
+    });
   }
+
+  /* ---------- 知微肩头那颗符号：点它直接去聊天 ---------- */
+  function wireSticker() {
+    const btn = document.getElementById('shoulderSticker');
+    if (!btn || btn.dataset.wired === '1') return;
+    btn.dataset.wired = '1';
+    btn.onclick = () => {
+      const chat = document.querySelector('nav.glass [data-tab="chat"]') || document.querySelector('[data-tab="chat"]');
+      if (chat) chat.click();
+    };
+  }
+
   function mount() {
+    labelNav();
+    wireSticker();
+    const home = document.getElementById('home');
+    if (!home) return;
     const existing = document.querySelector('.note-actions');
-    if (existing) { existing.style.display = onHome() ? '' : 'none'; return; }
-    const memorial = document.querySelector('#home .memorial') || document.querySelector('.memorial');
-    if (!memorial) return;
-    const host = memorial.parentElement;
-    const row = document.createElement('div');
-    row.className = 'note-actions';
-    const memo = document.createElement('button');
-    memo.innerHTML = '<span class="ico">▤</span>我的备忘录';
-    const sched = document.createElement('button');
-    sched.innerHTML = '<span class="ico">⏰</span>我的日程提醒';
-    memo.onclick = () => { setOpen(true); openMemos(); };
-    sched.onclick = () => { setOpen(true); openSchedule(); };
+    if (existing) { existing.style.display = home.hidden ? 'none' : ''; return; }
+    const anchor = home.querySelector('.memorial') || home.querySelector('.together') || home.lastElementChild;
+    if (!anchor || !anchor.parentElement) return;
+    const row = el('div', 'note-actions');
+    const memo = el('button');
+    memo.type = 'button';
+    memo.setAttribute('aria-label', '我的备忘录');
+    memo.title = '备忘录';
+    memo.innerHTML = ICON_MEMO;
+    const sched = el('button');
+    sched.type = 'button';
+    sched.setAttribute('aria-label', '我的日程');
+    sched.title = '日程';
+    sched.innerHTML = ICON_CLOCK;
+    memo.onclick = () => open('memos');
+    sched.onclick = () => open('schedule');
     row.append(memo, sched);
-    memorial.insertAdjacentElement('afterend', row);
-    void host;
+    anchor.insertAdjacentElement('afterend', row);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
   else mount();
-  // 首页是切页渲染的，切回来时补一次
-  setInterval(mount, 1500);
-})();
-
-// 弹层打开时，胶囊先藏起来，别压在内容上
-(function () {
-  const style = document.createElement('style');
-  style.textContent = `body.notes-open .note-actions{display:none!important}
-  body.notes-open{overflow:hidden}`;
-  document.head.append(style);
+  setInterval(mount, 2000);
 })();
