@@ -107,6 +107,7 @@ class ToolRegistration(unittest.TestCase):
         self.assertEqual(moment['schema']['parameters']['properties']['kind']['enum'],list(bridge.MOMENT_KINDS))
         self.assertEqual(moment['schema']['parameters']['required'],['id','kind'])
 
+@unittest.skipUnless(_has_aiohttp, "aiohttp 是原生运行时依赖；纯 Web CI 无它，跳过路由用例")
 class RouteBoundary(unittest.TestCase):
     def test_routes_require_authentication_and_native_run_ownership(self):
         import asyncio
