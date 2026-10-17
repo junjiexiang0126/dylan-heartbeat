@@ -2,14 +2,28 @@
 
 PR #40 remains open and unmerged into `integration/ziwei-20261016`. Genuine end-to-end acceptance has not passed. The operator handles Railway deployment. Do not repeat earlier tasks or erase records to reset budgets.
 
-## Current live state, checked at 09:51–09:57
+## Current live state, checked at 10:02–10:10
 
 | Test service | Deployment status / ID | Deployed commit |
 | --- | --- | --- |
 | ziwei-home-web-test | SUCCESS / `3b58c344-7e30-4d01-ad81-ae7f0fa5789a` | `a7be4180c7832000b7454b206b500a6e666e68e8` |
-| ziwei-hermes-test | SUCCESS / `2212e60b-e023-4c3f-8504-e4ed9d0ec83a` | `cf113ee560bfd5ee7ff1fd2f6c8b2163fa28af8e` |
+| ziwei-hermes-test | SUCCESS / `8b1baa6b-e691-4a78-a847-1956d0faac32` | `28ecc6f72fb6923a1ea1cff8384fe26e32813014` |
 
-## Latest task E and native-only deployment handoff
+## Latest task F and zero-model diagnostic handoff
+
+Native `28ecc6f` deployed SUCCESS at 10:01:03; Web remains `a7be418`. Zero-model readiness passed. New task `WORK-LIVE-20261017-F` was sent once at **10:03:06**. Native delegation, GLM generation of four unpublished drafts and native review succeeded at the transport layer. JSON parsing passed, but the review command failed the host's argument validation with **`invalid_work_tool_arguments`**. No approved files were delivered. Do not infer which argument was invalid without reading its cached shape.
+
+Native HTTP evidence (both 200): plan `2026-10-17T03:03:15.553218465Z`, 9458 ms; review `2026-10-17T03:03:48.362691823Z`, 7403 ms. Reported tokens: native plan **1622**, GLM **1932**, native review **3130**. Configured estimate approximately **CNY .0846**, not provider billing. UI total requests **22**, remaining daily budget approximately **CNY 2.44** after settlement. Preserve every reservation, task and draft. Daily task admission may now be exhausted; no more new model tasks should be fired merely to diagnose this failure.
+
+Earlier repairs were insufficient to produce a successful delivery. The current issue is not proven to be a particular extra field, alias or tool choice. Avoid another speculative argument-normalization patch.
+
+**Native diagnostic candidate `de1ac1e4802fe898a631c5c02ab481f7fa081a89`** (branch `feature/work-native-acceptance-20261017`) adds bounded, authenticated, read-only inspection of the latest cached Work review when the existing zero-model status check runs. It emits `Work cached review diagnostic` to the native deployment log. Future successful review responses also emit `Work review diagnostic`. Metadata includes only recognized tool name, approval boolean/type, argument-key labels, text type and length. No prompt, document content, arbitrary key names, argument values or credentials are logged. Cache files are not modified; symlinks, non-regular and oversized files are refused. An unavailable cache cannot make initialization fail.
+
+This candidate is diagnostic infrastructure, **not a claimed fix for the invalid arguments**. Five read-only diagnostic tests passed, covering redaction, creation/delivery discrimination, latest-review selection, cache immutability, malformed objects and unsafe-file refusal. Existing native/SDK/frontend suites are unchanged and were not repeated.
+
+Deploy **native only**; retain Web at its successful `a7be418`. Then use the existing Work tool-center connection check once and read the new native deployment's safe log with filter `Work cached review diagnostic`. This inspects F's existing cached response, makes zero model calls and consumes no task admission. Read the actual summary before deciding the smallest implementation change. Do not resubmit F, reset quotas/data, publish unapproved drafts, or merge PR #40.
+
+## Earlier task E and deployed canonical-command fix
 
 The operator deployed the Web review-tool fix above successfully at 09:49:52. Task `WORK-LIVE-20261017-E` was submitted once at **09:51:48**. Native delegation succeeded, GLM made a real document function call and generated four unpublished drafts, then the first native review returned HTTP 200 but failed Web parsing with **`invalid_hermes_json`**. The task stopped safely with no published files or automatic resubmission.
 
@@ -17,9 +31,9 @@ Native HTTP evidence: `2026-10-17T02:51:56.775386554Z` plan HTTP 200 / 8562 ms; 
 
 The exact malformed review text was not retrieved, so do not claim its precise syntax or a specific output hook as a proven root cause. Native previously returned `AIAgent.run_conversation().final_response`, a human-facing presentation surface. The repair returns the canonical JSON object from the **single guarded provider response** instead, after the native conversation succeeds. This keeps actual model output and usage while preventing subsequent chat-presentation transformations from changing a machine command. Complete JSON objects containing literal control characters inside strings are parsed and re-serialized losslessly; partial JSON, prose and non-object outputs remain rejected. It never infers approval, changes fields, adds a model attempt, or raises limits.
 
-Candidate native SHA: **`28ecc6f72fb6923a1ea1cff8384fe26e32813014`**, branch `feature/work-native-acceptance-20261017`. **Deploy native only**. Web remains at its successful `a7be418` deployment. New/affected validation: **18 native guard tests + 6 actual-SDK/official-Hermes-transform contract tests passed**, with fake AIAgent / mocked HTTP, including 20-section multiline document preservation, escaping, presentation-hook separation, one HTTP attempt, rejected-output preservation and failure on incomplete objects. These tests are not real-model acceptance. Syntax/whitespace passed. Do not repeat prior unchanged suites.
+That native fix was deployed at **`28ecc6f72fb6923a1ea1cff8384fe26e32813014`**. Web remained at `a7be418`. New/affected validation: **18 native guard tests + 6 actual-SDK/official-Hermes-transform contract tests passed**, with fake AIAgent / mocked HTTP, including 20-section multiline document preservation, escaping, presentation-hook separation, one HTTP attempt, rejected-output preservation and failure on incomplete objects. These tests are not real-model acceptance. Syntax/whitespace passed. Do not repeat prior unchanged suites.
 
-This is a candidate repair awaiting live verification. There may be only one remaining daily task admission; do not loop on further live tasks or clear limits to continue.
+Task F below verified that this repair crossed the JSON parsing boundary, but argument validation still blocked delivery.
 
 Before the current deployment, the operator deployed native `b95064d`. Real 20-slide task `WORK-LIVE-20261017-C` was sent once at 09:28:17 and failed native planning with `work_model_call_limit`. Railway evidence: `2026-10-17T02:28:32.138285840Z POST /ziwei/web/work/turn → 502`, 14142 ms; safe worker log at `02:28:32.243255540Z` reports `stage=plan code=work_model_call_limit`. At that checkpoint GLM execution and native review were unverified; D and E below subsequently established those real calls. Live file downloads still remain unverified. No completed files exist from C.
 
@@ -80,9 +94,9 @@ No physical iOS/WebKit acceptance. Local Office/ZIP tests do not establish live 
 
 Context: project `7afe77af-0481-4a21-858d-2339fc24ab8f`, environment `eddf4e4f-1199-45a1-8397-5053c7e9586d`. Web service `0e699897-01a7-4910-8009-589fe5bc6ce7`, native `d0a928bf-3db2-4085-9812-8a28be4d0b1b`.
 
-1. Read exact deployment SHAs and terminal SUCCESS; source pin/staged changes alone are not deployment evidence. Web is already at its successful target above; deploy only the native canonical-command candidate.
-2. Reuse authenticated Work UI. Do not resubmit C, D, E, the operator discussion, or the rejected permission-test text. Check zero-model native readiness first.
-3. Send one new synthetic 20-slide task only after the native canonical-command correction is live and budget admission permits it. Verify genuine native delegation, GLM function call, native review, real tool receipts and reported usage. A failed native stage retains CNY 2; do not loop on repeated attempts or clear budgets.
+1. Read exact deployment SHAs and terminal SUCCESS; source pin/staged changes alone are not deployment evidence. Web is already at its successful target above; deploy only the native cached-diagnostic candidate.
+2. Reuse authenticated Work UI. Do not resubmit C, D, E, F, the operator discussion, or the rejected permission-test text. Check zero-model native readiness first.
+3. Read F’s cached diagnostic through the zero-model connection check and scoped native log first. Fix the proven argument issue with targeted tests. Only then consider another synthetic task if task/budget admission permits it; do not override or clear limits to manufacture acceptance.
 4. Download all four actual live files; inspect Chinese text/20-slide count and render actual downloads with available `soffice`/`pdftoppm`. Do not substitute regenerated local files as live evidence.
 5. Check refresh/re-login and an idle authorized web-test restart preserve exact message/task/file/receipt/usage identities. Live revocation-before-model check has already passed; do not repeat it unless the relevant implementation changes. Preserve all volumes and original pages.
 6. Only after genuine acceptance passes, merge PR #40 into `integration/ziwei-20261016`. Final report must contain app/native SHAs, PR state, tests and their mocked/live boundaries, Railway deployment IDs/SHAs, real evidence and outstanding issues.
