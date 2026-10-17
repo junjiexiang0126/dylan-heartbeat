@@ -131,6 +131,11 @@ def task_view(t):
     return {k: t.get(k) for k in ('id', 'title', 'next_action', 'note', 'status')}
 
 
+def _prio_rank(t):
+    p = str(t.get('priority') or '').upper()
+    return {'P0': 0, 'P1': 1, 'P2': 2, 'P3': 3}.get(p, 2)
+
+
 def next_task():
     with locked():
         tasks, wrapper = load_tasks()
@@ -163,10 +168,14 @@ def next_task():
                      and lease_owner_dead(t)]   # 租约为唯一判据：无租约或租约失效才可续接
         pending = [t for t in tasks if t.get('status') == 'pending' and eligible(t)]
         if resumable:
-            chosen = min(resumable, key=lambda t: (t.get('updated_at') or t.get('started_at') or '', t.get('id') or ''))
+            chosen = min(resumable, key=lambda t: (_prio_rank(t),
+                                                    t.get('updated_at') or t.get('started_at') or '',
+                                                    t.get('id') or ''))
             resumed = True
         elif pending:
-            chosen = min(pending, key=lambda t: (0 if t.get('next_action') else 1, t.get('created_at') or '', t.get('id') or ''))
+            chosen = min(pending, key=lambda t: (_prio_rank(t),
+                                                 0 if t.get('next_action') else 1,
+                                                 t.get('created_at') or '', t.get('id') or ''))
             resumed = False
         else:
             return {'ok': True, 'task': None, 'message': '没有可续接的开发任务'}
@@ -376,12 +385,17 @@ def _lease_active(lease):
 
 
 def _lease_touch(tid):
-    """续租：只要这一轮还在动，就不让 TTL 掉。"""
+    """续租：只有租约持有者（同 pid）才能续，其他执行者一律拒绝。"""
     try:
         data = read_json(LEASES, {})
         if isinstance(data, dict) and tid in data:
+            lease = data[tid]
+            if lease.get('pid') != os.getpid():
+                raise PermissionError('owner_mismatch')
             data[tid]['at'] = now()
             atomic_json(LEASES, data)
+    except PermissionError:
+        raise
     except Exception:
         pass
 
