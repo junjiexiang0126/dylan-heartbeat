@@ -107,6 +107,9 @@
   window.ZiweiImpressions = {
     show(on, api) {
       if (api) apiFn = api;
+      const page = document.getElementById('impressionsPage');
+      // style.css 里 [hidden]{display:none!important}，光靠 class 显示不出来，必须摘掉 hidden
+      if (page) page.hidden = !on;
       if (!on) return;
       if (!loaded) { loaded = true; load(); }
     },
