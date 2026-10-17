@@ -60,6 +60,7 @@ const moments = createMomentsService(DATA_DIR);
 const workbench=require('./workbench').createWorkbench({bridge,moments});
 const records=require('./records').createRecords();
 const photos=require('./photos').createPhotos({authorized:req=>!!session(req)});
+const notes=require('./notes').createNotes();
 const sessions = new Map(), attempts = new Map(), challenges = new Map();
 let authEpoch = 0;
 const authenticating = new Set();
@@ -197,6 +198,7 @@ const server=http.createServer(async(req,res)=>{try{
       attempts.delete(k);authEpoch++;auth.credentials=[];atomicWrite(AUTH_FILE,auth);challenges.clear();return json(res,200,{ok:true});
     }
     if(pathname==='/api/photos'||pathname.startsWith('/api/photos/'))return photos(req,res,url);
+    if(pathname==='/api/memos'||pathname.startsWith('/api/memos/')||pathname==='/api/schedule'||pathname.startsWith('/api/schedule/'))return notes(req,res,url);
     if(pathname.startsWith('/api/records/'))return records(req,res,url);
     if(pathname.startsWith('/api/workbench'))return workbench(req,res,url);
     if(pathname.startsWith('/api/work/'))return workService.handle(req,res,pathname,readBody,json);
