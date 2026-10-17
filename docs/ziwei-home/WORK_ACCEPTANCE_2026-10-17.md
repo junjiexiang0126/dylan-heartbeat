@@ -2,6 +2,18 @@
 
 PR #40 remains open. Do not merge until the live acceptance below passes.
 
+## 09:07 resumption and request-client fix
+
+Both deployed services are SUCCESS: Web `284ea4608508161aa55ca2dceab45c312db37c8b`, deployment `8aa32b86-0018-4027-8616-b6b6593be712`; native `d6df6842cf7aabe75e7282e247866f528a7f4591`, deployment `d635979f-4f25-4f34-a11b-21b074292aa2`. The zero-model worker check passed at `2026-10-16T21:18:38.485665686Z` (HTTP 200, 4752 ms), establishing that official dependency activation repaired initialization.
+
+The real 20-slide task `WORK-LIVE-20261017-B` then failed at native planning with `work_agent_failed`: HTTP 502 at `2026-10-16T21:19:09.383379816Z` (11293 ms). GLM, review and file delivery are still not verified live. Do not spend on another model task until the request-client fix is deployed.
+
+Source inspection identified that current Hermes creates/cache-checks request-local OpenAI clients rather than dispatching through its shared client. The old guard wrapped only the latter. Its SDK optimization also moves messages into `extra_body`, conflicting with strict override checks. The fix guards both client factories and the initial client under one shared call budget, prevents double wrapping, enforces the official endpoint/model, disables SDK retries and Work-only recovery, and keeps SDK payloads on the typed path within this isolated subprocess. Private chat configuration is unchanged.
+
+Validation of this fix: 10 native guard tests passed; 2 additional contract tests passed using OpenAI SDK 2.24.0, HTTPX 0.28.1, and the official Hermes `agent.sdk_transform_bypass` implementation. Their HTTP transport is mocked: these demonstrate the client/SDK contract, not real model success. They verify intact message payloads, the on-wire output token ceiling, reported usage, and a shared budget across fresh SDK clients. The previously passed Web/Work/mobile suites were not rerun because the frontend and Web service code are unchanged.
+
+Only the native test service requires redeployment for this fix. Preserve the Web service at its successful version and retain all volumes. The final native commit SHA will be recorded in PR metadata and the deployment handoff.
+
 ## Confirmed operator requirements
 
 - Preserve the existing five pages, private chat, native identity and sole authoritative Hermes memory.
