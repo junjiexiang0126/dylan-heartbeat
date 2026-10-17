@@ -1,5 +1,6 @@
 FROM nousresearch/hermes-agent@sha256:9774f4f39a9bb8c2f68ce728ed5e99ddbad282163be56764afacf88ed952b784
 COPY . /opt/ziwei-native
+
 # Direct CLI and Cron workers import the native facade without the Gateway
 # launcher. Keep the adapter immutable and reachable in every Hermes tree.
 RUN ln -s /opt/ziwei-native/browser_persistence.py /opt/hermes/browser_persistence.py \
@@ -27,3 +28,8 @@ ENV ZIWEI_RUNTIME_GUARD=1 PYTHONDONTWRITEBYTECODE=1
 ENTRYPOINT ["python", "/opt/ziwei-native/entrypoint.py"]
 # Preserve the official entrypoint, privilege drop and supervision.
 CMD ["python", "/opt/ziwei-native/bootstrap.py"]
+
+# Apply the reviewed cron-only Hermes patch at image build time, never on /data.
+RUN cd /opt/hermes && git apply --check /opt/ziwei-native/patches/cron/0001-cron-job-max-iterations.patch \
+ && git apply /opt/ziwei-native/patches/cron/0001-cron-job-max-iterations.patch \
+ && /opt/hermes/.venv/bin/python -m py_compile /opt/hermes/cron/scheduler.py
