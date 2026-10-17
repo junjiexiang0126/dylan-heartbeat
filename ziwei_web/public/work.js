@@ -74,7 +74,7 @@
  $('workForm').onsubmit=async e=>{
   e.preventDefault();if(sending)return;const text=input.value.trim();if(!text)return;
   if(!payload||payload.text!==text||payload.tool!==selected||JSON.stringify(payload.attachments)!==JSON.stringify(attachments.map(a=>a.id))||payload.replyTo!==(quote?.id||null)){requestId=crypto.randomUUID();payload={requestId,text,tool:selected,attachments:attachments.map(a=>a.id),replyTo:quote?.id||null};}
-  sending=true;paint();status.textContent='正在发送…';try{await api('/api/work/send','POST',payload);payload=null;requestId=null;input.value='';attachments=[];quote=null;chips();$('workQuote').hidden=true;status.textContent='任务已受理';await refresh();}catch(e){status.textContent='未能确认发送：'+e.message+'；可重试核对同一任务。';}finally{sending=false;paint();}
+  sending=true;paint();status.textContent='正在发送…';try{await api('/api/work/send','POST',payload);payload=null;requestId=null;input.value='';attachments=[];quote=null;chips();$('workQuote').hidden=true;status.textContent='任务已受理';await refresh();}catch(e){const human={'work_daily_limit':'今天的任务额度用完了，明天恢复；聊天不受影响。','work_busy':'上一条还在做，等它收尾再发；聊天不受影响。','glm_not_configured':'白白还没接上模型钥匙，先别发任务。','hermes_not_configured':'原生这边没接好，先别发任务。'}[e.message];status.textContent=human||('未能确认发送：'+e.message+'；可重试核对同一任务。');}finally{sending=false;paint();}
  };
  // Voice is intentionally outside this iteration's work-task contract; keep the
  // existing private chat voice implementation separate rather than fake a send.
