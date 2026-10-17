@@ -17,7 +17,7 @@ if (originURL && (originURL.origin !== ORIGIN || (originURL.protocol !== 'https:
 const SESSION_FILE = path.join(DATA_DIR, 'sessions.json'), AUTH_FILE = path.join(DATA_DIR, 'auth.json');
 const SESSION_DAYS = 30, MAX_BODY = 400000, COOKIE = 'ziwei_sid';
 const publicDir = path.join(__dirname, 'public');
-const files = {'/raven-view.js':'raven-view.js','/raven.css':'raven.css','/raven-preview.html':'raven-preview.html','/raven-preview.js':'raven-preview.js','/models/raven.glb':'models/raven.glb','/models/raven-poster.png':'models/raven-poster.png','/models/raven-manifest.json':'models/raven-manifest.json','/photos.js':'photos.js','/photos.css':'photos.css','/voice-ui.js':'voice-ui.js','/paper.svg':'paper.svg','/theme-init.js':'theme-init.js','/chat-render.js':'chat-render.js','/file-viewer.js':'file-viewer.js','/refinement.css':'refinement.css','/bubble-skin.css':'bubble-skin.css','/skin-wing.svg':'skin-wing.svg','/skin-raven.svg':'skin-raven.svg','/skin-paw.svg':'skin-paw.svg','/skin-heart.svg':'skin-heart.svg','/skin-star.svg':'skin-star.svg','/tokens.css':'tokens.css','/records.js':'records.js','/records.css':'records.css','/save-file.js':'save-file.js','/':'index.html','/index.html':'index.html','/app.js':'app.js','/chat.js':'chat.js','/chat-extra.js':'chat-extra.js','/raven.js':'raven.js','/chat-call.js':'chat-call.js','/workbench.js':'workbench.js','/moments.js':'moments.js','/moments.css':'moments.css','/style.css':'style.css','/chat.css':'chat.css','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png'};
+const files = {'/raven-view.js':'raven-view.js','/raven.css':'raven.css','/raven-preview.html':'raven-preview.html','/raven-preview.js':'raven-preview.js','/models/raven.glb':'models/raven.glb','/models/raven-poster.png':'models/raven-poster.png','/models/raven-manifest.json':'models/raven-manifest.json','/photos.js':'photos.js','/photos.css':'photos.css','/voice-ui.js':'voice-ui.js','/paper.svg':'paper.svg','/theme-init.js':'theme-init.js','/chat-render.js':'chat-render.js','/file-viewer.js':'file-viewer.js','/refinement.css':'refinement.css','/bubble-skin.css':'bubble-skin.css','/skin-wing.svg':'skin-wing.svg','/skin-raven.svg':'skin-raven.svg','/skin-paw.svg':'skin-paw.svg','/skin-heart.svg':'skin-heart.svg','/skin-star.svg':'skin-star.svg','/tokens.css':'tokens.css','/records.js':'records.js','/records.css':'records.css','/save-file.js':'save-file.js','/':'index.html','/index.html':'index.html','/app.js':'app.js','/chat.js':'chat.js','/chat-extra.js':'chat-extra.js','/raven.js':'raven.js','/chat-call.js':'chat-call.js','/workbench.js':'workbench.js','/work.js':'work.js','/work.css':'work.css','/moments.js':'moments.js','/moments.css':'moments.css','/style.css':'style.css','/chat.css':'chat.css','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png'};
 const types = {'.glb':'model/gltf-binary','.json':'application/json; charset=utf-8','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json','.mp3':'audio/mpeg'};
 const headers = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"};
 if (SECURE) headers['Strict-Transport-Security'] = 'max-age=31536000';
@@ -54,6 +54,7 @@ process.on('exit',()=>{
  catch(e){if(e.code!=='ENOENT')console.error('web_lock_cleanup_failed',e.message);}
 });
 const bridge=createChatService(DATA_DIR,{authorized:req=>!!session(req)});
+const workService=require('./work_service').createWorkService(DATA_DIR);
 const home = createHomeStore(DATA_DIR);
 const moments = createMomentsService(DATA_DIR);
 const workbench=require('./workbench').createWorkbench({bridge,moments});
@@ -198,6 +199,7 @@ const server=http.createServer(async(req,res)=>{try{
     if(pathname==='/api/photos'||pathname.startsWith('/api/photos/'))return photos(req,res,url);
     if(pathname.startsWith('/api/records/'))return records(req,res,url);
     if(pathname.startsWith('/api/workbench'))return workbench(req,res,url);
+    if(pathname.startsWith('/api/work/'))return workService.handle(req,res,pathname,readBody,json);
     if(pathname==='/api/moments'||pathname.startsWith('/api/moments/'))return moments.proxy(req,res,pathname,url);
     return bridge.proxy(req,res,pathname,url);
   }

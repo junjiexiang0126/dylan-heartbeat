@@ -1,5 +1,5 @@
 FROM node:24-bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates poppler-utils \
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates poppler-utils fonts-noto-cjk \
  && rm -rf /var/lib/apt/lists/* \
  && python3 -m venv /opt/voice-env \
  && /opt/voice-env/bin/pip install --no-cache-dir faster-whisper==1.2.1 av==16.0.1 edge-tts==7.3.1

@@ -53,7 +53,7 @@ test('440px mobile glass, dark text and navigation safe-area regression',async({
  await page.locator('#saveProfile').click();
  await page.locator('#closeSettings').click();
  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
- const contrast=await page.locator('.today p').evaluate(el=>{
+ const contrast=await page.locator('#todayStatusTime').evaluate(el=>{
    const c=getComputedStyle(el).color.match(/[0-9.]+/g).map(Number);
    const bg=[33,27,38];
    const luminance=rgb=>{const v=rgb.map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4});return .2126*v[0]+.7152*v[1]+.0722*v[2]};

@@ -20,7 +20,7 @@ class BridgeFiles(unittest.TestCase):
     def test_voluntary_status_unknown_fresh_and_stale(self):
         self.assertIsNone(bridge.status_record()['state'])
         self.assertEqual(json.loads(bridge.publish_status({'state':'开心'}))['error'],'invalid_status')
-        self.wb.publish_status({'state':'在思考'})
+        bridge.publish_status({'state':'在思考'})
         self.assertEqual(bridge.status_record()['state'],'在思考'); self.assertFalse(bridge.status_record()['stale'])
         file=self.root/'workspace/web-status.json';record=json.loads(file.read_text());record['updatedAt']=(datetime.now(timezone.utc)-timedelta(hours=1)).isoformat();file.write_text(json.dumps(record))
         self.assertTrue(bridge.status_record()['stale'])

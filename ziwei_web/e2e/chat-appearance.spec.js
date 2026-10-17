@@ -15,7 +15,7 @@ test('call and search align with settings and stay exclusive to chat',async({pag
  }
  await page.locator('#chatSearchToggle').click();await expect(page.locator('#chatToolbar')).toBeVisible();
  await page.locator('[data-tab=home]').click();await expect(page.locator('#chatTopActions')).toBeHidden();
- await expect(page.locator('#settingsButton')).toBeVisible();await expect(page.locator('[data-tab]')).toHaveCount(5);
+ await expect(page.locator('#settingsButton')).toBeVisible();await expect(page.locator('[data-tab]')).toHaveCount(6);
 });
 test('wallpaper can be selected, retained on reload and reset to theme',async({page})=>{
  await open(page);await expect(page.locator('#chatWallpaper')).toBeHidden();

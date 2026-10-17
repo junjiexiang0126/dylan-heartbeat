@@ -5,7 +5,7 @@ async function login(page){await page.goto('/');await page.locator('#password').
 test('five tabs, protected startup, profiles, avatars, themes and revocation on phone sizes',async({page,context})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:390,height:844});await page.goto('/');await expect(page.locator('#app')).toBeHidden();
-  await login(page);await expect(page.locator('nav button')).toHaveCount(5);await expect(page.locator('nav button').nth(2)).toHaveAttribute('data-tab','home');
+  await login(page);await expect(page.locator('nav button')).toHaveCount(6);await expect(page.locator('nav button').nth(2)).toHaveAttribute('data-tab','home');
   await expect(page.locator('#home')).toContainText('待确认');await expect(page.locator('#home')).toContainText('2026.10.07');await expect(page.locator('#home')).toContainText('等待知微同步今日状态');
   for(const name of ['chat','moments','memory','logs','home']){await page.locator(`[data-tab="${name}"]`).click();await expect(page.locator('#'+name)).toBeVisible();await expect(page.locator(`[data-tab="${name}"]`)).toHaveAttribute('aria-current','page');}
   await page.locator('#settingsButton').click();await page.locator('#userNickname').fill('<img src=x onerror=a()>');await page.locator('#ziweiNickname').fill('测试知微');await page.locator('#theme').selectOption('dark');await page.locator('#background').selectOption('sage');

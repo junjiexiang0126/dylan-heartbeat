@@ -28,10 +28,11 @@ async function api(url, method = 'GET', body) {
 }
 function tab(name) {
   activeTab = name;
+  document.body.classList.toggle('work-view',name==='work'&&!!csrf);
   window.ZiweiRecords?.show(name,csrf,text=>{if(!window.ZiweiChat?.canDraft())return false;tab('chat');return window.ZiweiChat.draft(text);});
   if(name==='moments'&&csrf)window.ZiweiMoments?.start(csrf);else window.ZiweiMoments?.leave();
   if(name!=='chat')window.ZiweiChat?.leave();
-  window.ZiweiChatAppearance?.setVisible(name==='chat'&&!!csrf);
+  window.ZiweiChatAppearance?.setVisible(['chat','work'].includes(name)&&!!csrf);
   document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== name);
   document.querySelectorAll('[data-tab]').forEach(b => { b.classList.toggle('active',b.dataset.tab===name);b.setAttribute('aria-current',b.dataset.tab===name?'page':'false'); });
   window.scrollTo({top:0});
