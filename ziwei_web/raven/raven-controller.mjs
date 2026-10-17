@@ -26,7 +26,8 @@ if(app&&home&&article){
  credit.hidden=true;credit.textContent='';
   note.title=copy.noteSource==='ziwei'?'知微随状态发布的原话':copy.noteSource==='local'?'本地句子库，不代表知微发布了新状态':'';
   view?.setMode(state.mode);const clock=state.updatedAt?new Intl.DateTimeFormat('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Bangkok'}).format(new Date(state.updatedAt)):null;
-  caption.textContent=clock?'最后更新于 '+clock:'';canvas.setAttribute('aria-label',state.stale?'装死的小渡鸦：点一下戳戳，左右拖动旋转':'小渡鸦：点击跳跃，左右拖动旋转');
+  // 更新时间由页面原有的「知微更新于 …」那一行负责，这里不再重复。
+ caption.hidden=true;caption.textContent='';canvas.setAttribute('aria-label',state.stale?'装死的小渡鸦：点一下戳戳，左右拖动旋转':'小渡鸦：点击跳跃，左右拖动旋转');
   if(loadError)feedback.textContent=loadError;
  }
  function accept(value){source=value;requestVersion++;paint();}
