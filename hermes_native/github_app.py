@@ -67,7 +67,16 @@ class Credentials:
         else:
             inline = env.get("GH_APP_PRIVATE_KEY") or ""
             if inline:
-                pem_bytes = inline.replace("\\n", "\n").encode()
+                text = inline.replace("\\n", "\n")
+                if "BEGIN" in text:
+                    pem_bytes = text.encode()
+                else:
+                    # 有人会把 base64 直接放进 GH_APP_PRIVATE_KEY（而不是 _B64），这里自动识别
+                    try:
+                        decoded = base64.b64decode(text, validate=False)
+                    except Exception:  # noqa: BLE001
+                        decoded = b""
+                    pem_bytes = decoded if b"PRIVATE KEY" in decoded else text.encode()
             else:
                 path = (env.get("GH_APP_PRIVATE_KEY_FILE") or "").strip()
                 if path:
