@@ -19,7 +19,7 @@ WS = Path(os.environ.get('ZIWEI_WORKSPACE', '/data/hermes_native/workspace'))
 TASKS = WS / 'tasks.json'
 CKPT = WS / 'dev' / 'checkpoint.json'
 LEASES = WS / 'dev' / 'leases.json'
-LEASE_TTL_SECONDS = 300   # 租约在进程退出后仍然“热”5 分钟，避免短命进程一退出就被抢
+LEASE_TTL_SECONDS = 900   # = 单轮最长运行预算；异常退出后最多等 15 分钟才会被接管
 LOCK = WS / 'dev' / 'dev_next.lock'
 TZ = timezone(timedelta(hours=7))
 BLOCKED = ('deploy', 'merge-main', 'delete', 'secret', 'billing')

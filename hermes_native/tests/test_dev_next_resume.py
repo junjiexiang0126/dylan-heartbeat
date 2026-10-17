@@ -109,3 +109,19 @@ class FairnessTests(unittest.TestCase):
         picked = mod.next_task()
         self.assertEqual(picked["task"]["id"], "O")
         tmp.cleanup()
+
+
+class LeaseTtlTests(unittest.TestCase):
+    """TTL 必须大于单轮最长预算（900s），否则合法执行期间会被抢。"""
+
+    def test_ttl_covers_long_run(self):
+        import tempfile
+        from datetime import datetime, timedelta
+        tmp = tempfile.TemporaryDirectory()
+        ws = Path(tmp.name); (ws / "dev").mkdir()
+        mod = load(ws)
+        self.assertGreaterEqual(mod.LEASE_TTL_SECONDS, 900)
+        now = datetime.now(TZ)
+        self.assertTrue(mod._lease_active({"pid": 999999, "at": (now - timedelta(seconds=600)).isoformat()}))
+        self.assertFalse(mod._lease_active({"pid": 999998, "at": (now - timedelta(seconds=1000)).isoformat()}))
+        tmp.cleanup()
