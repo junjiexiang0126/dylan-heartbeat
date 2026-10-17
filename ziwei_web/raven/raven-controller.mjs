@@ -22,11 +22,12 @@ if(app&&home&&article){
   house.dataset.stale=String(state.stale);const copy=resolveStatusCopy(source);
   mood.textContent=copy.mood?'心情：'+copy.mood:'';mood.hidden=!copy.mood;mood.dataset.source=copy.moodSource;
   note.textContent=copy.note;note.hidden=!copy.note;note.dataset.source=copy.noteSource;note.dataset.slot=copy.slot||'';
-  const local=copy.noteSource==='local'||copy.moodSource==='local';credit.hidden=!local;credit.textContent=local?(copy.noteSource==='local'&&copy.moodSource==='local'?'心情与一句话为本地场景配文 · 非知微实时原话':copy.noteSource==='local'?'一句话为本地场景配文 · 非知微实时原话':'心情为本地场景配文；一句话由知微发布'):'';
+  // 她说：这类免责与占位的话都不要了，只显示知微本人写下的字。
+ credit.hidden=true;credit.textContent='';
   note.title=copy.noteSource==='ziwei'?'知微随状态发布的原话':copy.noteSource==='local'?'本地句子库，不代表知微发布了新状态':'';
   view?.setMode(state.mode);const clock=state.updatedAt?new Intl.DateTimeFormat('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Bangkok'}).format(new Date(state.updatedAt)):null;
-  caption.textContent=state.stale?'状态已过期 · 最后更新于 '+clock:state.state?'点击跳一下 · 左右拖动看看':'尚无状态记录 · 等知微本人更新';canvas.setAttribute('aria-label',state.stale?'装死的小渡鸦：点一下戳戳，左右拖动旋转':'小渡鸦：点击跳跃，左右拖动旋转');
-  if(loadError)feedback.textContent=loadError;else if(!view?.interaction)feedback.textContent=state.stale?'只是很久没更新，不是真的挂了。':'';
+  caption.textContent=clock?'最后更新于 '+clock:'';canvas.setAttribute('aria-label',state.stale?'装死的小渡鸦：点一下戳戳，左右拖动旋转':'小渡鸦：点击跳跃，左右拖动旋转');
+  if(loadError)feedback.textContent=loadError;
  }
  function accept(value){source=value;requestVersion++;paint();}
  // Reuse the existing public presence delivery, never change its contents.

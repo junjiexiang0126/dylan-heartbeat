@@ -13,7 +13,7 @@ test('one house contains the bird and three lines; desktop side-by-side, mobile 
  await page.setViewportSize({width:900,height:1000});const f=await setup(page);const stage=page.locator('.raven-house .raven-stage'),copy=page.locator('.raven-house .raven-info');
  let a=await stage.boundingBox(),b=await copy.boundingBox();expect(b.x).toBeGreaterThan(a.x+a.width-1);expect(a.height).toBe(104);expect(a.width).toBeLessThanOrEqual(170);
  // The accepted formal theme has no decorative pseudo-element stripe.
- await expect(page.locator('.raven-info')).toHaveJSProperty('childElementCount',3);await expect(page.locator('#ravenNote')).toHaveAttribute('data-source','local');await expect(page.locator('#ravenCopySource')).toContainText('非知微实时原话');
+ await expect(page.locator('.raven-info')).toHaveJSProperty('childElementCount',3);await expect(page.locator('#ravenNote')).toHaveAttribute('data-source','local');await expect(page.locator('#ravenCopySource')).toBeHidden();
  expect(await page.locator('#todayStatus').evaluate(e=>getComputedStyle(e).fontSize)).toBe(await page.locator('#ravenMood').evaluate(e=>getComputedStyle(e).fontSize));
  expect(await page.locator('#ravenNote').evaluate(e=>getComputedStyle(e).fontSize)).toBe('15.5px');
  for(const width of [390,320]){await page.setViewportSize({width,height:844});a=await stage.boundingBox();b=await copy.boundingBox();if(width<379)expect(b.y).toBeGreaterThanOrEqual(a.y+a.height);else expect(b.x).toBeGreaterThanOrEqual(a.x+a.width);expect(a.height).toBe(width===320?96:104);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
