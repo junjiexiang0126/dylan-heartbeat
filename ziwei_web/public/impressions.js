@@ -41,13 +41,54 @@
     const meta = KIND[r.kind] || { cat: 'NOTE', sticker: '记录' };
     const detail = r.detail ? ` data-detail="${esc(r.detail)}"` : '';
     return `<div class="imp-item"><span class="imp-time">${p.hh}:${p.mm}</span>
-      <div class="imp-card"${detail}>
+      <div class="imp-card" role="${r.detail ? 'button' : 'group'}" tabindex="${r.detail ? '0' : '-1'}"
+           data-detail="${esc(r.detail || '')}" data-title="${esc(r.title || '')}"
+           data-summary="${esc(r.summary || '')}" data-ts="${esc(r.ts || '')}" data-kind="${esc(r.kind || '')}">
         <span class="imp-cat">${esc(meta.cat)}</span>
         <strong>${esc(r.title)}</strong>
         ${r.summary ? `<p>${esc(r.summary)}</p>` : ''}
         ${r.detail ? '<span class="imp-open">看看详情 ↗</span>' : ''}
         <span class="imp-sticker" data-kind="${esc(r.kind)}" data-label="${esc(meta.sticker)}"></span>
       </div></div>`;
+  }
+
+  function openDetail(card) {
+    const detail = card.dataset.detail || '';
+    const title = card.dataset.title || '印记';
+    const summary = card.dataset.summary || '';
+    const ts = (card.dataset.ts || '').replace('T', ' ').slice(0, 16);
+    const box = document.getElementById('impressionsDetail');
+    if (!box) return;
+    const isDiary = /^diary\//.test(detail);
+    const isFile = /^outbox\//.test(detail);
+    box.innerHTML = `
+      <span class="imp-cat">${esc(KIND[card.dataset.kind]?.cat || 'NOTE')}</span>
+      <h2>${esc(title)}</h2>
+      <p class="imp-detail-time">${esc(ts)}</p>
+      ${summary ? `<p class="imp-detail-body">${esc(summary)}</p>` : ''}
+      <p class="imp-detail-path">${esc(detail)}</p>
+      ${isDiary ? '<button type="button" class="imp-detail-link" data-goto="diary">去日记里打开这篇 ↗</button>' : ''}
+      ${isFile ? '<p class="imp-detail-hint">这份文件在知微的工作区里，需要的话让他发给你。</p>' : ''}
+      <button type="button" class="imp-detail-close">收起</button>`;
+    box.hidden = false;
+    const back = box.querySelector('.imp-detail-close');
+    if (back) back.onclick = () => { box.hidden = true; box.innerHTML = ''; };
+    const goto = box.querySelector('[data-goto="diary"]');
+    if (goto) goto.onclick = () => {
+      box.hidden = true; box.innerHTML = '';
+      const b = document.querySelector('[data-log-kind="diary"]');
+      if (b) b.click();
+    };
+  }
+
+  function bindCards(root) {
+    root.querySelectorAll('.imp-card[data-detail]').forEach(card => {
+      if (!card.dataset.detail) return;
+      card.addEventListener('click', () => openDetail(card));
+      card.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(card); }
+      });
+    });
   }
 
   function render(rows) {
@@ -85,6 +126,7 @@
       html += '</div></section>';
     }
     rail.innerHTML = html;
+    bindCards(rail);
   }
 
   async function load() {

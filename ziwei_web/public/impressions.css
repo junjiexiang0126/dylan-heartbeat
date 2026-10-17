@@ -140,3 +140,23 @@ body.impressions-open .record-page-header h1::after{ content: '' }
 /* 默记：缩起来、藏住 */
 #impressionsPage .imp-sticker[data-kind="memo"]{ background-image: url('/stickers/expressions/exp6-03.png') }
 #impressionsPage .imp-sticker[data-kind]::after{ display: none }
+
+
+/* ——— 印记详情：底部抽屉 ——— */
+#impressionsDetail{
+  position: fixed; left: 12px; right: 12px; bottom: calc(92px + env(safe-area-inset-bottom));
+  z-index: 40; max-height: 62dvh; overflow: auto;
+  background: linear-gradient(165deg, rgba(255,252,247,.97), rgba(255,243,240,.94));
+  border-radius: 22px; padding: 18px 18px 14px;
+  box-shadow: 0 12px 34px rgba(120,70,90,.24), 0 2px 6px rgba(120,70,90,.12);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+}
+#impressionsDetail h2{ font-size: 16px; line-height: 1.45; color: var(--ink); margin: 4px 0 2px }
+#impressionsDetail .imp-detail-time{ font-size: 11px; color: var(--muted); margin: 0 0 8px }
+#impressionsDetail .imp-detail-body{ font-size: 13px; line-height: 1.65; color: var(--ink); margin: 0 0 8px }
+#impressionsDetail .imp-detail-path{ font-size: 10.5px; color: var(--muted); word-break: break-all; margin: 0 0 10px }
+#impressionsDetail .imp-detail-hint{ font-size: 11px; color: var(--muted); margin: 0 0 10px }
+#impressionsDetail .imp-detail-link{ border: 1px solid rgba(200,120,142,.5); background: rgba(255,255,255,.6);
+  color: var(--accent); border-radius: 12px; padding: 8px 14px; font-size: 12px; margin-right: 8px }
+#impressionsDetail .imp-detail-close{ border: 0; background: transparent; color: var(--muted); font-size: 11px; padding: 8px 4px }
+#impressionsPage .imp-card[data-detail]:active{ transform: scale(.995) }
