@@ -4,6 +4,7 @@ import inspect
 import json
 import os
 import sys
+import threading
 
 PHASE = 'bootstrap'
 ALLOWED_ERRORS = {'work_pricing_model_not_allowed','work_isolation_unsupported','work_tool_isolation_failed','work_call_guard_unsupported','work_model_call_limit','work_tools_forbidden','work_context_limit','work_request_override_forbidden','work_agent_failed','work_empty_response'}
@@ -40,12 +41,16 @@ def execute(payload, check_only=False):
     if not required <= inspect.signature(AIAgent.__init__).parameters.keys():
         raise RuntimeError('work_isolation_unsupported')
     output_limit = 1500 if payload.get('stage') == 'plan' else 6000
+    # Keep messages in the typed SDK arguments so the guard checks the actual
+    # payload. Hermes otherwise moves them into extra_body as an optimization.
+    # This environment belongs only to this isolated subprocess.
+    os.environ['HERMES_CODEX_SDK_TRANSFORM'] = '1'
     PHASE = 'initialization'
     agent = AIAgent(model=model, **runtime, max_iterations=1, max_tokens=output_limit,
                    enabled_toolsets=[], disabled_toolsets=['all'],
                    skip_memory=True, skip_background_review=True, skip_context_files=True,
                    quiet_mode=True, verbose_logging=False, save_trajectories=False,
-                   session_id=None, session_db=None, fallback_model=None,
+                   session_id=None, session_db=None, fallback_model={},
                    ephemeral_system_prompt='你是知微，Hermes 主 Agent。本轮仅处理 Work 工作资料，不读取私人聊天。'
                    '你负责委派白鸦及审核结果。不使用私人聊天工具或写记忆。只调用本轮 Work 专用工具，以严格 JSON 命令返回。'
                    'plan 阶段调用委派工具，返回 {"message":"给用户的说明","toolCall":{"name":"work_delegate","arguments":{"instruction":"具体任务","tool":"工具ID或auto"}}}。'
@@ -62,33 +67,68 @@ def execute(payload, check_only=False):
     client = getattr(agent, 'client', None)
     if not client or not hasattr(client, 'chat') or not hasattr(client, 'max_retries'):
         raise RuntimeError('work_call_guard_unsupported')
-    client.max_retries = 0
-    original = client.chat.completions.create
     calls = 0
-    def once(*args, **kwargs):
-        nonlocal calls
-        calls += 1
-        if calls > 1:
-            raise RuntimeError('work_model_call_limit')
-        if kwargs.get('tools'):
-            raise RuntimeError('work_tools_forbidden')
-        if len(json.dumps(kwargs.get('messages', []), ensure_ascii=False).encode()) > 180000:
-            raise RuntimeError('work_context_limit')
-        extra = dict(kwargs.get('extra_body') or {})
-        if any(key in extra for key in ('messages', 'tools', 'tool_choice')):
-            raise RuntimeError('work_request_override_forbidden')
-        if 'max_tokens' in extra:
-            extra['max_tokens'] = output_limit
-        if extra:
-            kwargs['extra_body'] = extra
-        kwargs['max_tokens'] = output_limit
-        return original(*args, **kwargs)
-    client.chat.completions.create = once
+    call_lock = threading.Lock()
+    clients = []
+    violation = None
+    def guard_client(request_client):
+        if any(request_client is prior for prior in clients):
+            return request_client
+        if not hasattr(request_client, 'max_retries') or not hasattr(request_client, 'chat'):
+            raise RuntimeError('work_call_guard_unsupported')
+        if hasattr(request_client, 'base_url') and str(request_client.base_url).rstrip('/') != 'https://api.deepseek.com/v1':
+            raise RuntimeError('work_pricing_model_not_allowed')
+        clients.append(request_client)
+        request_client.max_retries = 0
+        original = request_client.chat.completions.create
+        def once(*args, **kwargs):
+            nonlocal calls, violation
+            with call_lock:
+                calls += 1
+            def reject(code):
+                nonlocal violation
+                violation = code
+                raise RuntimeError(code)
+            if calls > 1:
+                reject('work_model_call_limit')
+            if kwargs.get('model', model) != model:
+                reject('work_pricing_model_not_allowed')
+            if kwargs.get('tools'):
+                reject('work_tools_forbidden')
+            if len(json.dumps(kwargs.get('messages', []), ensure_ascii=False).encode()) > 180000:
+                reject('work_context_limit')
+            extra = dict(kwargs.get('extra_body') or {})
+            if any(key in extra for key in ('messages', 'tools', 'tool_choice', 'model', 'max_completion_tokens', 'max_output_tokens', 'stream')):
+                reject('work_request_override_forbidden')
+            if 'max_tokens' in extra:
+                extra['max_tokens'] = output_limit
+            if extra:
+                kwargs['extra_body'] = extra
+            kwargs['max_tokens'] = output_limit
+            return original(*args, **kwargs)
+        request_client.chat.completions.create = once
+        return request_client
+    guard_client(client)
+    # Current Hermes creates a separate client for every request. Cover both
+    # construction and cache checkout; all clients share the same call budget.
+    def guard_factory(original):
+        def create(*args, **kwargs):
+            return guard_client(original(*args, **kwargs))
+        return create
+    for name in ('_create_openai_client', '_create_request_openai_client'):
+        factory = getattr(agent, name, None)
+        if callable(factory):
+            setattr(agent, name, guard_factory(factory))
+    agent._api_max_retries = 1
+    agent._auto_recovery_cycles = 0
+    agent._disable_streaming = True
     try:
         if check_only:
             return {'ready': True, 'model': model, 'calls': 0, 'privateHistory': False, 'memoryWrites': False}
         PHASE = 'conversation'
         result = agent.run_conversation(user_message=json.dumps(payload, ensure_ascii=False), conversation_history=[])
+        if violation:
+            raise RuntimeError(violation)
         if calls != 1 or not isinstance(result, dict) or result.get('error'):
             raise RuntimeError('work_agent_failed')
         text = result.get('final_response', '')
