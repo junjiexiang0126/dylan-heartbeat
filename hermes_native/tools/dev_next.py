@@ -137,7 +137,11 @@ def next_task():
         # If the previous claim is still active, return it idempotently.
         ck = checkpoint()
         current = next((t for t in tasks if t.get('id') == ck.get('task')), None)
-        if current and current.get('status') == 'in_progress' and eligible(current) and not stale(current):
+        leases_now = read_json(LEASES, {})
+        cur_lease = leases_now.get(current.get('id')) if (current and isinstance(leases_now, dict)) else None
+        # 只有"本进程仍在持有该任务"时才复用；否则按公平顺序挑，避免某条任务长期霸占
+        if (current and current.get('status') == 'in_progress' and eligible(current)
+                and not stale(current) and _lease_active(cur_lease)):
             return {'ok': True, 'task': task_view(current), 'reused': True}
         # Never start a second task while any non-stale active autonomous task exists.
         def lease_owner_dead(t):
@@ -156,7 +160,7 @@ def next_task():
         # Resume an interrupted task before starting anything new.
         resumable = [t for t in tasks
                      if t.get('status') == 'in_progress' and eligible(t)
-                     and (stale(t) or lease_owner_dead(t))]
+                     and lease_owner_dead(t)]   # 租约为唯一判据：无租约或租约失效才可续接
         pending = [t for t in tasks if t.get('status') == 'pending' and eligible(t)]
         if resumable:
             chosen = min(resumable, key=lambda t: (t.get('updated_at') or t.get('started_at') or '', t.get('id') or ''))
