@@ -1,9 +1,15 @@
-import sys, unittest
+import importlib.util
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
-sys.path.insert(0, '/data/hermes_native/workspace/dev/diary-meta')
-import web_bridge as bridge
+
+# 用绝对路径加载被测模块：CI 里 discover 的搜索路径不含 hermes_native，
+# 也不能依赖任何本机绝对路径（曾经写死 /data/... 导致 CI 找不到 web_bridge）。
+_BRIDGE = Path(__file__).resolve().parents[1] / "web_bridge.py"
+_spec = importlib.util.spec_from_file_location("web_bridge_under_test", _BRIDGE)
+bridge = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(bridge)  # type: ignore[union-attr]
 
 
 class DiaryDocumentMetaTest(unittest.TestCase):
