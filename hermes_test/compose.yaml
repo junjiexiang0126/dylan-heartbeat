@@ -1,0 +1,13 @@
+services:
+  ziwei-hermes-test:
+    build: .
+    env_file: .env
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ziwei-hermes-test:/data
+    restart: unless-stopped
+    mem_limit: 2g
+    cpus: 1
+volumes:
+  ziwei-hermes-test:

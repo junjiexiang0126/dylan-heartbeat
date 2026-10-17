@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600">
+  <defs>
+    <filter id="grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
+    <radialGradient id="dew" cx=".3" cy=".2"><stop stop-color="#fff" stop-opacity=".9"/><stop offset=".7" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#a27483" stop-opacity=".18"/></radialGradient>
+    <path id="heart" d="M0 3C-7-3-10 5 0 11C10 5 7-3 0 3Z"/>
+  </defs>
+  <path d="M270-30C195 100 350 155 280 310S180 510 220 650" fill="none" stroke="#c98a9d" stroke-width="12" opacity=".07"/>
+  <path d="M286-30C209 100 367 155 296 310S197 510 237 650" fill="none" stroke="#fff" stroke-width="3" opacity=".5"/>
+  <g fill="url(#dew)" stroke="#ba8797" stroke-opacity=".1" stroke-width=".6">
+    <use href="#heart" x="38" y="52" transform="rotate(-18 38 52)"/><use href="#heart" x="180" y="139" transform="rotate(22 180 139)"/>
+    <use href="#heart" x="337" y="252" transform="rotate(-26 337 252)"/><use href="#heart" x="69" y="353" transform="rotate(19 69 353)"/>
+    <use href="#heart" x="219" y="502" transform="rotate(-16 219 502)"/>
+    <ellipse cx="302" cy="77" rx="3" ry="5" transform="rotate(28 302 77)"/><ellipse cx="98" cy="213" rx="4" ry="6" transform="rotate(-20 98 213)"/>
+    <ellipse cx="361" cy="429" rx="4" ry="6" transform="rotate(30 361 429)"/><ellipse cx="112" cy="556" rx="3" ry="4"/>
+  </g>
+  <path d="M349 159v8m-4-4h8M28 463v6m-3-3h6" stroke="#bd8295" stroke-width=".7" opacity=".25"/>
+  <rect width="400" height="600" filter="url(#grain)" opacity=".045"/>
+</svg>

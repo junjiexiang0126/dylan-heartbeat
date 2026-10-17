@@ -1,0 +1,29 @@
+name: Ziwei unified regression
+on:
+  pull_request:
+    branches: [main, develop/ziwei-hermes-unified-v1]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  retained-components:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --ignore-scripts
+      - name: Gateway, shared identity, autonomous tasks and read/write capabilities
+        run: npm test
+      - name: Native profile, Guardian and Cron safety
+        run: python -m unittest discover -s hermes_native/tests -v
+      - name: Retained Hermes prototype memory, budget and task contracts
+        run: python -m unittest discover -s hermes_test/tests -v

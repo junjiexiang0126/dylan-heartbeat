@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#fdf6ec">
+<title>向博士小课堂</title>
+<link rel="apple-touch-icon" href="img/gui.png">
+<link rel="stylesheet" href="game.css">
+</head>
+<body>
+<div class="paper"></div>
+
+<header class="top">
+  <div class="badge">
+    <svg viewBox="0 0 64 64" class="pumpkin" aria-hidden="true">
+      <ellipse cx="32" cy="37" rx="22" ry="18" fill="#f0954a"/>
+      <ellipse cx="32" cy="37" rx="22" ry="18" fill="none" stroke="#c9711f" stroke-width="2"/>
+      <path d="M32 19c-2-6 3-9 6-10" fill="none" stroke="#5f7a3f" stroke-width="3" stroke-linecap="round"/>
+      <path d="M19 34l8 3-8 3z" fill="#5b2b17"/>
+      <path d="M45 34l-8 3 8 3z" fill="#5b2b17"/>
+      <path d="M25 45c5 3 9 3 14 0" fill="none" stroke="#5b2b17" stroke-width="2.4" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <h1 id="siteName">向博士小课堂</h1>
+      <p class="tag">中文游戏教室 · 边玩边学</p>
+    </div>
+  </div>
+  <button id="gear" class="gear" title="改名字">✎</button>
+</header>
+
+<section class="strip">
+  <span class="label">今天用哪套词</span>
+  <nav id="topics"></nav>
+</section>
+
+<nav id="menu" class="menu"></nav>
+
+<main id="stage"></main>
+
+<div class="bottom"><button id="homeBtn" class="btn home" hidden>← 回到游戏清单</button></div>
+
+<script src="game.js"></script>
+</body>
+</html>

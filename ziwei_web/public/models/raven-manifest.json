@@ -1,0 +1,58 @@
+{
+  "format": "glTF 2.0 binary",
+  "generator": "scripts/build_raven_model.mjs",
+  "bytes": 1916408,
+  "meshes": 48,
+  "triangles": 73632,
+  "animations": [
+    {
+      "name": "Idle",
+      "duration": 4
+    },
+    {
+      "name": "Work",
+      "duration": 3.8
+    },
+    {
+      "name": "Rest",
+      "duration": 5
+    },
+    {
+      "name": "Think",
+      "duration": 4
+    },
+    {
+      "name": "Affection",
+      "duration": 3
+    },
+    {
+      "name": "Stale",
+      "duration": 5
+    },
+    {
+      "name": "Jump",
+      "duration": 1.05
+    },
+    {
+      "name": "Poke",
+      "duration": 1.1
+    },
+    {
+      "name": "Blink",
+      "duration": 0.18
+    }
+  ],
+  "parts": [
+    "Pose",
+    "Body",
+    "Head",
+    "WingL",
+    "WingR",
+    "Tail",
+    "FootL",
+    "FootR",
+    "EyeL",
+    "EyeR"
+  ],
+  "reference": "Concept reference only; geometry is modeled here, without image-to-3D reconstruction."
+}
