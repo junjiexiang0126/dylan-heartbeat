@@ -5,8 +5,8 @@
 (function () {
   const style = document.createElement('style');
   style.textContent = `
-  .note-actions{display:flex;gap:10px;margin:12px 0 4px;position:relative;z-index:2;pointer-events:auto;touch-action:manipulation}
-  .note-actions button{flex:1;border:1px solid rgba(80,63,72,.12);background:#fffcf6;border-radius:16px;
+  .note-actions{display:flex;gap:10px;margin:26px 0 10px;clear:both;width:100%;position:relative;z-index:4;pointer-events:auto;touch-action:manipulation}
+  .note-actions button{flex:1;border:1px solid rgba(80,63,72,.12);background:#fffdf8;position:relative;z-index:4;border-radius:16px;
     padding:12px 10px;font:inherit;font-size:13px;color:#503f48;display:flex;align-items:center;justify-content:center;gap:6px}
   .note-actions button:active{transform:scale(.98)}
   .note-actions .ico{width:22px;height:22px;border-radius:8px;background:#f9e5ed;color:#c97d9d;
