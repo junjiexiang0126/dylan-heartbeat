@@ -1336,6 +1336,7 @@ def install():
 
 
 async def memo_list(adapter, request):
+    from aiohttp import web  # 模块级函数里自己取，避免在无 aiohttp 的环境导入就崩
     err = adapter._check_auth(request)
     if err is not None:
         return err
@@ -1350,6 +1351,7 @@ async def memo_list(adapter, request):
 
 
 async def memo_create(adapter, request):
+    from aiohttp import web  # 模块级函数里自己取，避免在无 aiohttp 的环境导入就崩
     err = adapter._check_auth(request)
     if err is not None:
         return err
@@ -1367,6 +1369,7 @@ async def memo_create(adapter, request):
 
 
 async def memo_patch(adapter, request):
+    from aiohttp import web  # 模块级函数里自己取，避免在无 aiohttp 的环境导入就崩
     err = adapter._check_auth(request)
     if err is not None:
         return err
@@ -1385,6 +1388,7 @@ async def memo_patch(adapter, request):
 
 
 async def memo_remove(adapter, request):
+    from aiohttp import web  # 模块级函数里自己取，避免在无 aiohttp 的环境导入就崩
     err = adapter._check_auth(request)
     if err is not None:
         return err
