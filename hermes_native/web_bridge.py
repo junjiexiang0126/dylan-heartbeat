@@ -3,6 +3,7 @@
 All routes remain under the official API authentication and run ownership checks.
 No identity, memory, model, scheduler or approval policy is changed.
 """
+import schedule_store
 import memo_store
 import asyncio
 import base64
@@ -1328,7 +1329,7 @@ def install():
 
     original = adapter._http_route_table
     def routes(self):
-        return original(self) + [('GET','/ziwei/web/memory',lambda request:memory(self,request)), ('POST','/ziwei/web/memory/edit',lambda request:memory_edit(self,request)), ('GET','/ziwei/web/memos',lambda request:memo_list(self,request)), ('POST','/ziwei/web/memos',lambda request:memo_create(self,request)), ('PATCH','/ziwei/web/memos/{memo_id}',lambda request:memo_patch(self,request)), ('DELETE','/ziwei/web/memos/{memo_id}',lambda request:memo_remove(self,request)), ('GET','/ziwei/web/logs',lambda request:logs(self,request)), ('GET','/ziwei/web/diary',lambda request:diary(self,request)), ('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/photos',lambda request:photos(self,request)), ('POST','/ziwei/web/photos',lambda request:photo_upload(self,request)), ('GET','/ziwei/web/photos/days',lambda request:photo_days(self,request)), ('GET','/ziwei/web/photos/{photo_id}',lambda request:photo_detail(self,request)), ('GET','/ziwei/web/photos/{photo_id}/file',lambda request:photo_file(self,request)), ('DELETE','/ziwei/web/photos/{photo_id}',lambda request:photo_delete(self,request)), ('POST','/ziwei/web/photos/{photo_id}/annotations',lambda request:photo_note_add(self,request)), ('PATCH','/ziwei/web/photos/{photo_id}/annotations/{note_id}',lambda request:photo_note_edit(self,request)), ('DELETE','/ziwei/web/photos/{photo_id}/annotations/{note_id}',lambda request:photo_note_delete(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
+        return original(self) + [('GET','/ziwei/web/memory',lambda request:memory(self,request)), ('POST','/ziwei/web/memory/edit',lambda request:memory_edit(self,request)), ('GET','/ziwei/web/memos',lambda request:memo_list(self,request)), ('POST','/ziwei/web/memos',lambda request:memo_create(self,request)), ('PATCH','/ziwei/web/memos/{memo_id}',lambda request:memo_patch(self,request)), ('DELETE','/ziwei/web/memos/{memo_id}',lambda request:memo_remove(self,request)), ('GET','/ziwei/web/schedule',lambda request:schedule_view(self,request)), ('POST','/ziwei/web/schedule',lambda request:schedule_create(self,request)), ('PATCH','/ziwei/web/schedule/{item_id}',lambda request:schedule_patch(self,request)), ('DELETE','/ziwei/web/schedule/{item_id}',lambda request:schedule_remove(self,request)), ('GET','/ziwei/web/logs',lambda request:logs(self,request)), ('GET','/ziwei/web/diary',lambda request:diary(self,request)), ('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/photos',lambda request:photos(self,request)), ('POST','/ziwei/web/photos',lambda request:photo_upload(self,request)), ('GET','/ziwei/web/photos/days',lambda request:photo_days(self,request)), ('GET','/ziwei/web/photos/{photo_id}',lambda request:photo_detail(self,request)), ('GET','/ziwei/web/photos/{photo_id}/file',lambda request:photo_file(self,request)), ('DELETE','/ziwei/web/photos/{photo_id}',lambda request:photo_delete(self,request)), ('POST','/ziwei/web/photos/{photo_id}/annotations',lambda request:photo_note_add(self,request)), ('PATCH','/ziwei/web/photos/{photo_id}/annotations/{note_id}',lambda request:photo_note_edit(self,request)), ('DELETE','/ziwei/web/photos/{photo_id}/annotations/{note_id}',lambda request:photo_note_delete(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
     adapter._http_route_table = routes
     from work_bridge import install_work_route
     install_work_route(adapter)
@@ -1396,6 +1397,74 @@ async def memo_remove(adapter, request):
         value = await asyncio.to_thread(memo_store.remove, home() / 'workspace',
                                         request.match_info.get('memo_id'))
     except memo_store.MemoError as exc:
+        return web.json_response({'error': exc.code}, status=404,
+                                 headers={'Cache-Control': 'no-store'})
+    return web.json_response(value, headers={'Cache-Control': 'no-store'})
+
+
+async def schedule_view(adapter, request):
+    from aiohttp import web
+    err = adapter._check_auth(request)
+    if err is not None:
+        return err
+    try:
+        value = await asyncio.to_thread(schedule_store.listing, home() / 'workspace',
+                                        home() / 'cron', days=request.query.get('days') or 7)
+    except schedule_store.ScheduleError as exc:
+        return web.json_response({'error': exc.code, 'days': []}, status=400,
+                                 headers={'Cache-Control': 'no-store'})
+    return web.json_response(value, headers={'Cache-Control': 'no-store'})
+
+
+async def schedule_create(adapter, request):
+    from aiohttp import web
+    err = adapter._check_auth(request)
+    if err is not None:
+        return err
+    try:
+        payload = await request.json()
+    except Exception:
+        return web.json_response({'error': 'invalid_body'}, status=400)
+    payload = payload or {}
+    try:
+        item = await asyncio.to_thread(schedule_store.add, home() / 'workspace',
+                                       day=payload.get('date'), time=payload.get('time'),
+                                       text=payload.get('text'))
+    except schedule_store.ScheduleError as exc:
+        return web.json_response({'error': exc.code}, status=400,
+                                 headers={'Cache-Control': 'no-store'})
+    return web.json_response({'ok': True, 'item': item}, status=201,
+                             headers={'Cache-Control': 'no-store'})
+
+
+async def schedule_patch(adapter, request):
+    from aiohttp import web
+    err = adapter._check_auth(request)
+    if err is not None:
+        return err
+    try:
+        payload = await request.json()
+    except Exception:
+        return web.json_response({'error': 'invalid_body'}, status=400)
+    try:
+        item = await asyncio.to_thread(schedule_store.set_done, home() / 'workspace',
+                                       request.match_info.get('item_id'),
+                                       bool((payload or {}).get('done', True)))
+    except schedule_store.ScheduleError as exc:
+        return web.json_response({'error': exc.code}, status=404,
+                                 headers={'Cache-Control': 'no-store'})
+    return web.json_response({'ok': True, 'item': item}, headers={'Cache-Control': 'no-store'})
+
+
+async def schedule_remove(adapter, request):
+    from aiohttp import web
+    err = adapter._check_auth(request)
+    if err is not None:
+        return err
+    try:
+        value = await asyncio.to_thread(schedule_store.remove, home() / 'workspace',
+                                        request.match_info.get('item_id'))
+    except schedule_store.ScheduleError as exc:
         return web.json_response({'error': exc.code}, status=404,
                                  headers={'Cache-Control': 'no-store'})
     return web.json_response(value, headers={'Cache-Control': 'no-store'})
