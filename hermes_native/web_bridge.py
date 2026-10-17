@@ -885,6 +885,46 @@ def _diary_display(text, title):
     return body
 
 
+def impressions_page(limit=None):
+    """今日印记：只读 workspace/events/impressions.jsonl，只返回 add 且未被 retract 的行。
+
+    没有发生的事不会被写进去，这里也造不出内容：文件不存在就是空列表。
+    """
+    try:
+        size = int(limit) if limit not in (None, '') else 60
+    except (TypeError, ValueError):
+        raise MemoryError('invalid_pagination')
+    if not 1 <= size <= 200:
+        raise MemoryError('invalid_pagination')
+    path = home() / 'workspace' / 'events' / 'impressions.jsonl'
+    rows, errors = [], []
+    try:
+        raw = read_beneath(path.parent, 'impressions.jsonl', 8 * 1024 * 1024)
+    except FileNotFoundError:
+        raw = b''
+    except (OSError, ValueError):
+        raise MemoryError('impressions_unreadable')
+    retracted = set()
+    for line in raw.decode('utf-8', 'replace').splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            row = json.loads(line)
+        except ValueError:
+            errors.append({'code': 'impressions_bad_line'})
+            continue
+        if row.get('op') == 'retract':
+            if row.get('target'):
+                retracted.add(str(row['target']))
+            continue
+        rows.append(row)
+    rows = [r for r in rows if str(r.get('id', '')) not in retracted]
+    rows.sort(key=lambda r: str(r.get('ts', '')), reverse=True)
+    return {'data': rows[:size], 'total': len(rows), 'checkedAt': datetime.now(BANGKOK).isoformat(),
+            'errors': errors}
+
+
 def diary_records():
     """Every saved diary file as the Web contract wants it: date, source, fingerprint, preview."""
     root = home() / 'workspace' / DIARY_DIR
@@ -1114,6 +1154,17 @@ def install():
             'memory_entry_protected', 'memory_budget_exceeded', 'memory_match_not_unique') else 400
         return web.json_response(body, status=status, headers={'Cache-Control': 'no-store'})
 
+    async def impressions(self, request):
+        err = self._check_auth(request)
+        if err is not None: return err
+        try:
+            value = await asyncio.to_thread(impressions_page, request.query.get('limit'))
+        except MemoryError as exc:
+            code = 400 if exc.code == 'invalid_pagination' else 500
+            return web.json_response({'error': exc.code, 'data': [], 'total': 0, 'errors': [{'code': exc.code}]},
+                                     status=code, headers={'Cache-Control': 'no-store'})
+        return web.json_response(value, headers={'Cache-Control': 'no-store'})
+
     async def diary(self, request):
         err = self._check_auth(request)
         if err is not None: return err
@@ -1329,7 +1380,7 @@ def install():
 
     original = adapter._http_route_table
     def routes(self):
-        return original(self) + [('GET','/ziwei/web/memory',lambda request:memory(self,request)), ('POST','/ziwei/web/memory/edit',lambda request:memory_edit(self,request)), ('GET','/ziwei/web/memos',lambda request:memo_list(self,request)), ('POST','/ziwei/web/memos',lambda request:memo_create(self,request)), ('PATCH','/ziwei/web/memos/{memo_id}',lambda request:memo_patch(self,request)), ('DELETE','/ziwei/web/memos/{memo_id}',lambda request:memo_remove(self,request)), ('GET','/ziwei/web/schedule',lambda request:schedule_view(self,request)), ('POST','/ziwei/web/schedule',lambda request:schedule_create(self,request)), ('PATCH','/ziwei/web/schedule/{item_id}',lambda request:schedule_patch(self,request)), ('DELETE','/ziwei/web/schedule/{item_id}',lambda request:schedule_remove(self,request)), ('GET','/ziwei/web/logs',lambda request:logs(self,request)), ('GET','/ziwei/web/diary',lambda request:diary(self,request)), ('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/photos',lambda request:photos(self,request)), ('POST','/ziwei/web/photos',lambda request:photo_upload(self,request)), ('GET','/ziwei/web/photos/days',lambda request:photo_days(self,request)), ('GET','/ziwei/web/photos/{photo_id}',lambda request:photo_detail(self,request)), ('GET','/ziwei/web/photos/{photo_id}/file',lambda request:photo_file(self,request)), ('DELETE','/ziwei/web/photos/{photo_id}',lambda request:photo_delete(self,request)), ('POST','/ziwei/web/photos/{photo_id}/annotations',lambda request:photo_note_add(self,request)), ('PATCH','/ziwei/web/photos/{photo_id}/annotations/{note_id}',lambda request:photo_note_edit(self,request)), ('DELETE','/ziwei/web/photos/{photo_id}/annotations/{note_id}',lambda request:photo_note_delete(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
+        return original(self) + [('GET','/ziwei/web/memory',lambda request:memory(self,request)), ('POST','/ziwei/web/memory/edit',lambda request:memory_edit(self,request)), ('GET','/ziwei/web/memos',lambda request:memo_list(self,request)), ('POST','/ziwei/web/memos',lambda request:memo_create(self,request)), ('PATCH','/ziwei/web/memos/{memo_id}',lambda request:memo_patch(self,request)), ('DELETE','/ziwei/web/memos/{memo_id}',lambda request:memo_remove(self,request)), ('GET','/ziwei/web/schedule',lambda request:schedule_view(self,request)), ('POST','/ziwei/web/schedule',lambda request:schedule_create(self,request)), ('PATCH','/ziwei/web/schedule/{item_id}',lambda request:schedule_patch(self,request)), ('DELETE','/ziwei/web/schedule/{item_id}',lambda request:schedule_remove(self,request)), ('GET','/ziwei/web/logs',lambda request:logs(self,request)), ('GET','/ziwei/web/diary',lambda request:diary(self,request)), ('GET','/ziwei/web/impressions',lambda request:impressions(self,request)), ('GET','/ziwei/web/pokes',lambda request:pokes(self,request)), ('GET','/ziwei/web/console',lambda request:console(self,request)), ('GET','/ziwei/web/console/balance',lambda request:console(self,request)), ('GET','/ziwei/web/state',lambda request:state(self,request)), ('GET','/ziwei/web/moments',lambda request:moments(self,request)), ('GET','/ziwei/web/photos',lambda request:photos(self,request)), ('POST','/ziwei/web/photos',lambda request:photo_upload(self,request)), ('GET','/ziwei/web/photos/days',lambda request:photo_days(self,request)), ('GET','/ziwei/web/photos/{photo_id}',lambda request:photo_detail(self,request)), ('GET','/ziwei/web/photos/{photo_id}/file',lambda request:photo_file(self,request)), ('DELETE','/ziwei/web/photos/{photo_id}',lambda request:photo_delete(self,request)), ('POST','/ziwei/web/photos/{photo_id}/annotations',lambda request:photo_note_add(self,request)), ('PATCH','/ziwei/web/photos/{photo_id}/annotations/{note_id}',lambda request:photo_note_edit(self,request)), ('DELETE','/ziwei/web/photos/{photo_id}/annotations/{note_id}',lambda request:photo_note_delete(self,request)), ('GET','/ziwei/web/runs/{run_id}/media',lambda request:media(self,request)), ('GET','/ziwei/web/runs/{run_id}/media/{index}',lambda request:media(self,request))]
     adapter._http_route_table = routes
     from work_bridge import install_work_route
     install_work_route(adapter)
