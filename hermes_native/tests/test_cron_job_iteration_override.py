@@ -30,7 +30,8 @@ class CronIterationOverrideContract(unittest.TestCase):
         added = [l[1:] for l in self.text.splitlines() if l.startswith("+") and not l.startswith("+++")]
         body = "\n".join(added)
         self.assertIn('_cfg.get("agent", {}).get("max_turns")', body)
-        self.assertIn('_cfg.get("max_turns")', body)
+        # 第二级回落是原有代码，属于 diff 的上下文行而非新增行
+        self.assertIn('_cfg.get("max_turns")', self.text)
 
 
 if __name__ == "__main__":
