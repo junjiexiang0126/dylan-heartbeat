@@ -94,6 +94,32 @@ test('native coordinator can directly regenerate the final document through its 
   const zip=await require('jszip').loadAsync(fs.readFileSync(path.join(x.dir,'work','attachments',d.files[0].id)));assert.match(await zip.file('word/document.xml').async('string'),/知微亲自修订的最终正文/);
  }finally{x.cleanup();}
 });
+test('last bounded review offers native correction and publishes only its regenerated files',async()=>{
+ const reviews=[];
+ const x=setup({client:{configured:()=>true,json:async(_,o)=>{
+  const b=JSON.parse(o.body);
+  if(b.stage==='plan')return {text:JSON.stringify({message:'委派',toolCall:{name:'work_delegate',arguments:{instruction:'执行'}}}),usage:{prompt_tokens:10,completion_tokens:10}};
+  reviews.push(b);
+  const canCorrect=b.revisionBudget?.finalReview&&b.tools.some(t=>t.name==='work_document_create'&&t.parameters?.required?.includes('text'));
+  return {text:JSON.stringify(canCorrect?{approved:true,message:'知微修订后交付',toolCall:{name:'work_document_create',arguments:{text:'## 最终课件\n知微最终修正的正文'}}}:{approved:false,message:'仍需修正'}),usage:{prompt_tokens:10,completion_tokens:10}};
+ }}});try{
+  await request(x.svc,'/api/work/tools/configure','POST',{id:'bundle',revision:0,authorized:true});
+  await request(x.svc,'/api/work/send','POST',body('final-native-revision',{tool:'bundle'}));
+  const d=await settled(x.svc,'final-native-revision');
+  assert.equal(d.tasks[0].state,'completed');assert.equal(d.tasks[0].calls,7);assert.equal(d.usage.length,7);
+  assert.deepEqual(reviews.map(b=>b.revisionBudget.remainingRounds),[2,1,0]);
+  assert.deepEqual(reviews.map(b=>b.revisionBudget.finalReview),[false,false,true]);
+  assert.match(reviews[2].reviewInstruction,/不能再委派/);
+  assert.equal(d.files.length,4);assert.equal(d.data.at(-1).attachments.length,4);
+  assert.equal(d.toolRuns.filter(r=>r.agent==='glm'&&r.name==='work_document_create').length,3);
+  assert.equal(d.toolRuns.filter(r=>r.agent==='ziwei'&&r.name==='work_document_create').length,1);
+  const unpublished=d.toolRuns.find(r=>r.agent==='glm'&&r.name==='work_document_create').result.files[0].id;
+  assert.equal((await request(x.svc,'/api/work/attachments/'+unpublished)).code,404);
+  const doc=d.files.find(f=>f.name.endsWith('.docx'));
+  const zip=await require('jszip').loadAsync(fs.readFileSync(path.join(x.dir,'work','attachments',doc.id)));
+  assert.match(await zip.file('word/document.xml').async('string'),/知微最终修正的正文/);
+ }finally{x.cleanup();}
+});
 test('four daily deliverables fit independently and do not consume one task for every file format',async()=>{
  const x=setup();try{
   await request(x.svc,'/api/work/tools/configure','POST',{id:'bundle',revision:0,authorized:true});

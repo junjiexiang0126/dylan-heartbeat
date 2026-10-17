@@ -2,30 +2,43 @@
 
 PR #40 remains open and unmerged into `integration/ziwei-20261016`. Genuine end-to-end acceptance has not passed. The operator handles Railway deployment. Do not repeat earlier tasks or erase records to reset budgets.
 
-## Current live state, checked at 09:26–09:35
+## Current live state, checked at 09:40–09:46
 
 | Test service | Deployment status / ID | Deployed commit |
 | --- | --- | --- |
-| ziwei-home-web-test | SUCCESS / `8aa32b86-0018-4027-8616-b6b6593be712` | `284ea4608508161aa55ca2dceab45c312db37c8b` |
-| ziwei-hermes-test | SUCCESS / `757e748a-d84d-4ecd-869e-3757f2306652` | `b95064d3e8e44808be2f6767697d83e042ad22ca` |
+| ziwei-home-web-test | SUCCESS / `13addfa4-31b7-4707-9fda-b4e9adeb17c0` | `c2d4d16826bf62f097bdfb3307defc5c445aaefd` |
+| ziwei-hermes-test | SUCCESS / `2212e60b-e023-4c3f-8504-e4ed9d0ec83a` | `cf113ee560bfd5ee7ff1fd2f6c8b2163fa28af8e` |
 
-The operator successfully deployed the previous worker repair. New real 20-slide task `WORK-LIVE-20261017-C` was sent once at 09:28:17 and failed native planning with `work_model_call_limit`. Railway evidence: `2026-10-17T02:28:32.138285840Z POST /ziwei/web/work/turn → 502`, 14142 ms; safe worker log at `02:28:32.243255540Z` reports `stage=plan code=work_model_call_limit`. GLM execution, native review and live file downloads remain unverified. No completed files exist from this attempt.
+Before the current deployment, the operator deployed native `b95064d`. Real 20-slide task `WORK-LIVE-20261017-C` was sent once at 09:28:17 and failed native planning with `work_model_call_limit`. Railway evidence: `2026-10-17T02:28:32.138285840Z POST /ziwei/web/work/turn → 502`, 14142 ms; safe worker log at `02:28:32.243255540Z` reports `stage=plan code=work_model_call_limit`. GLM execution, native review and live file downloads remain unverified. No completed files exist from this attempt.
 
 Previous real attempts: A failed native initialization (`hermes_http_502`, `2026-10-16T20:52:20Z`); official dependency activation then repaired zero-model initialization (`HTTP 200`, `2026-10-16T21:18:38Z`). B failed native planning (`work_agent_failed`, `2026-10-16T21:19:09Z`). These failures are retained in history.
 
-The Work UI still shows all six navigation items. Document bundle authorization, configured filename and historical messages survived the native deployments. Live permission check `WORK-PERM-20261017`: revoke bundle permission, submit through the normal composer, observe `tool_permission_denied` before task admission; restore the pre-existing bundle permission. The rejected text did not enter history, model request count stayed **2**, estimated/reserved usage stayed **CNY 4**, and daily remaining budget stayed **CNY 3**. An older **CNY 3** task reservation remains separately retained. These are estimates/reservations, not a verified provider bill. Do not reset them.
+The Work UI still shows all six navigation items. Document bundle authorization, configured filename and historical messages survived both web and native deployments. At 09:35, live permission check `WORK-PERM-20261017`: revoke bundle permission, submit through the normal composer, observe `tool_permission_denied` before task admission; restore the pre-existing bundle permission. The rejected text did not enter history, model request count stayed **2**, estimated/reserved usage stayed **CNY 4**, and daily remaining budget stayed **CNY 3**. An older **CNY 3** task reservation remains separately retained. These are estimates/reservations, not a verified provider bill. Do not reset them.
 
-## Candidate repair awaiting operator deployment
+## Genuine task D evidence and remaining correction
 
-Native candidate: `cf113ee560bfd5ee7ff1fd2f6c8b2163fa28af8e`, branch `feature/work-native-acceptance-20261017`.
+On the successful deployments above, zero-model readiness passed again. A new synthetic 20-slide task `WORK-LIVE-20261017-D` was submitted exactly once at **09:41:40**. Native Hermes successfully delegated, GLM issued three real document function calls across the initial draft and two revisions, each generated four actual draft files, and native Hermes reviewed all three drafts. The task reached its seven-call bound and ended honestly as `needs_revision`, with no published download links.
 
-Official Hermes source confirms that iteration-budget finalization can issue an extra summary request. The deployed guard correctly refuses another request, but previously its limit error could mask the first empty/truncated/provider failure. The exact first response from C was not logged, so its original cause is not proven.
+Native HTTP evidence (all `POST /ziwei/web/work/turn`, HTTP **200**):
 
-DeepSeek's official documentation and Hermes provider profile establish that `deepseek-flash` defaults to thinking enabled. Work now explicitly disables thinking in both AIAgent configuration and actual SDK payload, requests `json_object`, forces non-streaming, and keeps the existing planning/review output limits (1500/6000). This is a candidate compatibility repair, not evidence of live success. Private-chat model settings are untouched.
+| UTC timestamp | Stage | Duration |
+| --- | --- | --- |
+| 2026-10-17T02:41:48.303955093Z | Plan | 8012 ms |
+| 2026-10-17T02:42:21.062145155Z | Review 0 | 8145 ms |
+| 2026-10-17T02:42:54.577483891Z | Review 1 | 7748 ms |
+| 2026-10-17T02:43:24.119939154Z | Review 2 | 8250 ms |
 
-The guard validates the first response before Hermes recovery, preserves safe original failure codes across swallowed retries/summary requests, refuses truncated/empty/refused/unexpected tool responses, and returns token usage from the actual single provider response. It still permits at most one wire attempt per native stage, with SDK retries disabled and one shared budget across request-local clients. The web diagnostic whitelist recognizes the new safe response codes; no arbitrary provider text is exposed.
+The UI reports these seven actual requests with reported token counts: native plan 1426; GLM 1529; native review 2829; GLM 2078; native review 2878; GLM 1658; native review 2663. Their configured cost estimate totals approximately **CNY .1902**; this is not the provider invoice. Three completed GLM `work_document_create` receipts and three four-file inspection receipts persist. Twelve unapproved drafts are retained; none was delivered. The reviewer caught incorrect character descriptions and later rejected many pages shorter than 50 characters. Real GLM and real native review are now established; successful end-to-end delivery and visual quality are still not established.
 
-The native branch is based on the actual deployed `47e3de4` lineage and preserves its newer status/photo/WeCom work. Do not deploy the older pinned `231b4e5` baseline or the app PR's native tree wholesale. Native and web volumes, old production, keys, memory and private history remain untouched.
+Another operator-originated Work discussion began at 09:44. Do not resubmit or interrupt it, and read the current budget only after pending reservations settle. Do not publish its conversation content in the repository.
+
+The native response repair is now live and demonstrated successful planning/review. Its first-error handling, one-wire-attempt bound, explicit non-thinking JSON mode and existing 1500/6000 output limits remain unchanged. The exact original cause of task C is still unproven.
+
+The remaining code correction is **web-only**: the review payload now explicitly offers native `work_document_create`, with the same authorized document schema, alongside delivery. Previously the worker prompt mentioned self-revision but the actual review tool list exposed only delivery. Each review now receives its remaining revision rounds. At the final bounded review, native Hermes is instructed to correct a fixable draft itself through the actual tool, or honestly refuse if information is missing or it cannot safely correct it. No extra model attempt, retry, budget increase or private tool access is added.
+
+Native stays pinned at `cf113ee560bfd5ee7ff1fd2f6c8b2163fa28af8e`. Only deploy the web service's new commit after the operator's active task has settled. New targeted tests: **6/6 passed** (model transports mocked), including final native correction within exactly seven calls, only four final native-generated files published, rejected drafts inaccessible, revocation preventing publication, and missing-information refusal preserved. Syntax and whitespace checks passed. Unchanged suites were not repeated.
+
+The native branch preserves the actual deployed `47e3de4` lineage and its newer status/photo/WeCom work. Do not deploy the older pinned `231b4e5` baseline or the app PR's native tree wholesale. Volumes, old production, keys, memory and private history remain untouched.
 
 ## Confirmed requirements and implementation
 
@@ -55,9 +68,9 @@ No physical iOS/WebKit acceptance. Local Office/ZIP tests do not establish live 
 
 Context: project `7afe77af-0481-4a21-858d-2339fc24ab8f`, environment `eddf4e4f-1199-45a1-8397-5053c7e9586d`. Web service `0e699897-01a7-4910-8009-589fe5bc6ce7`, native `d0a928bf-3db2-4085-9812-8a28be4d0b1b`.
 
-1. Read exact deployment SHAs and terminal SUCCESS; source pin/staged changes alone are not deployment evidence. Use the native candidate above and app PR's latest commit for the web safe-diagnostic change.
-2. Reuse authenticated Work UI. Do not resubmit C or the rejected permission-test text. Check zero-model native readiness first.
-3. Send one new synthetic 20-slide task only after the new worker is live and budget admission permits it. Verify genuine native delegation, GLM function call, native review, real tool receipts and reported usage. A failed native stage retains CNY 2; do not loop on repeated attempts or clear budgets.
+1. Read exact deployment SHAs and terminal SUCCESS; source pin/staged changes alone are not deployment evidence. Native is already correct at the live SHA above; deploy only the latest web review-tool correction.
+2. Reuse authenticated Work UI. Do not resubmit C, D, the operator discussion, or the rejected permission-test text. Check zero-model native readiness first.
+3. Send one new synthetic 20-slide task only after the web correction is live and budget admission permits it. Verify genuine native delegation, GLM function call, native review, real tool receipts and reported usage. A failed native stage retains CNY 2; do not loop on repeated attempts or clear budgets.
 4. Download all four actual live files; inspect Chinese text/20-slide count and render actual downloads with available `soffice`/`pdftoppm`. Do not substitute regenerated local files as live evidence.
 5. Check refresh/re-login and an idle authorized web-test restart preserve exact message/task/file/receipt/usage identities. Live revocation-before-model check has already passed; do not repeat it unless the relevant implementation changes. Preserve all volumes and original pages.
 6. Only after genuine acceptance passes, merge PR #40 into `integration/ziwei-20261016`. Final report must contain app/native SHAs, PR state, tests and their mocked/live boundaries, Railway deployment IDs/SHAs, real evidence and outstanding issues.

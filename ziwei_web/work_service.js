@@ -121,7 +121,12 @@ function createWorkService(dataDir,options={}){
     receipt(id,'system','work_document_inspect',{files:manifest});
    }
    bubbles('glm',executed.text,{taskId:id,stage:'draft'});state(id,'reviewing');
-   const review=await call(id,'review',{task:context,draft:executed.text,tool:selected,round,inspection:{files:manifest,visualChecked:false},tools:[{name:'work_document_deliver',description:'仅在审核通过时发布本任务的已检查工作草稿；聊天任务交付文本。'}]},deadline);
+   const reviewTools=[{name:'work_document_deliver',description:'仅在审核通过时发布本任务的已检查工作草稿；聊天任务交付文本。',parameters:{type:'object',properties:{},additionalProperties:false}}];
+   if(selected!=='auto')reviewTools.push({name:'work_document_create',description:'知微可亲自修订完整正文并生成已授权格式的最终文件。程序重新检查文件后交付；只传完整正文 text。',parameters:documentTool().function.parameters});
+   const review=await call(id,'review',{task:context,draft:executed.text,tool:selected,round,
+    revisionBudget:{maxRounds:LIMITS.maxRevisionRounds,remainingRounds:LIMITS.maxRevisionRounds-round,finalReview:round===LIMITS.maxRevisionRounds},
+    reviewInstruction:selected!=='auto'&&round===LIMITS.maxRevisionRounds?'这是本任务最后一次模型审核，不能再委派白鸦。若草稿仍有问题且能根据现有资料修正，请知微亲自调用 work_document_create，返回 approved:true、完整修订正文及诚实的交付说明。逐项核对用户硬性要求；有指定PPT页数时保留相应页标题结构，不在页标题前增加独立说明段。若缺资料或无法可靠修正，仍返回 approved:false，说明具体原因，不能放行错误草稿。':'审核用户要求及实际文件回执；可直接修订，或在剩余轮次内要求白鸦修订。',
+    inspection:{files:manifest,visualChecked:false},tools:reviewTools},deadline);
    if(typeof review.approved!=='boolean'||typeof review.message!=='string')throw Error('invalid_hermes_review');
    if(!review.approved){append('ziwei',review.message,{taskId:id,stage:'changes_requested',round});if(round<LIMITS.maxRevisionRounds&&review.requiresUser!==true){feedback=review.message.slice(0,3000);continue;}state(id,'needs_revision');return;}
    if(review.toolCall?.name==='work_document_create'){
