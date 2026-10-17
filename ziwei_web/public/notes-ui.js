@@ -170,8 +170,8 @@
   }
 
   /* ---------- 首页入口（图标，不写字） ---------- */
-  const ICON_MEMO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>';
-  const ICON_CLOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 3h6"/></svg>';
+  const ICON_MEMO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.2 17.4c1.5-3 4.1-4.6 7.3-4.6 3.1 0 5.6 1.6 6.9 4.6-1.3 2.6-3.8 4-6.9 4-3.2 0-5.8-1.4-7.3-4Z"/><path d="M4.2 17.4c-1-.4-1.8-.6-2.5-.6.1.8.5 1.5 1.2 2.1"/><circle cx="13.9" cy="16.4" r=".62" fill="currentColor" stroke="none"/><path d="M8.6 9.8c1.9-1.4 4-1.9 6.3-1.4"/></svg>';
+  const ICON_SCHED = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.2 17.4c1.5-3 4.1-4.6 7.3-4.6 3.1 0 5.6 1.6 6.9 4.6-1.3 2.6-3.8 4-6.9 4-3.2 0-5.8-1.4-7.3-4Z"/><path d="M4.2 17.4c-1-.4-1.8-.6-2.5-.6.1.8.5 1.5 1.2 2.1"/><circle cx="13.9" cy="16.4" r=".62" fill="currentColor" stroke="none"/><path d="M5.8 9.6c2.6-1.6 5.4-2 8.4-1.2"/><path d="M7.4 6.4c1.9-1 3.9-1.1 6-.4"/></svg>';
 
   /* ---------- 底部导航：文字隐藏后补上无障碍名字 ---------- */
   const NAV_NAMES = { chat: '聊天', moments: '朋友圈', home: '首页', memory: '记忆', logs: '日志', work: 'Work' };
@@ -199,8 +199,9 @@
     if (!home) return;
     const existing = document.querySelector('.note-actions');
     if (existing) { existing.style.display = home.hidden ? 'none' : ''; return; }
-    const anchor = home.querySelector('.memorial') || home.querySelector('.together') || home.lastElementChild;
-    if (!anchor || !anchor.parentElement) return;
+    const persons = home.querySelectorAll('.pair .person');
+    const anchor = persons.length ? persons[persons.length - 1] : (home.querySelector('.memorial') || home.lastElementChild);
+    if (!anchor) return;
     const row = el('div', 'note-actions');
     const memo = el('button');
     memo.type = 'button';
@@ -211,11 +212,11 @@
     sched.type = 'button';
     sched.setAttribute('aria-label', '我的日程');
     sched.title = '日程';
-    sched.innerHTML = ICON_CLOCK;
+    sched.innerHTML = ICON_SCHED;
     memo.onclick = () => open('memos');
     sched.onclick = () => open('schedule');
     row.append(memo, sched);
-    anchor.insertAdjacentElement('afterend', row);
+    anchor.append(row);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);

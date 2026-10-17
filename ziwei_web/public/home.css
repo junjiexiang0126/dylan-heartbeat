@@ -1,13 +1,12 @@
 /* 首页与二级页样式（外链文件：CSP 只允许 'self'，不能用内联 style） */
 
-/* ---- 首页：入口做成小图标，不写字 ---- */
-.note-actions{display:flex;gap:10px;margin:16px 0 2px;clear:both;width:100%;position:relative;z-index:4}
-.note-actions button{width:46px;height:46px;border-radius:15px;border:1px solid rgba(80,63,72,.12);
-  background:#fffdf8;display:flex;align-items:center;justify-content:center;padding:0;
-  color:#c97d9d;position:relative;z-index:4;touch-action:manipulation;
-  -webkit-tap-highlight-color:transparent}
-.note-actions button:active{transform:scale(.96)}
-.note-actions svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+/* ---- 首页：名字下方的两个手绘入口（鲸鱼+水波） ---- */
+.note-actions{display:flex;justify-content:center;gap:14px;margin:0;padding:7px 0 0}
+.note-actions button{border:0;background:transparent;padding:2px;color:#c2748f;
+  display:grid;place-items:center;-webkit-tap-highlight-color:transparent}
+.note-actions button:active{transform:scale(.92)}
+.note-actions svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
 
 /* ---- 二级页：整屏推入，进来时底部导航收起 ---- */
 #noteSheet{position:fixed;inset:0;z-index:60;background:#fff9f7;display:flex;flex-direction:column;
