@@ -23,3 +23,8 @@
 5. 最后清理已确认完全包含的临时分支；保留备份标签及尚未核实的分支。
 
 **本记录仅为整合准备，不声称代码合并、测试或线上部署已经完成。**
+
+## 进一步核对：Hermes / Work 关键文件（本轮）
+- 对比 Web 整合分支和 Hermes 验收分支的六个文件 Git blob SHA：`hermes_native/work_agent.py`、`work_bridge.py`、`web_bridge.py`、`tests/test_work_agent.py`、`tests/test_work_agent_sdk.py`、`tests/test_work_diagnostic.py`，**全部相同**。
+- 因此这些关键文件目前无需重新覆盖或手工复制；两分支仍有独有提交历史，且其他文件/历史未全面验收。
+- 不把「文件 SHA 相同」误写为「整个分支已经安全合并」；测试和其他旧分支独有变更仍待核对。
