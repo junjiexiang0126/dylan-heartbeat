@@ -5,6 +5,11 @@ COPY . /opt/ziwei-native
 RUN cd /opt/hermes && git apply --check /opt/ziwei-native/patches/cron/0001-cron-job-max-iterations.patch \
  && git apply /opt/ziwei-native/patches/cron/0001-cron-job-max-iterations.patch \
  && /opt/hermes/.venv/bin/python -m py_compile /opt/hermes/cron/scheduler.py
+# Apply the reviewed cron-only Hermes patch at image build time, never on /data.
+# A missing git executable or incompatible upstream scheduler fails the build closed.
+RUN cd /opt/hermes && git apply --check /opt/ziwei-native/patches/cron/0001-cron-job-max-iterations.patch \
+ && git apply /opt/ziwei-native/patches/cron/0001-cron-job-max-iterations.patch \
+ && /opt/hermes/.venv/bin/python -m py_compile /opt/hermes/cron/scheduler.py
 # Direct CLI and Cron workers import the native facade without the Gateway
 # launcher. Keep the adapter immutable and reachable in every Hermes tree.
 RUN ln -s /opt/ziwei-native/browser_persistence.py /opt/hermes/browser_persistence.py \
