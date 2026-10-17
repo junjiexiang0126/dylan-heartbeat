@@ -4,6 +4,48 @@ import importlib.util
 import unittest
 from pathlib import Path
 
+import sys
+import types
+
+# 这个补丁文件在正式构建时覆盖到官方 Hermes 插件目录，运行时能拿到 agent / gateway 包。
+# 单测环境里没有官方包，只测混入类逻辑，所以注入最小的替身；真实环境存在时不覆盖。
+def _install_stubs():
+    if "agent.i18n" not in sys.modules:
+        agent = sys.modules.setdefault("agent", types.ModuleType("agent"))
+        i18n = types.ModuleType("agent.i18n")
+        i18n.t = lambda key, **kw: (key.format(**kw) if kw else key)
+        sys.modules["agent.i18n"] = i18n
+        setattr(agent, "i18n", i18n)
+    if "gateway.platforms.base" not in sys.modules:
+        gateway = sys.modules.setdefault("gateway", types.ModuleType("gateway"))
+        platforms = sys.modules.setdefault("gateway.platforms", types.ModuleType("gateway.platforms"))
+        base = types.ModuleType("gateway.platforms.base")
+
+        class SendResult:  # 与官方同名的轻量替身，只保留测试用到的字段
+            def __init__(self, success=True, message_id=None, error=None, raw_response=None, **kw):
+                self.success = success
+                self.message_id = message_id
+                self.error = error
+                self.raw_response = raw_response
+                for k, v in kw.items():
+                    setattr(self, k, v)
+
+        async def cache_document_from_bytes_async(raw, filename):
+            return f"/tmp/{filename}"
+
+        async def cache_image_from_bytes_async(raw, ext):
+            return f"/tmp/image{ext}"
+
+        base.SendResult = SendResult
+        base.cache_document_from_bytes_async = cache_document_from_bytes_async
+        base.cache_image_from_bytes_async = cache_image_from_bytes_async
+        sys.modules["gateway.platforms.base"] = base
+        setattr(gateway, "platforms", platforms)
+        setattr(platforms, "base", base)
+
+
+_install_stubs()
+
 spec = importlib.util.spec_from_file_location(
     'wecom_media_patched', Path(__file__).parents[1] / 'patches/plugins/platforms/wecom/media.py')
 media = importlib.util.module_from_spec(spec); spec.loader.exec_module(media)
