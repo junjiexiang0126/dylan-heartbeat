@@ -5,7 +5,7 @@
 (function () {
   const style = document.createElement('style');
   style.textContent = `
-  .note-actions{display:flex;gap:10px;margin:12px 2px 0}
+  .note-actions{display:flex;gap:10px;margin:12px 2px 0;position:relative;z-index:3;pointer-events:auto;touch-action:manipulation}
   .note-actions button{flex:1;border:1px solid rgba(80,63,72,.12);background:#fffcf6;border-radius:16px;
     padding:12px 10px;font:inherit;font-size:13px;color:#503f48;display:flex;align-items:center;justify-content:center;gap:6px}
   .note-actions button:active{transform:scale(.98)}
@@ -138,8 +138,9 @@
 
   function mount() {
     if (document.querySelector('.note-actions')) return;
-    const anchor = document.querySelector('.raven-house') || document.querySelector('#home .today') || document.querySelector('main') || document.body;
-    const host = anchor.parentElement || anchor;
+    const homeTab = document.getElementById('home') || document.querySelector('[data-tab=home]');
+    const anchor = document.querySelector('.raven-house');
+    const host = homeTab || (anchor && anchor.parentElement) || document.body;
     const row = document.createElement('div');
     row.className = 'note-actions';
     const memo = document.createElement('button');
