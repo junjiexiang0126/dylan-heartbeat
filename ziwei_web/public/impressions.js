@@ -18,6 +18,7 @@
   };
 
   let loaded = false, busy = false, apiFn = null;
+  const state = { range: 'week' };
 
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const pad = n => String(n).padStart(2, '0');
@@ -97,13 +98,19 @@
     const err = document.getElementById('impressionsError');
     if (!rail) return;
     const list = (rows || []).filter(r => parts(r.ts));
+    // 语 2026-10-18：印记要能按日期查，不能只看当天。
+    const range = state.range || 'week';
+    const shown = range === 'all' ? list : list.filter(r => {
+      const d = parts(r.ts); if (!d) return false;
+      return (Date.now() - new Date(d.date + 'T00:00:00').getTime()) <= 7 * 86400000;
+    });
     if (err) { err.hidden = true; err.textContent = ''; }
-    if (!list.length) { rail.innerHTML = ''; if (empty) empty.hidden = false; return; }
+    if (!shown.length) { rail.innerHTML = ''; if (empty) { empty.textContent = '这一天还没有印记。'; empty.hidden = false; } return; }
     if (empty) empty.hidden = true;
 
     // 按日期分组：日内按时间正序，日期之间新的在前
     const groups = new Map();
-    for (const r of list) {
+    for (const r of shown) {
       const p = parts(r.ts);
       if (!groups.has(p.date)) groups.set(p.date, []);
       groups.get(p.date).push(r);
@@ -134,8 +141,13 @@
     busy = true;
     const err = document.getElementById('impressionsError');
     try {
-      const fn = apiFn || (p => fetch(p, { cache: 'no-store' }).then(r => r.json()));
-      const value = await fn('/api/records/impressions?limit=50');
+      const plain = p => fetch(p, { cache: 'no-store' }).then(r => r.json());
+      let value;
+      try { value = await (apiFn || plain)('/api/records/impressions?limit=50'); }
+      catch (inner) {
+        // 记录用的 api() 带 CSRF 头，印记是只读接口，失败就退回普通 fetch
+        value = await plain('/api/records/impressions?limit=50');
+      }
       render(value && value.data);
       if (value && value.errors && value.errors.length && err) {
         err.hidden = false; err.textContent = '有一点没读到：' + value.errors.join('；');
@@ -146,6 +158,21 @@
     } finally { busy = false; }
   }
 
+  function bindRangeCtrl(api) {
+    if (api) apiFn = api;
+    document.querySelectorAll('[data-imp-range]').forEach(btn => {
+      btn.onclick = () => {
+        const r = btn.dataset.impRange;
+        document.querySelectorAll('[data-imp-range]').forEach(b => {
+          const on = b.dataset.impRange === r;
+          b.setAttribute('aria-pressed', String(on));
+          b.classList.toggle('active', on);
+        });
+        state.range = r; loaded = true; load();
+      };
+    });
+  }
+
   window.ZiweiImpressions = {
     show(on, api) {
       if (api) apiFn = api;
@@ -153,9 +180,31 @@
       // style.css 里 [hidden]{display:none!important}，光靠 class 显示不出来，必须摘掉 hidden
       if (page) page.hidden = !on;
       if (!on) return;
-      if (!loaded) { loaded = true; load(); }
+      bindRangeCtrl(api);
+      // 每次显示都重新拉一次；容器若还没就位，延到下一帧再试
+      if (!document.getElementById('impressionsRail')) { loaded = false; return; }
+      loaded = true; setTimeout(load, 0);
+    },
+    bindRange(api) {
+      if (api) apiFn = api;
+      document.querySelectorAll('[data-imp-range]').forEach(btn => {
+        btn.onclick = () => {
+          const r = btn.dataset.impRange;
+          document.querySelectorAll('[data-imp-range]').forEach(b => {
+            const on = b.dataset.impRange === r;
+            b.setAttribute('aria-pressed', String(on));
+            b.classList.toggle('active', on);
+          });
+          state.range = r; loaded = true; load();
+        };
+      });
     },
     reload() { loaded = true; load(); },
+    setRange(range, api) {
+      state.range = range === 'all' ? 'all' : 'week';
+      if (api) apiFn = api;
+      if (!loaded) { loaded = true; load(); } else { load(); }
+    },
     _render: render,
   };
 })();

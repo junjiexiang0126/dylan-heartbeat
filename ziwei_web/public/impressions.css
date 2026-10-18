@@ -160,3 +160,10 @@ body.impressions-open .record-page-header h1::after{ content: '' }
   color: var(--accent); border-radius: 12px; padding: 8px 14px; font-size: 12px; margin-right: 8px }
 #impressionsDetail .imp-detail-close{ border: 0; background: transparent; color: var(--muted); font-size: 11px; padding: 8px 4px }
 #impressionsPage .imp-card[data-detail]:active{ transform: scale(.995) }
+
+/* 时间范围切换（语 2026-10-18：印记要能按日期查） */
+#impressionsPage .imp-range{ display:flex; gap:8px; margin:2px 0 12px }
+#impressionsPage .imp-range .text-button{ font-size:11px; padding:5px 12px; border-radius:14px;
+  border:1px solid var(--border); background:var(--input); color:var(--muted); letter-spacing:.04em }
+#impressionsPage .imp-range .text-button.active{ color:var(--ink); border-color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 14%, transparent) }
