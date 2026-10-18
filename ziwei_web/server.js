@@ -223,6 +223,7 @@ const server=http.createServer(async(req,res)=>{try{
 } catch(e) { if(!res.headersSent)json(res,e.message==='body_too_large'?413:400,{error:e.message==='body_too_large'?'body_too_large':'bad_request'}); }});
 server.requestTimeout=15000;server.headersTimeout=10000;
 server.listen(PORT,SECURE?'0.0.0.0':'127.0.0.1',()=>{
+ if(process.env.ZIWEI_HERMES_PRIVATE_PROBE_HOST!==undefined)void require('./hermes_private_probe').probePrivateTransport().then(value=>console.log('WEB_PRIVATE_TRANSPORT_PROBE '+JSON.stringify(value))).catch(()=>console.log('WEB_PRIVATE_TRANSPORT_PROBE '+JSON.stringify({verified:false,modelCalls:0})));
  if(process.env.ZIWEI_WEB_VERIFY==='phase12-v1')void require('./scripts/verify_voice_output').run();
  if(process.env.ZIWEI_VOICE_ACCEPTANCE==='voice-427-v1')require('./scripts/live_voice_acceptance').run().catch(e=>console.log('VOICE_ACCEPTANCE '+JSON.stringify({passed:false,error:/^acceptance_[a-z0-9_]+$/.test(e.message)?e.message:'acceptance_failed'})));
 });
