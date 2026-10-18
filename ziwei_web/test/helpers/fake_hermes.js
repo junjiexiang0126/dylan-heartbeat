@@ -1,7 +1,7 @@
 'use strict';
 // Protocol fixture only: never considered evidence of a live Agent reply.
 const http=require('node:http'),crypto=require('node:crypto');
-function fakeHermes({delay=500,loseAdmission=false,interim=true,approval=false,media=null,presence=null,history=[],output='协议测试回复'}={}){
+function fakeHermes({delay=500,loseAdmission=false,interim=true,approval=false,media=null,presence=null,history=[],pokes=[],records=null,output='协议测试回复'}={}){
  const runs=new Map(),keys=new Map(),seen=[];let executions=0;
  const server=http.createServer(async(req,res)=>{
   seen.push({url:req.url,method:req.method,authorization:req.headers.authorization,sessionKey:req.headers['x-hermes-session-key']});
@@ -9,8 +9,10 @@ function fakeHermes({delay=500,loseAdmission=false,interim=true,approval=false,m
   if(req.headers.authorization!=='Bearer protocol-fixture-key')return json(401,{error:'unauthorized'});
   if(req.url==='/v1/capabilities')return json(200,{features:{runs_idempotency:{durable:true,retention_seconds:86400},run_events_sse:true}});
   if(req.url==='/api/sessions'&&req.method==='POST')return json(201,{object:'hermes.session'});
-  if(req.url.startsWith('/api/sessions?'))return json(200,{data:history,has_more:false});
-  const hm=/^\/api\/sessions\/([^/]+)\/messages/.exec(req.url);if(hm){const session=history.find(s=>s.id===decodeURIComponent(hm[1]));return json(200,{data:session?.messages||[]});}
+  if(['/ziwei/web/memory','/ziwei/web/logs','/ziwei/web/diary'].includes(new URL(req.url,'http://localhost').pathname)){if(req.method!=='GET')return json(405,{error:'read_only'});const url=new URL(req.url,'http://localhost'),nativeKind=url.pathname.split('/').at(-1),kind=nativeKind==='logs'?'work':nativeKind,value=typeof records==='function'?records(kind,url):records?.[kind];if(!value)return json(503,{error:'unavailable'});if(value.status)return json(value.status,value.body);return json(200,value);}
+  if(req.url.startsWith('/api/sessions?')){const u=new URL(req.url,'http://localhost'),offset=Number(u.searchParams.get('offset')||0),limit=Number(u.searchParams.get('limit')||200);return json(200,{data:history.slice(offset,offset+limit).map(s=>({id:s.id,message_count:s.messages?.length||0,last_active:s.messages?.at(-1)?.timestamp||0})),has_more:history.length>offset+limit});}
+  const hm=/^\/api\/sessions\/([^/]+)\/messages/.exec(req.url);if(hm){const session=history.find(s=>s.id===decodeURIComponent(hm[1])),u=new URL(req.url,'http://localhost'),offset=Number(u.searchParams.get('offset')||0),limit=Number(u.searchParams.get('limit')||500),rows=session?.messages||[];return json(200,{data:u.searchParams.get('order')==='latest'?rows.slice(Math.max(0,rows.length-offset-limit),rows.length-offset):rows.slice(offset,offset+limit)});}
+  if(req.url.startsWith('/ziwei/web/pokes'))return json(200,{data:pokes,next_cursor:null,has_more:false});
   if(req.url==='/ziwei/web/state')return json(200,presence||{state:null,source:null,updatedAt:null,stale:true});
   if(req.url.startsWith('/api/sessions/')&&req.method==='GET')return json(200,{session:{id:req.url.slice('/api/sessions/'.length)}});
   if(req.url==='/v1/runs'&&req.method==='POST'){

@@ -37,7 +37,7 @@ function createChatService(dir,{authorized=()=>true}={}){
   const job=(async()=>{
    const ids=[],issues=[];let expected=false;
    try{
-    const reply=store.message('reply-'+r.id);expected=!!reply&&(/MEDIA:|\/workspace\/outbox\//.test(reply.content));
+    const reply=store.message('reply-'+r.id);expected=!!reply&&(/MEDIA:|\/workspace\/outbox\//.test(reply.content.replace(/\\r\\n|\\n/g,'\n')));
     const result=await client.json('/ziwei/web/runs/'+r.run_id+'/media');
     if(!Array.isArray(result.data)||result.data.length>6)throw Error('media_manifest_invalid');
     for(const issue of result.errors||[])issues.push(typeof issue.code==='string'?issue.code:'media_unavailable');
@@ -79,7 +79,7 @@ function createChatService(dir,{authorized=()=>true}={}){
     else if(/^run\.(completed|failed|cancelled|interrupted)$/.test(event||'')){terminal=finish(r.id,{...data,status:event.slice(4)});}
     else if(event==='approval.request'){approvalRecord(r.id,data);store.event(r.id,'request.notice',{text:'知微正在等待你的批准。'});}
     else if(event==='approval.responded'){store.db.prepare('DELETE FROM meta WHERE key=?').run('approval:'+r.id);store.event(r.id,'approval.resolved',{});}
-    else if(/^tool\.(started|completed|failed)$/.test(event||''))store.event(r.id,'request.notice',{text:event==='tool.started'?'知微正在处理这条消息。':'知微已更新处理进度。'});
+    else if(/^tool\.(started|completed|failed)$/.test(event||'')){store.toolAction(r.id,data.seq,event,data);store.event(r.id,'request.notice',{text:event==='tool.started'?'知微正在处理这条消息。':'知微已更新处理进度。'});}
    });
   });
   for await(const c of upstream.body){bytes+=c.length;if(bytes>16*1024*1024)throw Error('stream_limit');parser.feed(c);if(terminal)break;}
@@ -108,15 +108,23 @@ function createChatService(dir,{authorized=()=>true}={}){
    }
   }finally{working=false;}
  }
- const historyTimer=setInterval(()=>{if(!closing&&client.configured())void history.sync();},60000);historyTimer.unref();timers.add(historyTimer);
+ let pokeSyncing=false,pokeSyncError=null;
+ async function syncPokes(){if(pokeSyncing||closing||!client.configured())return;pokeSyncing=true;try{let cursor=store.db.prepare("SELECT value FROM meta WHERE key='poke_cursor'").get()?.value||null;for(let page=0;page<5;page++){const o=await client.json('/ziwei/web/pokes'+(cursor?'?cursor='+encodeURIComponent(cursor):''));if(!Array.isArray(o.data)||o.data.length>100)throw Error('poke_manifest_invalid');if(closing)return;let changes=0;for(const p of o.data){if(!uuid(p.id)||p.author!=='ziwei'||p.target!=='user'||!Number.isFinite(Date.parse(p.at)))throw Error('poke_manifest_invalid');changes+=Number(store.db.prepare("INSERT OR IGNORE INTO messages(id,role,kind,content,created_at,status) VALUES(?,'assistant','poke','知微拍了拍你',?,'recorded')").run('poke-native-'+p.id,p.at).changes);} if(changes)store.event(null,'timeline.changed',{});pokeSyncError=null;if(!o.next_cursor)break;cursor=o.next_cursor;store.db.prepare("INSERT INTO meta VALUES('poke_cursor',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(cursor);}}catch{pokeSyncError='poke_sync_unavailable';}finally{pokeSyncing=false;}}
+ const pokeTimer=setInterval(()=>{void syncPokes();},15000);pokeTimer.unref();timers.add(pokeTimer);queueMicrotask(()=>{void syncPokes();});
+ const historyTimer=setInterval(()=>{if(!closing&&client.configured())void history.sync();},300000);historyTimer.unref();timers.add(historyTimer);
  const recoveryTimer=setInterval(()=>work().catch(()=>{}),10000);recoveryTimer.unref();timers.add(recoveryTimer);
  function status(){return client.configured();}
  async function proxy(req,res,pathname,url){
   if(!pathname.startsWith('/api/chat/'))return json(res,404,{error:'route_not_allowed'});
   try{
+   if(pathname==='/api/chat/poke'&&req.method==='POST'){
+    const b=await body(req);if(Object.keys(b).some(k=>!['id','target'].includes(k))||!uuid(b.id)||!['user','ziwei'].includes(b.target))throw Error('invalid_poke');b.id=b.id.toLowerCase();
+    const result=store.transaction(()=>{const old=store.db.prepare('SELECT * FROM pokes WHERE id=?').get(b.id);if(old){if(old.target!==b.target)throw Error('request_conflict');return {replayed:true};}const last=store.db.prepare('SELECT max(created_at) at FROM pokes').get();if(last.at&&Date.now()-last.at<3000)throw Error('poke_cooldown');
+     const message=b.target==='ziwei'?'你拍了拍知微':'你拍了拍自己';store.addRequest(b.id,{message:'这是一条轻量拍一拍事件：'+message+'。你可以自行决定是否回应，也可用 ziwei_poke 自愿回拍；不需要每次都回复，不要仅用文字冒充工具已回拍。',attachments:[],quote:null});store.db.prepare('DELETE FROM messages WHERE id=?').run('user-'+b.id);store.db.prepare('INSERT INTO pokes VALUES(?,?,?)').run(b.id,b.target,Date.now());store.db.prepare("INSERT INTO messages(id,request_id,role,kind,content,created_at,status) VALUES(?,?,'user','poke',?,?,'recorded')").run('poke-'+b.id,b.id,message,new Date().toISOString());store.event(null,'timeline.changed',{});return {replayed:false};});json(res,200,{...result,notified:client.configured()});void work();return;
+   }
    if(pathname==='/api/chat/status'&&req.method==='GET'){
     if(client.configured()&&Date.now()-lastCheck>30000){if(!checking)checking=client.check().then(()=>{connected=true;lastError=null;}).catch(()=>{connected=false;lastError='hermes_connection_failed';}).finally(()=>{lastCheck=Date.now();checking=null;});await checking;}
-    return json(res,200,{configured:client.configured(),connected,lastError,voiceConfigured:voice.available(),presence:await presence(),session:client.configured()?client.session:null,attachmentLimit:20*1024*1024});
+    return json(res,200,{configured:client.configured(),connected,lastError,voiceConfigured:voice.available(),presence:await presence(),session:client.configured()?client.session:null,pokeSync:{ready:!pokeSyncError,lastError:pokeSyncError},attachmentLimit:20*1024*1024});
    }
    if(pathname==='/api/chat/history/sync'&&req.method==='POST'){await body(req);return json(res,202,await history.sync());}
    if(pathname==='/api/chat/history'&&req.method==='GET')return json(res,200,history.status());
@@ -144,7 +152,7 @@ function createChatService(dir,{authorized=()=>true}={}){
     const limit=Number(url.searchParams.get('limit')||50),before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER),q=url.searchParams.get('q')||'',source=url.searchParams.get('source')||'live';
     if(!Number.isSafeInteger(limit)||limit<1||limit>100||!Number.isSafeInteger(before)||before<1||q.length>200||!['live','archive'].includes(source))throw Error('invalid_pagination');
     const data=store.list({limit,before,q,source,favorite:url.searchParams.get('favorite')==='true',trash:url.searchParams.get('trash')==='true'});
-    return json(res,200,{data,before:data[0]?.seq||null,hasMore:data.length===limit});
+    return json(res,200,{data,before:data[0]?.seq||null,hasMore:data.length===limit,requests:store.db.prepare("SELECT id,state FROM requests WHERE state NOT IN ('completed','failed','cancelled','interrupted') ORDER BY seq").all(),eventCursor:store.db.prepare('SELECT coalesce(max(seq),0) seq FROM events').get().seq});
    }
    const requestIdMatch=/^\/api\/chat\/requests\/([a-f0-9-]{36})$/.exec(pathname);if(requestIdMatch&&req.method==='GET'){const r=store.request(requestIdMatch[1]);if(!r)return json(res,404,{error:'request_not_found'});return json(res,200,{requestId:r.id,state:r.state,error:r.error});}
    if(pathname==='/api/chat/requests'&&req.method==='GET')return json(res,200,{data:store.db.prepare("SELECT id,state,run_id,error,created_at FROM requests WHERE state NOT IN ('completed','failed','cancelled','interrupted') ORDER BY seq").all()});
@@ -159,8 +167,8 @@ function createChatService(dir,{authorized=()=>true}={}){
     json(res,result.replayed?200:202,{requestId:b.requestId,state:result.request.state,replayed:result.replayed});void work();return;
    }
    if(pathname==='/api/chat/events'&&req.method==='GET'){
-    let after=Number(req.headers['last-event-id']||url.searchParams.get('after')||0);if(!Number.isSafeInteger(after)||after<0)throw Error('invalid_event_cursor');
-    res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'});res.write(': connected\n\n');let ticks=0;
+    const supplied=req.headers['last-event-id']||url.searchParams.get('after');let after=Number(supplied||(url.searchParams.get('tail')==='true'?store.db.prepare('SELECT coalesce(max(seq),0) seq FROM events').get().seq:0));if(!Number.isSafeInteger(after)||after<0)throw Error('invalid_event_cursor');
+    res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'});res.write('id: '+after+'\nevent: cursor\ndata: {}\n\n');let ticks=0;
     const timer=setInterval(()=>{
      if(!authorized(req)){res.end();return;}
      for(const e of store.events(after)){after=e.seq;if(!res.write('id: '+e.seq+'\nevent: '+e.kind+'\ndata: '+JSON.stringify({requestId:e.request_id,...e.data})+'\n\n')){res.end();return;}}

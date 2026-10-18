@@ -79,7 +79,7 @@ function createMomentsService(dir,{client,now=()=>Date.now(),random=Math.random,
  async function proxy(req,res,pathname,url){
   try{
    if(pathname==='/api/moments'&&req.method==='GET'){
-    const before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER),limit=Number(url.searchParams.get('limit')||20);if(!Number.isSafeInteger(before)||before<1||!Number.isSafeInteger(limit)||limit<1||limit>50)throw Error('invalid_pagination');return json(res,200,{...store.feed({before,limit}),sync:status(),approvals:approvals()});
+    const postId=url.searchParams.get('post')||null;if(postId&&!uuid(postId))throw Error('invalid_post');const author=url.searchParams.get('author')||null;if(author&&!['user','ziwei'].includes(author))throw Error('invalid_author');const before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER),limit=Number(url.searchParams.get('limit')||20);if(!Number.isSafeInteger(before)||before<1||!Number.isSafeInteger(limit)||limit<1||limit>50)throw Error('invalid_pagination');return json(res,200,{...store.feed({before,limit,author,postId}),cover:store.meta('cover:user')||null,sync:status(),approvals:approvals()});
    }
    if(pathname==='/api/moments'&&req.method==='POST'){const result=store.create(await body(req));json(res,result.replayed?200:201,result);void work();return;}
    if(pathname==='/api/moments/approval'&&req.method==='POST'){
@@ -87,6 +87,9 @@ function createMomentsService(dir,{client,now=()=>Date.now(),random=Math.random,
     const current=await client.status(j.run_id);if(current.status!=='waiting_for_approval'||current.approval?.request_id!==b.approvalId)return json(res,409,{error:'approval_expired'});
     const result=await client.json('/v1/runs/'+j.run_id+'/approval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request_id:b.approvalId,choice:b.choice})});if(!result.resolved)return json(res,409,{error:'approval_expired'});store.updateJob(j.id,'running');json(res,200,{ok:true});void work();return;
    }
+   if(pathname==='/api/moments/notifications'&&req.method==='GET')return json(res,200,store.notifications());
+   if(pathname==='/api/moments/notifications/read'&&req.method==='POST'){const b=await body(req);keys(b,['through']);store.seen(b.through);return json(res,200,store.notifications());}
+   if(pathname==='/api/moments/cover'&&req.method==='POST'){const b=await body(req);keys(b,['image']);if(b.image!==null)store.imageIDs([b.image]);store.meta('cover:user',b.image||'');return json(res,200,{ok:true});}
    if(pathname==='/api/moments/status'&&req.method==='GET')return json(res,200,status());
    if(pathname==='/api/moments/sync'&&req.method==='POST'){keys(await body(req),[]);const result=await sync();void work();return json(res,200,{...result,...status()});}
    if(pathname==='/api/moments/images'&&req.method==='POST')return json(res,201,await files.upload(req));

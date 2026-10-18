@@ -1,0 +1,171 @@
+/* Shared design values. Change these defaults, or override a component token. */
+:root {
+  --ui-spacing-scale: 1;
+  --ui-font-scale: 1;
+  --ui-radius-scale: 1;
+  --ui-radius-round: 50%;
+  --ui-decoration-font: Georgia;
+  --ui-weight-medium: 500;
+  --ui-weight-semibold: 600;
+  --records-preview-lines: 5;
+  --records-preview-height: 11em;
+  --workbench-dialog-radius: var(--ui-radius-26);
+  --moments-overlay-start: #0002;
+  --moments-overlay-end: #0003;
+  --records-reading-font: "Songti SC",serif;
+  /* space scale */
+  --ui-space-2: calc(2px * var(--ui-spacing-scale));
+  --ui-space-3: calc(3px * var(--ui-spacing-scale));
+  --ui-space-4: calc(4px * var(--ui-spacing-scale));
+  --ui-space-5: calc(5px * var(--ui-spacing-scale));
+  --ui-space-6: calc(6px * var(--ui-spacing-scale));
+  --ui-space-7: calc(7px * var(--ui-spacing-scale));
+  --ui-space-8: calc(8px * var(--ui-spacing-scale));
+  --ui-space-9: calc(9px * var(--ui-spacing-scale));
+  --ui-space-10: calc(10px * var(--ui-spacing-scale));
+  --ui-space-12: calc(12px * var(--ui-spacing-scale));
+  --ui-space-13: calc(13px * var(--ui-spacing-scale));
+  --ui-space-14: calc(14px * var(--ui-spacing-scale));
+  --ui-space-15: calc(15px * var(--ui-spacing-scale));
+  --ui-space-16: calc(16px * var(--ui-spacing-scale));
+  --ui-space-17: calc(17px * var(--ui-spacing-scale));
+  --ui-space-18: calc(18px * var(--ui-spacing-scale));
+  --ui-space-20: calc(20px * var(--ui-spacing-scale));
+  --ui-space-21: calc(21px * var(--ui-spacing-scale));
+  --ui-space-22: calc(22px * var(--ui-spacing-scale));
+  --ui-space-23: calc(23px * var(--ui-spacing-scale));
+  --ui-space-24: calc(24px * var(--ui-spacing-scale));
+  --ui-space-25: calc(25px * var(--ui-spacing-scale));
+  --ui-space-26: calc(26px * var(--ui-spacing-scale));
+  --ui-space-28: calc(28px * var(--ui-spacing-scale));
+  --ui-space-37: calc(37px * var(--ui-spacing-scale));
+  --ui-space-45: calc(45px * var(--ui-spacing-scale));
+  --ui-space-55: calc(55px * var(--ui-spacing-scale));
+  --ui-space-58: calc(58px * var(--ui-spacing-scale));
+  --ui-space-95: calc(95px * var(--ui-spacing-scale));
+  --ui-space-100: calc(100px * var(--ui-spacing-scale));
+  --ui-space-145: calc(145px * var(--ui-spacing-scale));
+  /* font scale */
+  --ui-font-9: calc(9px * var(--ui-font-scale));
+  --ui-font-10: calc(10px * var(--ui-font-scale));
+  --ui-font-11: calc(11px * var(--ui-font-scale));
+  --ui-font-12: calc(12px * var(--ui-font-scale));
+  --ui-font-13: calc(13px * var(--ui-font-scale));
+  --ui-font-14: calc(14px * var(--ui-font-scale));
+  --ui-font-15: calc(15px * var(--ui-font-scale));
+  --ui-font-16: calc(16px * var(--ui-font-scale));
+  --ui-font-17: calc(17px * var(--ui-font-scale));
+  --ui-font-18: calc(18px * var(--ui-font-scale));
+  --ui-font-19: calc(19px * var(--ui-font-scale));
+  --ui-font-20: calc(20px * var(--ui-font-scale));
+  --ui-font-25: calc(25px * var(--ui-font-scale));
+  --ui-font-32: calc(32px * var(--ui-font-scale));
+  --ui-font-90: calc(90px * var(--ui-font-scale));
+  /* radius scale */
+  --ui-radius-3: calc(3px * var(--ui-radius-scale));
+  --ui-radius-5: calc(5px * var(--ui-radius-scale));
+  --ui-radius-7: calc(7px * var(--ui-radius-scale));
+  --ui-radius-9: calc(9px * var(--ui-radius-scale));
+  --ui-radius-10: calc(10px * var(--ui-radius-scale));
+  --ui-radius-12: calc(12px * var(--ui-radius-scale));
+  --ui-radius-14: calc(14px * var(--ui-radius-scale));
+  --ui-radius-16: calc(16px * var(--ui-radius-scale));
+  --ui-radius-18: calc(18px * var(--ui-radius-scale));
+  --ui-radius-24: calc(24px * var(--ui-radius-scale));
+  --ui-radius-26: calc(26px * var(--ui-radius-scale));
+  /* size scale */
+  --ui-size-1: 1px;
+  --ui-size-3: 3px;
+  --ui-size-5: 5px;
+  --ui-size-8: 8px;
+  --ui-size-18: 18px;
+  --ui-size-20: 20px;
+  --ui-size-22: 22px;
+  --ui-size-25: 25px;
+  --ui-size-34: 34px;
+  --ui-size-40: 40px;
+  --ui-size-64: 64px;
+  --ui-size-80: 80px;
+  --ui-size-125: 125px;
+  --ui-size-135: 135px;
+  --ui-size-145: 145px;
+  --ui-size-150: 150px;
+  --ui-size-174: 174px;
+  --ui-size-230: 230px;
+  --ui-size-290: 290px;
+  --ui-size-390: 390px;
+  --ui-size-690: 690px;
+  --ui-leading-1_9: 1.9;
+  --ui-leading-1_8: 1.8;
+  --ui-leading-2_05: 2.05;
+  --ui-leading-2_15: 2.15;
+  --ui-leading-1_6: 1.6;
+  --ui-leading-1_5: 1.5;
+  --ui-leading-1_85: 1.85;
+  --ui-leading-1_7: 1.7;
+  --ui-tracking-_08: .08em;
+  --ui-tracking-_015: .015em;
+  --ui-tracking-_04: .04em;
+  --ui-on-dark: #fff;
+  --moments-cover-glow: #fff2d4aa;
+  --moments-cover-start: #d6bdc9;
+  --moments-cover-middle: #b88da4;
+  --moments-cover-end: #897b94;
+  --moments-cover-decoration: #ffffff3d;
+  --moments-publish-border: #ffffff88;
+  --moments-publish-fill: #ffffff22;
+  --moments-name-color: #77658e;
+  --moments-name-dark: #d4bfe5;
+  --moments-remove-fill: #0009;
+  --moments-viewer-fill: #151018;
+  --moments-viewer-muted: #ddd;
+  --interaction-dot-color: #e74858;
+  --interaction-toast-shadow-color: #0002;
+
+  --memory-entry-gap: var(--ui-space-12);
+  --memory-entry-height: 202px;
+  --memory-entry-padding: var(--ui-space-18);
+  --memory-entry-radius: var(--ui-radius-24);
+  --memory-entry-icon-size: var(--ui-size-40);
+  --memory-entry-icon-radius: var(--ui-radius-12);
+  --memory-entry-glyph-size: var(--ui-size-22);
+  --memory-entry-stroke: 1.4;
+  --memory-entry-meta-size: var(--ui-font-10);
+  --memory-entry-title-size: var(--ui-font-18);
+  --memory-entry-description-size: var(--ui-font-12);
+  --memory-entry-fill: linear-gradient(var(--glass),var(--input));
+
+  /* Component controls: these may also be overridden on #logs/#memory/#moments. */
+  --records-card-padding-block: var(--ui-space-26);
+  --records-card-padding-inline: var(--ui-space-28);
+  --records-card-radius: var(--ui-radius-26);
+  --records-card-gap: var(--ui-space-20);
+  --records-title-size: var(--ui-font-19);
+  --records-body-size: var(--ui-font-15);
+  --records-diary-size: var(--ui-font-17);
+  --records-memory-size: var(--ui-font-14);
+  --records-filter-width: var(--ui-size-145);
+  --moments-cover-radius: var(--ui-radius-24);
+  --moments-cover-height: var(--ui-size-174);
+  --moments-avatar-size: var(--ui-size-40);
+  --moments-body-size: var(--ui-font-14);
+  --moments-cover-background: radial-gradient(ellipse at 85% 12%,var(--moments-cover-glow),transparent 50%),linear-gradient(130deg,var(--moments-cover-start),var(--moments-cover-middle) 64%,var(--moments-cover-end));
+  --moments-image-overlay: linear-gradient(180deg,var(--moments-overlay-start),var(--moments-overlay-end));
+  --moments-arrive-duration: .2s;
+  --interaction-dot-size: var(--ui-size-8);
+  --interaction-poke-duration: .45s;
+  --interaction-toast-shadow: 0 var(--ui-size-5) var(--ui-size-22) var(--interaction-toast-shadow-color);
+  --workbench-text-size: var(--ui-font-11);
+  --workbench-heading-size: var(--ui-font-15);
+}
+/* Media conditions stay literal: CSS custom properties cannot be used there. */
+@media (max-width:550px) {
+  :root {
+    --records-card-padding-block: var(--ui-space-23);
+    --records-card-padding-inline: var(--ui-space-22);
+    --records-title-size: var(--ui-font-18);
+    --records-diary-size: var(--ui-font-16);
+    --records-filter-width: var(--ui-size-125);
+  }
+}
+@media (max-width:360px) { :root { --moments-avatar-size: var(--ui-size-34); } }

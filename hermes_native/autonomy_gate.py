@@ -56,13 +56,22 @@ def evaluate(home: Path, now: datetime) -> dict:
     active = [t for t in tasks if t["status"] in ACTIVE]
     diary = workspace / "diary" / (date + ".md")
     diary_due = not (diary.is_file() and not diary.is_symlink() and diary.stat().st_size > 0)
-    if not active and not diary_due:
-        return {"wakeAgent": False, "reason": "idle; no active task and diary already present"}
+    # An idle opportunity is still an opportunity: the agent chooses among the
+    # actions below instead of the gate deciding that nothing may happen. The
+    # six daily opportunities, the failure pause, the evidence checks and the
+    # lock all still apply, and the counter is never reset here.
+    idle = not active and not diary_due
     state["wakes"] += 1
     state["last_opportunity"] = now.isoformat()
     atomic_json(state_path, state)
     return {"wakeAgent": True, "time": now.isoformat(), "tasks": active,
-            "diary_due": diary_due, "opportunity": state["wakes"],
+            "diary_due": diary_due, "idle": idle, "opportunity": state["wakes"],
+            "available_actions": ["contact_user", "rest", "self_directed_task",
+                                  "publish_moment", "write_diary"],
+            "choice": "chosen for this actual moment; doing nothing is allowed",
+            "moment_daily_post_limit": 2,
+            "write_long_term_memory": False,
+            "diary": "optional short entry; never copy the whole Moments store",
             "note": "File presence is evidence of a saved artifact, not proof of external success."}
 
 
