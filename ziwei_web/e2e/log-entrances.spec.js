@@ -21,7 +21,7 @@ test('shared diary uses native title, and log card tokens work at mobile widths 
  await open(page);await page.locator('[data-log-kind=diary]').click();await expect(page.locator('.diary-card .record-title')).toHaveText('窗边的小标题');
  await page.locator('#logs').evaluate(node=>{node.style.setProperty('--log-entry-radius','9px');node.style.setProperty('--log-entry-title-size','21px');node.style.setProperty('--log-entry-padding','17px');node.style.setProperty('--log-entry-accent','rgb(12, 65, 98)');});
  for(const theme of ['light','dark']){await page.evaluate(value=>document.documentElement.dataset.theme=value,theme);for(const width of [320,390,900]){await page.setViewportSize({width,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect(page.locator('.log-entry').first()).toHaveCSS('border-top-left-radius','9px');await expect(page.locator('.log-entry strong').first()).toHaveCSS('font-size','21px');await expect(page.locator('.log-entry').first()).toHaveCSS('padding-left','17px');await expect(page.locator('.log-entry-label').first()).toHaveCSS('color','rgb(12, 65, 98)');}}
- await expect(page.locator('nav [data-tab]')).toHaveCount(5);
+ await expect(page.locator('nav [data-tab]')).toHaveCount(6);
 });
 
 test('diary weather and mood use saved fields, missing values stay explicit, and text is never executed',async({page})=>{

@@ -197,7 +197,7 @@ function createChatService(dir,{authorized=()=>true}={}){
   }catch(e){if(res.headersSent)return res.destroy();const code=e.message;return json(res,['request_conflict','queue_full','speech_busy','hermes_http_409'].includes(code)?409:code.includes('not_found')?404:['attachment_too_large','attachment_quota','body_too_large'].includes(code)?413:400,{error:/^[a-z_]+$/.test(code)?code:'invalid_request'});}
  }
  function close(){closing=true;history.close();for(const t of timers)clearInterval(t);store.close();}
- queueMicrotask(()=>{void work().catch(()=>{});if(process.env.NODE_ENV==='production'&&client.configured()){void history.sync();void client.check().then(async()=>console.log('WEB_INTEGRATION_READY '+JSON.stringify({transport:true,stateEndpoint:!!(await presence()).available,voice:voice.available()}))).catch(()=>console.log('WEB_INTEGRATION_READY '+JSON.stringify({transport:false})));}});
+ queueMicrotask(()=>{void work().catch(()=>{});if(process.env.NODE_ENV==='production'&&client.configured()){void history.sync();void client.check().then(async()=>console.log('WEB_INTEGRATION_READY '+JSON.stringify({transport:true,network:process.env.ZIWEI_HERMES_PRIVATE_HOST!==undefined?'railway-private':'https',upstream:new URL(client.endpoint).host,stateEndpoint:!!(await presence()).available,voice:voice.available()}))).catch(()=>console.log('WEB_INTEGRATION_READY '+JSON.stringify({transport:false})));}});
  return {proxy,status,close,store,presence};
 }
 module.exports={createChatService};

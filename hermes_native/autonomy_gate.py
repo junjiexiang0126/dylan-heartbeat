@@ -11,7 +11,9 @@ from datetime import datetime
 from pathlib import Path
 
 ACTIVE = {"pending", "in_progress"}
-STATES = ACTIVE | {"completed", "failed", "waiting_user", "deferred"}
+# Native kanban also uses waiting_front for work blocked on the Web frontend.
+# Recognize it as a waiting state, without treating it as runnable work.
+STATES = ACTIVE | {"completed", "failed", "waiting_user", "waiting_front", "deferred"}
 
 
 def evaluate(home: Path, now: datetime) -> dict:
@@ -21,7 +23,7 @@ def evaluate(home: Path, now: datetime) -> dict:
     jobs_path = home / "cron" / "jobs.json"
     # Bad/missing task documents fail closed instead of triggering paid repairs.
     tasks = json.loads(tasks_path.read_text())
-    if not isinstance(tasks, list) or any(t.get("status") not in STATES for t in tasks):
+    if not isinstance(tasks, list) or any(not isinstance(t, dict) or t.get("status") not in STATES for t in tasks):
         raise ValueError("Invalid task state document")
     if jobs_path.exists():
         jobs = json.loads(jobs_path.read_text())
@@ -90,15 +92,18 @@ def atomic_json(path: Path, data):
 
 def main():
     home = None
+    now = datetime.now().astimezone()
     try:
         home = Path(os.environ["HERMES_HOME"])
         with (home / ".autonomy-gate.lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
-            result = evaluate(home, datetime.now().astimezone())
+            result = evaluate(home, now)
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
         # Hermes treats a nonzero script exit as prompt context and may still
         # invoke the model. Always return a successful wakeAgent=false gate.
         result = {"wakeAgent": False, "reason": "preflight invalid; operator review needed", "error_type": type(exc).__name__}
+    # Every refusal needs a timestamp too; do not log exception messages or data.
+    result.setdefault("time", now.isoformat())
     try:
         with (home / "logs" / "autonomy_preflight.jsonl").open("a") as log:
             log.write(json.dumps(result, ensure_ascii=False) + "\n")

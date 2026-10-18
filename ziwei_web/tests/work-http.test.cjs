@@ -1,0 +1,27 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),{spawn}=require('node:child_process'),http=require('node:http'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+test('real HTTP auth, CSRF, tool authorization, upload/download and durable Work history',async t=>{
+ const probe=http.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'work-http-')),origin='http://127.0.0.1:'+port;
+ const env={...process.env,NODE_ENV:'test',PORT:String(port),ZIWEI_WEB_DATA_DIR:dir,ZIWEI_WEB_ORIGIN:origin,ZIWEI_WEB_PASSWORD:'work-http-isolated-password',ZIWEI_BRIDGE_ENABLED:'false'};let child;
+ const start=async()=>{child=spawn(process.execPath,['server.js'],{cwd:path.join(__dirname,'..'),env,stdio:'ignore'});for(let i=0;i<100;i++){try{if((await fetch(origin+'/health')).ok)return;}catch{}await new Promise(r=>setTimeout(r,40));}throw Error('http startup failed');};
+ const stop=async()=>{if(child?.exitCode===null){child.kill();await new Promise(r=>child.once('exit',r));}};
+ t.after(async()=>{await stop();fs.rmSync(dir,{recursive:true,force:true});});await start();
+ assert.equal((await fetch(origin+'/api/work/messages')).status,401);
+ assert.equal((await fetch(origin+'/api/work/resume-review',{method:'POST',body:'{}'})).status,401);
+ assert.equal((await fetch(origin+'/api/work/repair-delivery',{method:'POST',body:'{}'})).status,401);
+ const login=await fetch(origin+'/api/login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({password:env.ZIWEI_WEB_PASSWORD})});const cookie=login.headers.get('set-cookie').split(';')[0],csrf=(await login.json()).csrf;
+ const headers={Cookie:cookie,Origin:origin,'X-Ziwei-CSRF':csrf,'Content-Type':'application/json'};
+ const post=(route,b)=>fetch(origin+route,{method:'POST',headers,body:JSON.stringify(b)});
+ assert.equal((await fetch(origin+'/api/work/action',{method:'POST',headers:{Cookie:cookie,Origin:origin},body:'{}'})).status,403);
+ assert.equal((await fetch(origin+'/api/work/resume-review',{method:'POST',headers:{Cookie:cookie,Origin:origin},body:'{}'})).status,403);
+ assert.equal((await fetch(origin+'/api/work/repair-delivery',{method:'POST',headers:{Cookie:cookie,Origin:origin},body:'{}'})).status,403);
+ assert.equal((await post('/api/work/send',{requestId:'denied',text:'生成文件',tool:'word'})).status,403);
+ assert.equal((await post('/api/work/tools/configure',{id:'word',revision:0,authorized:true,title:'课程'})).status,200);
+ const up=await fetch(origin+'/api/work/attachments',{method:'POST',headers:{...headers,'X-Filename':encodeURIComponent('课程.txt'),'Content-Type':'text/plain'},body:'中文资料'});assert.equal(up.status,201);const file=await up.json();
+ assert.equal((await fetch(origin+'/api/work/attachments/'+file.id)).status,401);
+ assert.equal(await (await fetch(origin+'/api/work/attachments/'+file.id,{headers})).text(),'中文资料');
+ await post('/api/work/action',{action:'poke',target:'ziwei'});await stop();await start();
+ const history=await fetch(origin+'/api/work/messages',{headers}).then(r=>r.json());assert.equal(history.data[0].text,'你拍了拍知微');assert.equal(history.tools.find(x=>x.id==='word').authorized,true);
+ assert.equal((await post('/api/work/send',{requestId:'notconfigured',text:'普通工作',tool:'auto'})).status,503);
+});

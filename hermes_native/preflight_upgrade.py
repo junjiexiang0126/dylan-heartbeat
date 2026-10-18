@@ -9,7 +9,8 @@ from pathlib import Path
 
 ROOT_UID = 0
 OLD_SHA = 'de3d8c5a784f2bf1bae8880e9991e99d49f4e4bbeb5145cfb1cfd4f551c6f6f1'
-NEW_SHA = '2cba28d19ce9b47bd1e6420112f9dff2c3cd5b211410b637e5252a7b312d96c9'
+PREVIOUS_SHA = '2cba28d19ce9b47bd1e6420112f9dff2c3cd5b211410b637e5252a7b312d96c9'
+NEW_SHA = '58d0b2fa916d866532a250fc566a99d121b0ea62f49344941a7c65eb73569340'
 
 
 def digest(data):
@@ -82,22 +83,22 @@ def upgrade(home: Path, source=Path('/opt/ziwei-native/autonomy_gate.py')):
         scripts = os.open('scripts', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=home_fd)
         old = read_regular(scripts, 'autonomy_gate.py')
         current = digest(old)
-        if current not in (OLD_SHA, NEW_SHA):
+        if current not in (OLD_SHA, PREVIOUS_SHA, NEW_SHA):
             raise RuntimeError('preflight_upgrade_unknown_previous_hash')
-        if current == OLD_SHA:
-            backup_name = 'autonomy_gate.before-' + OLD_SHA + '.py'
+        if current != NEW_SHA:
+            backup_name = 'autonomy_gate.before-' + current + '.py'
             try:
                 backup = read_regular(scripts, backup_name)
-                if digest(backup) != OLD_SHA:
+                if digest(backup) != current:
                     raise RuntimeError('preflight_upgrade_backup_conflict')
             except FileNotFoundError:
                 write_atomic(scripts, backup_name, old)
-            if digest(read_regular(scripts, 'autonomy_gate.py')) != OLD_SHA:
+            if digest(read_regular(scripts, 'autonomy_gate.py')) != current:
                 raise RuntimeError('preflight_upgrade_source_changed')
             write_atomic(scripts, 'autonomy_gate.py', new)
         if digest(read_regular(scripts, 'autonomy_gate.py')) != NEW_SHA:
             raise RuntimeError('preflight_upgrade_verification_failed')
-        receipt = {'state': 'already_current' if current == NEW_SHA else 'updated', 'old_sha256': OLD_SHA,
+        receipt = {'state': 'already_current' if current == NEW_SHA else 'updated', 'old_sha256': current,
                    'new_sha256': NEW_SHA, 'owner': 'root', 'mode': '0444'}
         write_atomic(scripts, 'autonomy_gate.upgrade-receipt.json', json.dumps(receipt).encode())
         print('PREFLIGHT_UPGRADE ' + json.dumps(receipt), flush=True)

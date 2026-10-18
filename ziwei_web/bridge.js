@@ -1,24 +1,25 @@
 'use strict';
 // Restricted, opt-in bridge. Never exposes an arbitrary upstream path or an API key.
 const {SSEParser}=require('./sse_parser');
+const {hermesEndpoint,hermesRoute}=require('./hermes_endpoint');
 const path=require('node:path');
 const {RequestLedger}=require('./request_ledger');
 const {classify}=require('./recovery');
 const ledger=new RequestLedger(process.env.ZIWEI_WEB_DATA_DIR||path.join(__dirname,'.data'));
 const SESSION_KEY='agent:main:web:yu';
 const enabled=process.env.ZIWEI_BRIDGE_ENABLED==='true';
-const base=process.env.ZIWEI_HERMES_URL||'';
+const base=hermesEndpoint(process.env);
 const secret=process.env.ZIWEI_HERMES_API_KEY||'';
 const sessionId=process.env.ZIWEI_HERMES_WEB_SESSION_ID||'';
 let sessionReady=false,creationPromise=null,streamBusy=false;
-function ready(){if(!enabled)return false;if(!base||!secret||!/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId))return false;try{const u=new URL(base);return (u.protocol==='https:'||process.env.ZIWEI_BRIDGE_ALLOW_HTTP_FOR_TESTS==='true'&&u.protocol==='http:')&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname==='/'}catch{return false}}
+function ready(){return !!(enabled&&base&&secret&&/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId));}
 function status(){return ready()}
 function jsonRecovery(res,data){res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data))}
 function err(res,status,code){res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({error:code}))}
 async function ensureSession(){
  if(sessionReady)return;
  if(!creationPromise)creationPromise=(async()=>{
-  const r=await fetch(new URL('/api/sessions',base),{method:'POST',headers:{Authorization:'Bearer '+secret,'X-Hermes-Session-Key':SESSION_KEY,'Content-Type':'application/json'},body:JSON.stringify({id:sessionId,source:'api_server',title:'网页对话'}),signal:AbortSignal.timeout(15000),redirect:'error'});
+  const r=await fetch(hermesRoute(base,'/api/sessions'),{method:'POST',headers:{Authorization:'Bearer '+secret,'X-Hermes-Session-Key':SESSION_KEY,'Content-Type':'application/json'},body:JSON.stringify({id:sessionId,source:'api_server',title:'网页对话'}),signal:AbortSignal.timeout(15000),redirect:'error'});
   if(r.status!==201&&r.status!==409)throw Error('session_create_failed');
   sessionReady=true;
  })().finally(()=>{creationPromise=null});

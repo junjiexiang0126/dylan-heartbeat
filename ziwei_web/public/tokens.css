@@ -237,7 +237,7 @@
  --ecg-opacity: .4;
 }
 
-#chat {
+:is(#chat,#work) {
  --chat-meta-scale: .74;
  --chat-bubble-block-scale: .75;
  --chat-bubble-inline-scale: 1.05;
@@ -303,7 +303,7 @@
  --paper-cream:#352b33;
  --paper-texture-opacity:.16;
 }
-#chat{--chat-bubble-block-scale:.85;--chat-bubble-inline-scale:1.1;--chat-bubble-radius-scale:1.6}
+:is(#chat,#work){--chat-bubble-block-scale:.85;--chat-bubble-inline-scale:1.1;--chat-bubble-radius-scale:1.6}
 @media(max-width:360px){:root{--paper-gap:var(--ui-space-12);--paper-calendar-font:var(--ui-font-11);--paper-day-size:var(--ui-size-22)}}
 
 :root{

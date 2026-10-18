@@ -1,0 +1,194 @@
+[
+  {
+    "file": "flower-front.png",
+    "pixels": [
+      505,
+      260
+    ],
+    "transparent": true
+  },
+  {
+    "file": "flower-side.png",
+    "pixels": [
+      485,
+      261
+    ],
+    "transparent": true
+  },
+  {
+    "file": "flower-bud.png",
+    "pixels": [
+      467,
+      297
+    ],
+    "transparent": true
+  },
+  {
+    "file": "ribbon-bow.png",
+    "pixels": [
+      595,
+      214
+    ],
+    "transparent": true
+  },
+  {
+    "file": "ribbon-flow.png",
+    "pixels": [
+      539,
+      149
+    ],
+    "transparent": true
+  },
+  {
+    "file": "diary.png",
+    "pixels": [
+      250,
+      212
+    ],
+    "transparent": true
+  },
+  {
+    "file": "books.png",
+    "pixels": [
+      327,
+      224
+    ],
+    "transparent": true
+  },
+  {
+    "file": "photo-frame.png",
+    "pixels": [
+      295,
+      212
+    ],
+    "transparent": true
+  },
+  {
+    "file": "lock.png",
+    "pixels": [
+      304,
+      220
+    ],
+    "transparent": true
+  },
+  {
+    "file": "paw.png",
+    "pixels": [
+      214,
+      200
+    ],
+    "transparent": true
+  },
+  {
+    "file": "expression-work.png",
+    "pixels": [
+      228,
+      195
+    ],
+    "transparent": true
+  },
+  {
+    "file": "expression-message.png",
+    "pixels": [
+      235,
+      213
+    ],
+    "transparent": true
+  },
+  {
+    "file": "expression-diary.png",
+    "pixels": [
+      219,
+      205
+    ],
+    "transparent": true
+  },
+  {
+    "file": "expression-eating.png",
+    "pixels": [
+      209,
+      201
+    ],
+    "transparent": true
+  },
+  {
+    "file": "expression-rest.png",
+    "pixels": [
+      233,
+      182
+    ],
+    "transparent": true
+  },
+  {
+    "file": "expression-happy.png",
+    "pixels": [
+      208,
+      200
+    ],
+    "transparent": true
+  },
+  {
+    "file": "card-frame.png",
+    "pixels": [
+      385,
+      166
+    ],
+    "transparent": true
+  },
+  {
+    "file": "corner-ribbon-left.png",
+    "pixels": [
+      178,
+      124
+    ],
+    "transparent": true
+  },
+  {
+    "file": "corner-ribbon-right.png",
+    "pixels": [
+      156,
+      122
+    ],
+    "transparent": true
+  },
+  {
+    "file": "button-flower.png",
+    "pixels": [
+      163,
+      65
+    ],
+    "transparent": true
+  },
+  {
+    "file": "button-plain.png",
+    "pixels": [
+      139,
+      57
+    ],
+    "transparent": true
+  },
+  {
+    "file": "timeline-dot.png",
+    "pixels": [
+      58,
+      110
+    ],
+    "transparent": true
+  },
+  {
+    "file": "petals.png",
+    "pixels": [
+      142,
+      112
+    ],
+    "transparent": true
+  },
+  {
+    "file": "small-flower.png",
+    "pixels": [
+      93,
+      89
+    ],
+    "transparent": true
+  }
+]

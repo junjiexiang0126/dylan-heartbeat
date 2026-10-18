@@ -1,16 +1,19 @@
 'use strict';
 const fs=require('node:fs');
+const {hermesEndpoint,hermesRoute}=require('./hermes_endpoint');
 class HermesClient {
  constructor(env=process.env){
   this.base=env.ZIWEI_HERMES_URL||'';this.session=env.ZIWEI_HERMES_WEB_SESSION_ID||'';
   this.key=env.ZIWEI_HERMES_API_KEY_FILE?fs.readFileSync(env.ZIWEI_HERMES_API_KEY_FILE,'utf8').trim():env.ZIWEI_HERMES_API_KEY||'';
-  this.enabled=env.ZIWEI_BRIDGE_ENABLED==='true';this.test=env.NODE_ENV==='test'&&env.ZIWEI_BRIDGE_ALLOW_HTTP_FOR_TESTS==='true';
+  this.enabled=env.ZIWEI_BRIDGE_ENABLED==='true';this.endpoint=hermesEndpoint(env);
+  // base remains the existing database identity; endpoint is transport only.
   this.sessionKey='agent:main:web:'+this.session;this.initialized=false;
  }
- configured(){try{const u=new URL(this.base);return this.enabled&&!!this.key&&/^[a-zA-Z0-9_-]{1,128}$/.test(this.session)&&(u.protocol==='https:'||this.test&&u.protocol==='http:'&&['127.0.0.1','localhost'].includes(u.hostname))&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname==='/';}catch{return false;}}
+ configured(){return this.enabled&&!!this.key&&/^[a-zA-Z0-9_-]{1,128}$/.test(this.session)&&!!this.endpoint;}
  async fetch(route,options={}){
   if(!this.configured())throw Error('hermes_not_configured');
-  const r=await fetch(new URL(route,this.base),{...options,headers:{Authorization:'Bearer '+this.key,'X-Hermes-Session-Key':this.sessionKey,...options.headers},redirect:'error',signal:options.signal||AbortSignal.timeout(15000)});
+  const headers=new Headers(options.headers);headers.set('Authorization','Bearer '+this.key);headers.set('X-Hermes-Session-Key',this.sessionKey);
+  const r=await fetch(hermesRoute(this.endpoint,route),{...options,headers,redirect:'error',signal:options.signal||AbortSignal.timeout(15000)});
   return r;
  }
  async json(route,options={}){const r=await this.fetch(route,options);if(!r.ok)throw Error(r.status===401?'hermes_auth_rejected':r.status===429?'hermes_busy':'hermes_http_'+r.status);let bytes=0;const chunks=[];for await(const c of r.body){bytes+=c.length;if(bytes>8*1024*1024)throw Error('hermes_response_limit');chunks.push(c);}return JSON.parse(Buffer.concat(chunks).toString('utf8'));}

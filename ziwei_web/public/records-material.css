@@ -1,0 +1,186 @@
+/* 日志 / 记忆 两页的「材质层」——只作用于 #logs 与 #memory，不碰其它页面。
+   目的：把设计图里那三件事拆成可配置变量：
+     ① 奶油白半透明玻璃底  ② 柔粉渐变描边  ③ 轻微立体阴影
+   贴纸位置留成 .sticker-slot，等真实透明素材（PNG/WebP）到位后只换 --sticker-* 变量。 */
+
+#logs, #memory{
+  /* —— 卡片材质 —— */
+  --card-fill-top: rgba(255, 252, 246, .78);
+  --card-fill-bottom: rgba(255, 243, 240, .60);
+  --card-ring-a: rgba(226, 158, 172, .85);
+  --card-ring-b: rgba(255, 228, 216, .40);
+  --card-ring-c: rgba(206, 132, 154, .55);
+  --card-ring-w: 1px;
+  --card-shadow: 0 6px 18px rgba(140, 86, 104, .10), 0 1px 2px rgba(140, 86, 104, .06);
+  --card-shadow-active: 0 10px 26px rgba(140, 86, 104, .16);
+  --card-radius: 22px;
+  --card-pad-y: 14px;
+  --card-pad-x: 16px;
+  --card-gap: 12px;
+
+  /* —— 文字层级 —— */
+  --card-title-size: 16px;
+  --card-desc-size: 12.5px;
+  --card-meta-size: 11px;
+  --card-label-size: 9px;
+  --card-title-leading: 1.45;
+
+  /* —— 贴纸 —— */
+  --sticker-size: 76px;
+  --sticker-right: -10px;
+  --sticker-bottom: -12px;
+  --sticker-rotate: -6deg;
+  /* 素材到位后逐张覆盖：--sticker: url('/stickers/xxx.webp'); */
+  --sticker: none;
+}
+
+/* 统一卡片：奶油玻璃底 + 阴影 */
+#logs .log-entry,
+#memory .memory-entry{
+  position: relative;
+  background: linear-gradient(165deg, var(--card-fill-top), var(--card-fill-bottom));
+  border: 0;
+  border-radius: var(--card-radius);
+  padding: var(--card-pad-y) var(--card-pad-x);
+  box-shadow: var(--card-shadow);
+  overflow: visible;
+  -webkit-backdrop-filter: blur(14px) saturate(135%);
+  backdrop-filter: blur(14px) saturate(135%);
+}
+
+/* 柔粉渐变描边：用遮罩做 1px 环，比 border-image 稳 */
+#logs .log-entry::after,
+#memory .memory-entry::after{
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  padding: var(--card-ring-w);
+  background: linear-gradient(140deg, var(--card-ring-a), var(--card-ring-b) 45%, var(--card-ring-c));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+#logs .log-entry:active,
+#memory .memory-entry:active{ box-shadow: var(--card-shadow-active) }
+
+/* 文字层级 */
+#logs .log-entry strong, #memory .memory-entry strong{
+  font-size: var(--card-title-size);
+  line-height: var(--card-title-leading);
+}
+#logs .log-entry-description, #memory .memory-entry-description{
+  font-size: var(--card-desc-size);
+}
+#logs .log-entry-label, #memory .memory-entry .eyebrow{
+  font-size: var(--card-label-size);
+  letter-spacing: .16em;
+}
+
+/* —— 记忆页：双列小卡 → 与日志同构的横向卡 —— */
+#memory .memory-entry-grid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--card-gap);
+}
+#memory .memory-main-group{ display: grid; gap: var(--card-gap); }
+#memory .memory-entry{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
+  text-align: left;
+}
+#memory .memory-entry .eyebrow{ grid-column: 1 }
+#memory .memory-entry strong{ grid-column: 1 }
+#memory .memory-entry-description{ grid-column: 1; color: var(--muted) }
+#memory .memory-entry-count{ grid-column: 2; grid-row: 1 / span 2; justify-self: end; font-size: var(--card-meta-size) }
+#memory .memory-entry-link{ grid-column: 1 / -1; padding-top: 6px; margin-top: 2px }
+
+/* —— 贴纸插槽（素材到位后只改 --sticker）—— */
+.sticker-slot{
+  position: absolute;
+  right: var(--sticker-right);
+  bottom: var(--sticker-bottom);
+  width: var(--sticker-size);
+  height: var(--sticker-size);
+  pointer-events: none;
+  transform: rotate(var(--sticker-rotate));
+  background-image: var(--sticker);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+/* 素材还没有时，用一枚虚线圈标出位置——只在本文件里，交付前会去掉 */
+#logs .sticker-slot::before,
+#memory .sticker-slot::before{
+  content: '';
+  position: absolute; inset: 18%;
+  border: 1px dashed rgba(200, 120, 142, .35);
+  border-radius: 50%;
+}
+#logs .log-entry[data-sticker] .sticker-slot::before,
+#memory .memory-entry[data-sticker] .sticker-slot::before{ display: none }
+
+/* 日志：一页五行横向卡（设计图要求），不要双列 */
+#logs .log-entry-grid{ grid-template-columns: 1fr; }
+#logs .log-entry{
+  display: grid;
+  grid-template-columns: 44px minmax(0,1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 3px;
+  width: 100%;
+}
+#logs .log-entry-icon{ grid-row: 1 / span 4; width: 44px; height: 44px; border-radius: 14px;
+  display: grid; place-items: center; background: rgba(255,236,238,.85); color: var(--accent) }
+#logs .log-entry-label{ grid-column: 2 }
+#logs .log-entry strong{ grid-column: 2 }
+#logs .log-entry-description{ grid-column: 2 }
+#logs .log-entry .log-entry-meta{ grid-column: 3; grid-row: 1 / span 4; justify-self: end;
+  text-align: right; font-size: var(--card-meta-size); color: var(--muted); line-height: 1.5 }
+
+
+/* ——— 五张横卡：各贴一件不同的精致贴纸 ———
+   做法：贴纸压在卡片右边缘上、略微探出边框，带同向投影，
+   不摆在空白处，也不压住文字；旋转角度每张不同，像手贴的。 */
+#logs .log-entry{
+  position: relative;
+  padding-right: 152px;
+  min-height: 92px;
+}
+#logs .log-entry::before{
+  content: '';
+  position: absolute;
+  right: 10px;
+  bottom: -4px;
+  width: 64px; height: 64px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  filter: drop-shadow(0 3px 6px rgba(132,78,96,.22));
+  transform-origin: 60% 90%;
+  pointer-events: none;
+}
+#logs .log-entry[data-log-kind="work"]::before{ background-image: url('/stickers/books.png'); transform: rotate(-7deg) }
+#logs .log-entry[data-log-kind="diary"]::before{ background-image: url('/stickers/diary.png'); transform: rotate(-3deg) }
+#logs .log-entry[data-log-kind="private"]::before{ background-image: url('/stickers/lock.png'); transform: rotate(0deg) }
+#logs .log-entry[data-log-kind="photos"]::before{ background-image: url('/stickers/photo-frame.png'); transform: rotate(3deg) }
+#logs .log-entry[data-log-kind="impressions"]::before{ background-image: url('/stickers/paw.png'); transform: rotate(7deg) }
+/* 文字不要被贴纸压住：右栏信息往左收 */
+#logs .log-entry .log-entry-meta{ margin-right: 0 }
+#logs .sticker-slot{ display: none }
+
+
+/* ——— 去掉左侧线性图标：它跟右侧贴纸的意思重复（锁 + 锁）——— */
+#logs .log-entry{ grid-template-columns: minmax(0,1fr) auto; }
+#logs .log-entry-icon{ display: none }
+#logs .log-entry-label,
+#logs .log-entry strong,
+#logs .log-entry-description{ grid-column: 1 }
+
+/* 右侧条数/时间：固定宽度内换行，绝不滑到贴纸底下 */
+#logs .log-entry .log-entry-meta{ max-width: 108px; white-space: normal; line-height: 1.45; text-align: right }

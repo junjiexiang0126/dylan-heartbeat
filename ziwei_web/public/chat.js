@@ -22,7 +22,7 @@ window.ZiweiChatAppearance=(()=>{
  });}
  const fontInput=document.querySelector('#chatFontSize'),fontOutput=document.querySelector('#chatFontValue'),fontMessage=document.querySelector('#chatFontMessage');
  let fontRevision=0,fontSave=Promise.resolve();
- function applyFont(value){const size=Number(value);if(!Number.isInteger(size)||size<12||size>20)return;document.querySelector('#chat').style.setProperty('--chat-font-size',size+'px');fontInput.value=String(size);fontInput.defaultValue=String(size);fontOutput.value=size+' px';fontOutput.defaultValue=size+' px';document.querySelector('#chatFontPreview').style.fontSize=size+'px';}
+ function applyFont(value){const size=Number(value);if(!Number.isInteger(size)||size<12||size>20)return;for(const id of ['chat','work'])document.getElementById(id)?.style.setProperty('--chat-font-size',size+'px');fontInput.value=String(size);fontInput.defaultValue=String(size);fontOutput.value=size+' px';fontOutput.defaultValue=size+' px';document.querySelector('#chatFontPreview').style.fontSize=size+'px';}
  function saveFont(){const size=Number(fontInput.value),epoch=fontRevision;fontMessage.textContent='正在保存字号…';fontSave=fontSave.catch(()=>{}).then(()=>storage(true,size,'fontSize')).then(()=>{if(epoch===fontRevision)fontMessage.textContent='字号已保存到当前设备。';}).catch(()=>{if(epoch===fontRevision)fontMessage.textContent='字号已应用，但此设备暂时无法保存。';});}
  fontInput.oninput=()=>{fontRevision++;applyFont(fontInput.value);fontMessage.textContent='字号已应用。';};fontInput.onchange=saveFont;
  document.querySelector('#resetChatFont').onclick=()=>{fontRevision++;applyFont(14);saveFont();};
