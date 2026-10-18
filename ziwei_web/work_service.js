@@ -55,6 +55,8 @@ function createWorkService(dataDir,options={}){
   const used=usageRows().filter(u=>new Date(new Date(u.at).getTime()+7*3600000).toISOString().slice(0,10)===day()).reduce((n,u)=>n+u.cost,0);
   return {day:day(),limit:LIMITS.dailyCny,reservedOrEstimated:legacy+used,legacyReserved:legacy,remaining:Math.max(0,LIMITS.dailyCny-legacy-used)};
  };
+ // Retain legacy task counters, and also charge today's recovery calls on older tasks.
+ const dailyModelCalls=()=>db.prepare('SELECT COALESCE(SUM(calls),0) n FROM tasks WHERE day=?').get(day()).n+db.prepare("SELECT COUNT(*) n FROM usage u JOIN tasks t ON t.id=u.task WHERE date(u.at,'+7 hours')=? AND t.day<>?").get(day(),day()).n;
  const task=id=>db.prepare('SELECT * FROM tasks WHERE id=?').get(id);
  const state=(id,value,error=null)=>db.prepare('UPDATE tasks SET state=?,error=?,updated=? WHERE id=?').run(value,error,new Date().toISOString(),id);
  const catalog=id=>db.prepare('SELECT * FROM tools WHERE id=?').get(id);
@@ -81,7 +83,7 @@ function createWorkService(dataDir,options={}){
   if(Date.now()>=deadline)throw Error('work_timeout');
   const ceiling=stage==='execute'?.75:2,usageId=crypto.randomUUID();
   db.exec('BEGIN IMMEDIATE');try{
-   const count=db.prepare('SELECT COALESCE(SUM(calls),0) n FROM tasks WHERE day=?').get(day()).n;
+   const count=dailyModelCalls();
    if(count>=LIMITS.dailyCalls||budget().remaining+1e-9<ceiling)throw Error('work_daily_limit');
    db.prepare('UPDATE tasks SET calls=calls+1 WHERE id=?').run(id);
    db.prepare('INSERT INTO usage(id,task,stage,model,usage,at,cost,status) VALUES(?,?,?,?,?,?,?,?)').run(usageId,id,stage,stage==='execute'?'glm-4-flash-250414':'deepseek-flash','{}',new Date().toISOString(),ceiling,'reserved');db.exec('COMMIT');
@@ -157,7 +159,7 @@ function createWorkService(dataDir,options={}){
   if(!c||typeof c.context!=='string'||typeof c.draft!=='string'||!Array.isArray(c.artifacts)||!c.artifacts.length||!c.artifacts.every(aid=>{const f=fileStore.attachment(aid);return f?.taskId===t.id&&f.published===false;}))return null;
   return c;
  };
- const canRepair=t=>{if(t.state!=='completed'||t.day!==day()||t.calls>=LIMITS.callsPerTask)return false;const r=JSON.parse(t.result||'{}'),u=all().find(m=>m.role==='user'&&m.taskId===t.id);return !r.contentRepairAttempts&&!!u&&!u.deleted&&['ppt','bundle'].includes(catalog(r.reviewCheckpoint?.tool||u.tool)?.kind)&&!!requirements.contract(u.text)&&!!r.attachments?.some(a=>fileStore.attachment(a)?.name.endsWith('.docx'));};
+ const canRepair=t=>{if(t.state!=='completed'||t.calls>=LIMITS.callsPerTask)return false;const r=JSON.parse(t.result||'{}'),u=all().find(m=>m.role==='user'&&m.taskId===t.id);return !r.contentRepairAttempts&&!!u&&!u.deleted&&['ppt','bundle'].includes(catalog(r.reviewCheckpoint?.tool||u.tool)?.kind)&&!!requirements.contract(u.text)&&!!r.attachments?.some(a=>fileStore.attachment(a)?.name.endsWith('.docx'));};
  async function resumeReview(id,c){
   // User-triggered recovery has one 90-second review window, no new plan/GLM,
   // no task-quota reset, no counter reset and no automatic retry on restart.
@@ -250,7 +252,7 @@ function createWorkService(dataDir,options={}){
    db.exec('BEGIN IMMEDIATE');try{
     const current=task(t.id);if(current.state!=='completed'||JSON.parse(current.result).contentRepairAttempts)throw Error('work_delivery_not_repairable');
     if(db.prepare("SELECT 1 FROM tasks WHERE state IN ('queued','planning','executing','reviewing','generating')").get())throw Error('work_busy');
-    if(budget().remaining+1e-9<2||db.prepare('SELECT COALESCE(SUM(calls),0) n FROM tasks WHERE day=?').get(day()).n>=LIMITS.dailyCalls)throw Error('work_daily_limit');
+    if(budget().remaining+1e-9<2||dailyModelCalls()>=LIMITS.dailyCalls)throw Error('work_daily_limit');
     db.prepare('UPDATE tasks SET result=? WHERE id=?').run(JSON.stringify({...prior,reviewCheckpoint:c,contentRepairAttempts:1,contentInspection:check}),t.id);state(t.id,'queued');
     append('ziwei','程序检查发现已交付正文未满足明确的页数或字数要求，将由知微按检查结果修订一次。保留原稿与费用记录，不重新调用白鸦。',{taskId:t.id,stage:'content_repair'});db.exec('COMMIT');
     setImmediate(()=>void resumeReview(t.id,c));return json(res,202,{task:task(t.id),inspection:check});
@@ -265,7 +267,7 @@ function createWorkService(dataDir,options={}){
    if(!client.configured())return json(res,503,{error:'hermes_not_configured'});
    db.exec('BEGIN IMMEDIATE');try{
     if(db.prepare("SELECT 1 FROM tasks WHERE state IN ('queued','planning','executing','reviewing','generating')").get())throw Error('work_busy');
-    if(budget().remaining+1e-9<2||db.prepare('SELECT COALESCE(SUM(calls),0) n FROM tasks WHERE day=?').get(day()).n>=LIMITS.dailyCalls)throw Error('work_daily_limit');
+    if(budget().remaining+1e-9<2||dailyModelCalls()>=LIMITS.dailyCalls)throw Error('work_daily_limit');
     db.prepare('UPDATE tasks SET result=? WHERE id=?').run(JSON.stringify({reviewCheckpoint:c,reviewRecoveryAttempts:1}),t.id);state(t.id,'queued');
     append('ziwei','从已保存的白鸦草稿继续审核；本次只纠正审核命令，不重新委派。原任务调用上限和今日费用限制继续生效。',{taskId:t.id,stage:'review_resumed'});db.exec('COMMIT');
     setImmediate(()=>void resumeReview(t.id,c));return json(res,202,{task:task(t.id)});
@@ -281,7 +283,7 @@ function createWorkService(dataDir,options={}){
   try{
    if(db.prepare("SELECT 1 FROM tasks WHERE state IN ('queued','planning','executing','reviewing','generating')").get())throw Error('work_busy');
    const today=db.prepare('SELECT COALESCE(SUM(calls),0) calls,COUNT(*) n FROM tasks WHERE day=?').get(day());
-   if(budget().remaining+1e-9<2||today.calls>=LIMITS.dailyCalls||today.n>=LIMITS.dailyTasks)throw Error('work_daily_limit');
+   if(budget().remaining+1e-9<2||dailyModelCalls()>=LIMITS.dailyCalls||today.n>=LIMITS.dailyTasks)throw Error('work_daily_limit');
    const at=new Date().toISOString();db.prepare('INSERT INTO tasks(id,digest,state,created,updated,day,reserved) VALUES(?,?,?,?,?,?,?)').run(b.requestId,digest,'queued',at,at,day(),0);
    const user=append('user',b.text,{attachments:b.attachments||[],replyTo:b.replyTo||null,taskId:b.requestId,tool:b.tool});db.exec('COMMIT');
    setImmediate(()=>void run(b.requestId,b,user));return json(res,202,{task:task(b.requestId),user});
