@@ -54,3 +54,13 @@
 .memory-detail-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--ui-space-12);margin-top:var(--ui-space-16)}
 .memory-detail-heading h2{font:var(--ui-weight-medium) var(--records-title-size)/var(--ui-leading-1_8) var(--ui-serif)}
 @media(hover:hover){.memory-entry:hover{border-color:var(--accent)}}
+
+/* Four log entrances share adjustable geometry, colors and type. */
+.log-entry-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--log-entry-gap);margin-block:var(--log-entry-gap)}
+.log-entry{display:flex;flex-direction:column;text-align:left;min-width:0;min-height:var(--log-entry-height);padding:var(--log-entry-padding);border-radius:var(--log-entry-radius);color:var(--log-entry-color);background:var(--log-entry-fill);border:var(--ui-size-1) solid var(--border)}
+.log-entry.active{border-color:var(--log-entry-accent);background:var(--log-entry-selected-fill)}
+.log-entry-label{font-size:var(--log-entry-meta-size);color:var(--log-entry-accent);margin-bottom:var(--ui-space-12)}
+.log-entry strong{font:var(--ui-weight-medium) var(--log-entry-title-size)/var(--ui-leading-1_5) var(--ui-serif);margin-bottom:var(--ui-space-8)}
+.log-entry-description{font-size:var(--log-entry-description-size);line-height:var(--ui-leading-1_8);color:var(--muted);overflow-wrap:anywhere}
+.log-entry-link{font-size:var(--log-entry-meta-size);color:var(--log-entry-accent);padding-top:var(--ui-space-18);margin-top:auto}
+@media(hover:hover){.log-entry:hover{border-color:var(--log-entry-accent)}}
