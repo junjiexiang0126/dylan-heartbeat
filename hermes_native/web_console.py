@@ -28,7 +28,7 @@ def snapshot(home, read):
         for line in raw.decode('utf-8').splitlines()[-30:]:
             try:
                 v = json.loads(line)
-                wakes.append({k: v[k] for k in ('time', 'wakeAgent', 'reason', 'opportunity', 'idle', 'available_actions') if k in v})
+                wakes.append({k: v[k] for k in ('time', 'wakeAgent', 'reason', 'opportunity', 'idle', 'available_actions', 'error_type', 'invalid_completions') if k in v})
             except ValueError:
                 continue
     except FileNotFoundError:
@@ -36,6 +36,11 @@ def snapshot(home, read):
     except (OSError, ValueError):
         errors.append('wake_log_unavailable')
     state = document('autonomy_gate_state.json')
+    # A gate blocked before its counter update can leave an older day's state.
+    # Annotate it; never reset persisted counters just for dashboard display.
+    if isinstance(state, dict):
+        state['currentDate'] = datetime.now().astimezone().date().isoformat()
+        state['isCurrentDate'] = state.get('date') == state['currentDate']
     receipt = document('scripts/autonomy_gate.upgrade-receipt.json')
     tasks = document('workspace/tasks.json')
     tasks = [{k: t[k] for k in ('id', 'title', 'name', 'status', 'updated_at', 'evidence') if k in t}

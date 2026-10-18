@@ -15,6 +15,12 @@ class UpgradeTests(unittest.TestCase):
     def test_unselected_is_a_noop(self):
         with patch.dict(os.environ,{'ZIWEI_PREFLIGHT_UPGRADE_SHA256':''}):self.assertEqual(upgrade.upgrade(self.home,self.source)['state'],'not_requested')
         self.assertEqual(self.target.read_bytes(),self.old)
+    def test_previous_reviewed_version_is_backed_up(self):
+        with patch.object(upgrade,'OLD_SHA','different-original'), patch.object(upgrade,'PREVIOUS_SHA',upgrade.digest(self.old)):
+            receipt=upgrade.upgrade(self.home,self.source)
+        self.assertEqual(receipt['old_sha256'],upgrade.digest(self.old))
+        self.assertEqual(self.target.read_bytes(),self.new)
+        self.assertEqual((self.home/'scripts'/('autonomy_gate.before-'+upgrade.digest(self.old)+'.py')).read_bytes(),self.old)
     def test_unknown_previous_hash_and_wrong_image_refused(self):
         self.target.chmod(0o644);self.target.write_bytes(b'unknown');self.target.chmod(0o444)
         with self.assertRaisesRegex(RuntimeError,'unknown_previous_hash'):upgrade.upgrade(self.home,self.source)
