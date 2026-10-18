@@ -20,7 +20,7 @@ jobs:
       - run: npm run check && npm test
       - run: npx playwright install --with-deps chromium webkit
       - run: npx playwright test e2e/web-polish-batch1.spec.js e2e/chat-minimal.spec.js e2e/chat-profiles.spec.js e2e/work-studio.spec.js
-      - run: npx playwright test e2e/raven-house.spec.js --grep 'one house|native copy'
+      - run: npx playwright test e2e/raven-house.spec.js --grep 'one house|native copy' --output=test-results/raven-house
       - uses: actions/upload-artifact@v4
         if: always()
         with:

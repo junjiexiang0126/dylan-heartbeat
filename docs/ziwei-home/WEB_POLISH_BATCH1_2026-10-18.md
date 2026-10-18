@@ -25,8 +25,9 @@
 - npm run build:raven：已完成；public/raven.js确实改变。
 - npm run check：通过。
 - npm test：102/102通过。
+- 隔离本地HTTP服务运行只读部署核对脚本：10/10通过（八项清单检查加JS字节哈希），不代表尚未部署的线上也通过。
 - 新增web-polish-batch1.spec.js验证字体实际加载、静态MIME和贴纸/印记引用、6px间距、分组首尾/追加/筛选/前插、失败重发边界、动作日志位置及媒体节点保留。
-- 新增Web polish regression checks工作流，用Chromium与模拟iPhone WebKit执行恢复项和私聊/Work回归，保留截图供复查。最终结果在提交/整合前补记。
+- 新增Web polish regression checks工作流，用Chromium与模拟iPhone WebKit执行恢复项和私聊/Work回归，保留截图供复查。代码36745c2af6f691ddced9b2484c65275d3e9f39f2的运行39125136915已SUCCESS：36项私聊/Work/恢复项浏览器检查加4项渡鸦检查，共40/40通过；102 Web单元测试也在CI通过。独立Work运行39125136857亦SUCCESS（45 Work、18 Native Work、28浏览器专项）。两次Playwright调用使用独立输出目录，避免后一步清掉前一步的字体和分组截图。
 - 对应渡鸦测试按本次已确认文案更新；无WebGL降级测试滚动外层ravenStage，避免向降级时已隐藏的canvas滚动造成60秒超时。没有削弱静态图、重试入口或错误提示断言。
 
 ## 发布与验收交接（当前未发布）
