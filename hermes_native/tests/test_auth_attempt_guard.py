@@ -12,6 +12,11 @@ def request(ip='100.64.0.2'):
 
 
 class AuthGuardTests(unittest.TestCase):
+    def test_loopback_probes_keep_original_authentication_rejections(self):
+        g=guard.FailedAuthGuard(limit=1)
+        for _ in range(30):self.assertFalse(g.exceeded(request('127.0.0.1')))
+        self.assertEqual(len(g.failures),0)
+
     def test_failed_attempts_expire_and_peer_storage_is_bounded(self):
         now=[0]; g=guard.FailedAuthGuard(limit=2, peers=2, clock=lambda:now[0])
         self.assertFalse(g.exceeded(request()));self.assertFalse(g.exceeded(request()))

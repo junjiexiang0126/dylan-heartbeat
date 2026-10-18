@@ -19,6 +19,10 @@ class FailedAuthGuard:
             return False  # Keep the original 401 when no socket identity exists.
         # Socket identity only; caller-supplied X-Forwarded-For is untrusted.
         address = str(peer[0])[:128]
+        if address in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
+            # Immutable startup probes deliberately test many invalid keys on
+            # loopback. Preserve those per-route 401 checks, never weaken auth.
+            return False
         now = self.clock()
         start, count = self.failures.pop(address, (now, 0))
         if now - start >= self.window:
