@@ -37,6 +37,18 @@ class GateTests(unittest.TestCase):
         self.assertIn("rest", result["available_actions"])
         self.assertEqual(result["opportunity"], 1)
 
+    def test_waiting_front_is_valid_but_not_runnable(self):
+        tasks = [{"id": "frontend", "status": "waiting_front"}]
+        self.write_tasks(tasks)
+        result = gate.evaluate(self.home, self.now)
+        self.assertTrue(result["wakeAgent"])
+        self.assertEqual(result["tasks"], [])
+        self.assertEqual(json.loads((self.home / "workspace/tasks.json").read_text()), tasks)
+        self.write_tasks(tasks + [{"id": "unverified", "status": "completed", "evidence": []}])
+        result = gate.evaluate(self.home, self.now)
+        self.assertFalse(result["wakeAgent"])
+        self.assertEqual(result["invalid_completions"], ["unverified"])
+
     def test_completion_requires_real_scoped_artifact(self):
         self.write_tasks([{"status": "completed", "evidence": ["../config.yaml"]}])
         original = (self.home / "workspace/tasks.json").read_bytes()
@@ -94,6 +106,7 @@ class GateTests(unittest.TestCase):
         with patch.dict(gate.os.environ, {"HERMES_HOME": str(self.home / "missing")}), contextlib.redirect_stdout(out):
             gate.main()
         self.assertFalse(json.loads(out.getvalue())["wakeAgent"])
+        self.assertIn("time", json.loads(out.getvalue()))
 
     def test_malformed_task_shape_fails_closed(self):
         self.write_tasks(["bad shape"])

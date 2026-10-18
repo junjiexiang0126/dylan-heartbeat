@@ -1107,6 +1107,8 @@ def install():
     import toolsets
     adapter = api.APIServerAdapter
     if getattr(adapter, '_ziwei_web_installed', False): return
+    from auth_attempt_guard import install as install_auth_attempt_guard
+    install_auth_attempt_guard(adapter, web)
     install_status_tool(registry, toolsets)
 
     async def state(self, request):
