@@ -141,8 +141,8 @@
         err.hidden = false; err.textContent = '有一点没读到：' + value.errors.join('；');
       }
     } catch (e) {
-      if (err) { err.hidden = false; err.textContent = '印记没读到，等会儿再试。'; }
       render([]);
+      if (err) { err.hidden = false; err.textContent = '印记没读到，等会儿再试。'; }
     } finally { busy = false; }
   }
 
