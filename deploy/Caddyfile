@@ -1,0 +1,24 @@
+{
+	email admin@zhiweilove.me
+}
+
+# 网页：她手机打开的那个
+zhiweilove.me, www.zhiweilove.me {
+	encode gzip
+	reverse_proxy ziwei-web:3000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+	}
+}
+
+# 原生 API：网页服务靠这个 https 端点连我（私网/明文都不许）
+hermes.zhiweilove.me {
+	encode gzip
+	reverse_proxy ziwei-hermes:8642
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+	}
+}
