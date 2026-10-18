@@ -28,9 +28,15 @@ function createRecords(){
   function json(status,value){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));}
   if(req.method!=='GET')return json(405,{error:'read_only'});
   const kind=url.pathname.slice('/api/records/'.length),q=url.searchParams.get('q')||'',category=url.searchParams.get('category')||'all',offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||20),id=url.searchParams.get('id');
-  if(!['diary','work','memory','artifact'].includes(kind))return json(404,{error:'not_found'});
+  if(!['diary','work','memory','artifact','impressions'].includes(kind))return json(404,{error:'not_found'});
   if([...url.searchParams.keys()].some(k=>!['q','category','offset','limit','id'].includes(k))||url.search.length>2400||q.length>200||!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>50||!['all','user','self','protected','work','uncategorized','memory'].includes(category))return json(400,{error:'invalid_query'});
   try{
+   if(kind==='impressions'){
+    const qs=new URLSearchParams({limit:String(limit)});
+    const value=await client.json('/ziwei/web/impressions?'+qs,{signal:AbortSignal.timeout(15000)});
+    if(!Array.isArray(value.data))throw Error('invalid_native_records');
+    return json(200,{data:value.data,total:value.data.length,source:'hermes_native',readOnly:true,checkedAt:value.checkedAt||new Date().toISOString(),errors:value.errors||[]});
+   }
    if(kind==='artifact'){
     // Only a future explicit, authenticated native artifact endpoint may serve
     // a download. No arbitrary path proxy and no inferred filesystem access.

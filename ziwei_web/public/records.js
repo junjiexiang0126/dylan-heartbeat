@@ -11,7 +11,7 @@ window.ZiweiRecords=(()=>{
   const sheet=visible==='logs'&&logOpen||visible==='memory'&&memoryOpen;
   document.body.classList.toggle('records-subpage',sheet);document.body.classList.toggle('records-memory-overview',visible==='memory'&&!memoryOpen);
   for(const [id,open] of [['logs',logOpen],['memory',memoryOpen]])$('#'+id).classList.toggle('record-open',open);
-  $('#logDetail').hidden=!logOpen;window.ZiweiPhotos?.show(visible==='logs'&&logOpen&&kind==='photos',token);
+  $('#logDetail').hidden=!logOpen;const impView=visible==='logs'&&logOpen&&kind==='impressions';document.body.classList.toggle('impressions-open',impView);window.ZiweiImpressions?.show(impView,api);window.ZiweiPhotos?.show(visible==='logs'&&logOpen&&kind==='photos',token);
   $('#logDetailTitle').textContent=workSelected?'工作记录':diarySelected?'日记原文':logTitles[kind];
   $('#logs').classList.toggle('diary-reading',!!diarySelected);
   $('#logPrivateHint').hidden=kind!=='private';
