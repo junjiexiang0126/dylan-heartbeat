@@ -25,8 +25,8 @@ jobs:
       - run: npx playwright install --with-deps chromium webkit
       - run: npx playwright test e2e/work-studio.spec.js e2e/chat-minimal.spec.js e2e/chat-profiles.spec.js
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
-          name: work-browser-failure-evidence
+          name: work-browser-evidence
           path: ziwei_web/test-results/
           retention-days: 7

@@ -12,7 +12,10 @@ test('three-person mobile chat reuses formal bubble geometry, actions and wallpa
 });
 test('Work search, quote, mention and independent tool center are usable',async({page})=>{
  await open(page);await page.locator('#workSearchToggle').click();await page.locator('#workSearchInput').fill('四人');await expect(page.locator('#work .message')).toHaveCount(2);await page.locator('#workSearchInput').fill('');await page.locator('#work .message-action-icon[aria-label="引用"]').first().click();await expect(page.locator('#workQuote')).toBeVisible();await page.locator('#workQuoteCancel').click();await page.locator('.work-members [data-work-mention="知微"]').click();await expect(page.locator('#workInput')).toHaveValue('@知微 ');
- await page.locator('#workToolsOpen').click();await expect(page.locator('#workToolCatalog')).toContainText('未授权');await page.locator('#workToolAdd').click();await expect(page.locator('#workRegister')).toBeVisible();await page.locator('#workToolsClose').click();await page.locator('[data-tab=home]').click();await expect(page.locator('#home')).toBeVisible();await page.locator('[data-tab=chat]').click();await expect(page.locator('#chatInput')).toBeVisible();
+ await page.locator('#workToolsOpen').click();await expect(page.locator('#workToolCatalog')).toContainText('未授权');await expect(page.locator('.work-tool-card input')).toBeHidden();await expect(page.locator('.work-tool-card')).not.toContainText('白鸦：生成草稿');
+ for(const width of [320,390,430]){await page.setViewportSize({width,height:844});const g=await page.locator('#workCheckRuntime').evaluate(n=>{const r=n.getBoundingClientRect();return {x:r.x,right:r.right,width:r.width,height:r.height,scrollWidth:document.documentElement.scrollWidth};});expect(g.x).toBeGreaterThanOrEqual(0);expect(g.right).toBeLessThanOrEqual(width);expect(g.width).toBeGreaterThan(240);expect(g.height).toBeGreaterThanOrEqual(44);expect(g.scrollWidth).toBeLessThanOrEqual(width);}
+ await page.route('**/api/work/runtime',r=>r.fulfill({json:{native:{model:'fixture'},glmConfigured:true}}));await page.locator('#workCheckRuntime').click();await expect(page.locator('#workToolNotice')).toHaveText('知微已连接 · 白鸦已配置');
+ await page.locator('.work-tool-settings summary').click();await expect(page.getByRole('textbox',{name:'Word 文档文件标题'})).toBeVisible();await page.locator('#workToolAdd').click();await expect(page.locator('#workRegister')).toBeVisible();await page.locator('#workToolsClose').click();await page.locator('[data-tab=home]').click();await expect(page.locator('#home')).toBeVisible();await page.locator('[data-tab=chat]').click();await expect(page.locator('#chatInput')).toBeVisible();
 });
 
 test('saved-draft recovery button submits once and remains inside mobile viewport',async({page})=>{
@@ -29,4 +32,11 @@ test('completed-delivery check submits once with CSRF and hides during repair',a
  await open(page,state);const b=page.getByRole('button',{name:'检查并修订交付文件',exact:true});await expect(b).toBeVisible();
  for(const width of [320,390,430]){await page.setViewportSize({width,height:844});const r=await b.boundingBox();expect(r.x).toBeGreaterThanOrEqual(0);expect(r.x+r.width).toBeLessThanOrEqual(width);}
  await b.click();await expect(b).toBeHidden();await expect(page.locator('#workTaskStatus')).toContainText('知微正在审核');expect(calls).toBe(1);
+});
+
+test('accepted task feedback stays above the conversation and never below the composer',async({page},info)=>{
+ const state={...fixture,tasks:[]};let sent=0;await page.route('**/api/work/send',async r=>{sent++;state.tasks=[{id:'accepted-task',state:'queued'}];await r.fulfill({status:202,json:{task:state.tasks[0]}});});
+ await open(page,state);await page.locator('#workInput').fill('合成布局验收');await page.locator('#workSend').click();await expect(page.locator('#workTaskStatus')).toHaveText('任务排队中');await expect(page.locator('#workStatus')).toBeEmpty();expect(sent).toBe(1);
+ for(const width of [320,390,430]){await page.setViewportSize({width,height:844});const g=await page.locator('.work-feedback').evaluate(n=>{const r=n.getBoundingClientRect(),form=document.querySelector('#workForm').getBoundingClientRect(),nav=document.querySelector('nav').getBoundingClientRect();return {top:r.top,bottom:r.bottom,formTop:form.top,formBottom:form.bottom,navTop:nav.top};});expect(g.bottom).toBeLessThan(g.formTop);expect(g.formBottom).toBeLessThan(g.navTop);}
+ await page.locator('#workToolsOpen').click();await page.screenshot({path:info.outputPath('work-tools-mobile.png'),fullPage:true});await page.locator('#workToolsClose').click();await page.screenshot({path:info.outputPath('work-accepted-mobile.png'),fullPage:true});
 });
