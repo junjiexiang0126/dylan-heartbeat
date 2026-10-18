@@ -68,7 +68,7 @@ window.ZiweiChatAppearance=(()=>{
 'use strict';
 window.ZiweiChat=(()=>{
  const $=s=>document.querySelector(s);let token=null,version=0,loadVersion=0,events=null,attachments=[],quote=null,pending=null,before=null,favorite=false,trash=false,busy=false,uploading=0,queuedSend=false,uploadFailed=false,source='live',buffers=new Map(),active=new Map(),reloadTimer=null,startPromise=null,loadError='',lastRequest=null,recorder=null,recordStream=null,listening=false,voiceTimer=null,layoutFrame=null,voiceEpoch=0,voiceDraft=null,voiceUploading=false,profileData={user:{nickname:'你',avatar:null},ziwei:{nickname:'知微',avatar:null}},connectionTimer=null,voiceMeter=null,voicePress=null;
- const renderedMessages=new WeakMap();let viewKey=null,readingPosition=null,lastEventCursor=null;
+ const renderedMessages=new WeakMap(),messageActionRows=new WeakMap();let viewKey=null,readingPosition=null,lastEventCursor=null;
  const states={queued:'等待发送',dispatching:'正在送出',running:'知微正在回应',recovering:'恢复连接中',uncertain:'等待核对，请勿重复发送',completed:'已回复',failed:'处理失败',cancelled:'已结束',interrupted:'处理被中断',archived:'历史档案'};
  const errors={speech_not_allowed:'这条消息没有可朗读的文字。',speech_unavailable:'暂时无法生成语音，请稍后重试。',speech_busy:'正在生成其他语音，请稍后重试。',speech_text_limit:'这条回复超过语音长度上限。',approval_expired:'批准请求已过期。',hermes_not_configured:'聊天尚未配置连接。',request_conflict:'此发送编号的内容不一致，已阻止重复执行。',queue_full:'待处理消息较多，请稍后再发送。',attachment_too_large:'附件超过 20 MB。',attachment_quota:'附件空间已满，请联系维护者。',active_file_rejected:'此文件类型暂不接受，请选择图片、视频或普通文档。'};
  async function request(url,method='GET',data,extra={}){
@@ -100,15 +100,15 @@ window.ZiweiChat=(()=>{
   }catch{if(container.isConnected){const retry=button('附件读取失败，点此重试',()=>{retry.remove();return media(container,id);});retry.classList.add('media-retry');container.append(retry);}}
  }
  function messageLabel(m){return (m.source==='archive'?m.role==='user'?'历史用户':m.role==='assistant'?'历史助手':'原始档案':m.role==='user'?'你':'知微')+' · '+timestamp(m.created_at)+(m.role==='assistant'&&m.status==='completed'?'':' · '+(states[m.status]||m.status))+(m.kind==='commentary'?' · 执行进度':m.kind==='summary'?' · 回复摘要':'')+(m.favorite?' · ★':'');}
- function rememberMessage(card,m){renderedMessages.set(card,{full:JSON.stringify(m),withoutStatus:JSON.stringify({...m,status:null,toolActions:undefined})});}
- function renderToolActions(card,rows=[]){let box=card.querySelector('.tool-action-log');if(!rows.length){box?.remove();return;}const open=box?.open||false;box?.remove();box=element('details','tool-action-log');box.open=open;const elapsed=rows.reduce((sum,r)=>sum+(r.elapsedMs||0),0),unfinished=rows.filter(r=>r.state!=='completed').length;box.append(element('summary','', '做了 '+rows.length+' 个动作 · 共 '+(elapsed/1000).toFixed(1)+'s'+(unfinished?' · '+unfinished+' 项未完成':'')));const list=element('ol','tool-action-list');for(const r of rows){const item=element('li','');item.append(element('strong','',r.label||r.tool),element('span','',r.preview||'未提供预览'),element('span','',r.state==='completed'?'✓':r.state==='failed'?'失败 · 未完成':'未完成'),element('time','',r.elapsedMs===null||r.elapsedMs===undefined?'耗时待确认':(r.elapsedMs/1000).toFixed(1)+'s'));list.append(item);}box.append(list);card.querySelector('.message-body')?.append(box);}
+ function rememberMessage(card,m){renderedMessages.set(card,{full:JSON.stringify(m),group:!m.deleted&&['user','assistant'].includes(m.role)&&!['poke','summary','commentary'].includes(m.kind)&&['completed','archived'].includes(m.status)?JSON.stringify([m.role,m.source,m.source_ref||'']):null,withoutStatus:JSON.stringify({...m,status:null,toolActions:undefined})});}
+ function renderToolActions(card,rows=[]){let box=card.querySelector('.tool-action-log');if(!rows.length){box?.remove();return;}const open=box?.open||false;box?.remove();box=element('details','tool-action-log');box.open=open;const elapsed=rows.reduce((sum,r)=>sum+(r.elapsedMs||0),0),unfinished=rows.filter(r=>r.state!=='completed').length;box.append(element('summary','', '做了 '+rows.length+' 个动作 · 共 '+(elapsed/1000).toFixed(1)+'s'+(unfinished?' · '+unfinished+' 项未完成':'')));const list=element('ol','tool-action-list');for(const r of rows){const item=element('li','');item.append(element('strong','',r.label||r.tool),element('span','',r.preview||'未提供预览'),element('span','',r.state==='completed'?'✓':r.state==='failed'?'失败 · 未完成':'未完成'),element('time','',r.elapsedMs===null||r.elapsedMs===undefined?'耗时待确认':(r.elapsedMs/1000).toFixed(1)+'s'));list.append(item);}box.append(list);const host=card.querySelector('.message-body')||card,bubble=host.querySelector('.message-bubble');if(bubble)host.insertBefore(box,bubble);else host.prepend(box);}
  function paintMessageAvatar(el,role){const profile=role==='user'?profileData.user:role==='assistant'?profileData.ziwei:{nickname:'原始档案',avatar:null};el.replaceChildren();el.removeAttribute('role');el.removeAttribute('aria-label');if(profile.avatar){const img=element('img');img.src=profile.avatar;img.alt=profile.nickname+'的头像';el.append(img);}else{el.textContent=[...profile.nickname][0]||'微';el.setAttribute('role','img');el.setAttribute('aria-label',profile.nickname+'的头像');}}
  function setProfiles(profiles){for(const who of ['user','ziwei'])if(profiles?.[who])profileData[who]={nickname:profiles[who].nickname||(who==='user'?'你':'知微'),avatar:profiles[who].avatar||null};document.querySelectorAll('#chatMessages .message-avatar').forEach(el=>paintMessageAvatar(el,el.dataset.role));window.ZiweiChatCall?.setProfile(profileData.ziwei);}
  function renderMessage(m){
   if(m.kind==='poke'){const card=element('article','chat-poke-event');card.dataset.id=m.id;card.append(element('p','message-label',timestamp(m.created_at)),element('p','',m.content));rememberMessage(card,m);return card;}
   const card=element('article','message '+m.role+(m.source==='archive'?' archive':''));card.dataset.id=m.id;card.dataset.kind=m.kind||'final';
   const avatar=element('div','message-avatar'),body=element('div','message-body');avatar.dataset.role=m.role;paintMessageAvatar(avatar,m.role);card.append(avatar,body);
-  body.append(element('p','message-label',messageLabel(m)));
+  body.append(element('p','message-label message-sender-label',messageLabel(m)));
   if(m.source_ref)body.append(element('p','message-label','来源：'+m.source_ref));
   const missingMedia=m.role==='assistant'&&(/MEDIA:|\/workspace\/outbox\//.test(m.content))&&m.mediaDelivery?.state!=='complete';
   const display=m.role==='assistant'?m.content.replace(/\[\[audio_as_voice\]\]/g,'').replace(/^\s*MEDIA:.*$/gm,'').trim():m.content;
@@ -127,7 +127,11 @@ window.ZiweiChat=(()=>{
   if(m.source==='live')actions.append(button(m.deleted?'恢复':'删除',async()=>{if(!m.deleted&&!confirm('将这条消息移入回收站？原始记录与知微已有上下文会保留。'))return;await request('/api/chat/action','POST',{id:m.id,action:m.deleted?'restore':'delete'});await load();}));
   if(m.role==='assistant'&&m.status==='completed'&&m.content.trim()&&!['commentary','summary'].includes(m.kind))actions.append(button('朗读回复',async()=>{const epoch=version,a=await request('/api/chat/speech','POST',{messageId:m.id});if(epoch===version&&!bubble.querySelector('[data-reading]')){const box=element('div');box.dataset.reading='true';bubble.append(box);await media(box,a.id);}}));
   if(m.role==='user'&&m.status==='failed'&&m.source==='live')actions.append(button('重新发送',async()=>{if(pending||busy)throw Error('请先确认当前发送状态。');attachments=[];for(const id of m.attachments)attachments.push(await request('/api/chat/attachments/'+id+'/metadata'));$('#chatInput').value=m.content;chips();$('#chatError').textContent='内容与原录音已准备好，核对后点纸飞机重新发送。';compose();}));
-  window.ZiweiChatRender.actions(actions);body.append(actions);renderToolActions(card,m.toolActions);rememberMessage(card,m);return card;
+  window.ZiweiChatRender.actions(actions);messageActionRows.set(card,actions);body.append(actions);renderToolActions(card,m.toolActions);rememberMessage(card,m);return card;
+ }
+ function groupMessages(list){
+  const cards=[...list.children],same=(a,b)=>{const key=a&&renderedMessages.get(a)?.group;return !!key&&key===renderedMessages.get(b)?.group;};
+  cards.forEach((card,i)=>{const next=same(card,cards[i+1]);card.classList.toggle('same-sender',same(card,cards[i-1]));card.classList.toggle('has-next-sender',next);const row=messageActionRows.get(card);if(!row)return;if(next)row.remove();else if(!row.isConnected)card.querySelector('.message-body').append(row);});
  }
  async function load(older=false,retain=false){
   const epoch=version,loadEpoch=++loadVersion,params=new URLSearchParams({q:$('#chatSearch').value,source,favorite:String(favorite),trash:String(trash),limit:'100'});if(older&&before)params.set('before',before);
@@ -144,6 +148,7 @@ window.ZiweiChat=(()=>{
    if(older){const fragment=document.createDocumentFragment();for(const card of cards)if(!existing.has(card.dataset.id))fragment.append(card);list.prepend(fragment);}
    else{let cursor=list.firstElementChild;for(const card of cards){if(card===cursor)cursor=cursor.nextElementSibling;else list.insertBefore(card,cursor);}while(cursor){const next=cursor.nextElementSibling;cursor.querySelectorAll('audio').forEach(a=>a.pause());cursor.remove();cursor=next;}}
 
+   groupMessages(list);
    if(!older&&source==='live'&&!$('#chatSearch').value&&!favorite&&!trash)responseNotice(o.data);
    if(!keptOlder)before=o.before;$('#chatOlder').hidden=keptOlder?!wasMore:!o.hasMore;viewKey=key;$('#chatEmpty').hidden=!!list.children.length;
    $('#chatEmpty').textContent=$('#chatSearch').value||favorite||trash?'没有符合条件的聊天记录。':source==='archive'?'还没有导入的历史档案。':'这里，留给我们慢慢说。';

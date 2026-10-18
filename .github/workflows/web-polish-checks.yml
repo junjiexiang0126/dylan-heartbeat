@@ -1,0 +1,29 @@
+name: Web polish regression checks
+on:
+  pull_request:
+    paths:
+      - 'ziwei_web/**'
+      - '.github/workflows/web-polish-checks.yml'
+  workflow_dispatch:
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ziwei_web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npm run check && npm test
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npx playwright test e2e/web-polish-batch1.spec.js e2e/chat-minimal.spec.js e2e/chat-profiles.spec.js e2e/work-studio.spec.js
+      - run: npx playwright test e2e/raven-house.spec.js --grep 'one house|native copy'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-polish-browser-evidence
+          path: ziwei_web/test-results/
+          retention-days: 7
