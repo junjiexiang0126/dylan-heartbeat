@@ -105,9 +105,18 @@
       <button class="glass log-entry" data-log-kind="work" type="button"><span class="log-entry-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v13H4ZM8 7V4h8v3M4 12h16M10 12v3h4v-3"/></svg></span><span class="log-entry-label">WORK</span><strong>工作日志</strong><span id="logWorkMeta" class="log-entry-description">实际工作的足迹</span><span class="log-entry-link">查看记录 ↗</span></button>
       <button class="glass log-entry" data-log-kind="diary" type="button"><span class="log-entry-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5C9 3 5 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-2-1-6-1-9 1ZM12 5v15"/></svg></span><span class="log-entry-label">SHARED</span><strong>个人日志</strong><span id="logDiaryMeta" class="log-entry-description">知微愿意与你分享的日记</span><span class="log-entry-link">打开日记 ↗</span></button>
       <button class="glass log-entry" data-log-kind="private" type="button"><span class="log-entry-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5ZM12 14v3"/></svg></span><span class="log-entry-label">PRIVATE</span><strong>私人日志</strong><span class="log-entry-description">只有我看见。</span><span class="log-entry-link">关于这个空间</span></button>
+      <button class="glass log-entry" data-log-kind="impressions" type="button"><span class="log-entry-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></svg></span><span class="log-entry-label">TODAY</span><strong>今日印记</strong><span class="log-entry-description">知微今天做过的事，一件一件</span><span class="log-entry-meta">真实记录</span></button>
       <button class="glass log-entry" data-log-kind="photos" type="button"><span class="log-entry-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h18v16H3ZM3 16l5-6 5 6 3-4 5 6M15 8h1"/></svg></span><span class="log-entry-label">PHOTOS</span><strong>照片墙</strong><span class="log-entry-description">按日期翻照片，留一句标注</span><span id="logPhotoThumbs" class="log-photo-thumbs" aria-label="最近有照片的日期"></span><span class="log-entry-link">打开照片 ↗</span></button>
     </div>
     <div id="logDetail" class="record-sheet" hidden>
+      <section id="impressionsPage" hidden aria-label="今日印记">
+        <div class="imp-head"><span class="eyebrow">WHAT I DID TODAY</span><h1>今日印记</h1><p>我今天做过的事，按时间留在这里。写日记、发朋友圈、逛小花园、做完文件，都在。</p></div>
+        <div class="imp-range" role="group" aria-label="时间范围"><button type="button" class="text-button" data-imp-range="week" aria-pressed="true">最近一周</button><button type="button" class="text-button" data-imp-range="all" aria-pressed="false">全部</button></div>
+        <div class="imp-rail" id="impressionsRail"></div>
+        <section id="impressionsDetail" class="imp-detail" hidden aria-live="polite"></section>
+        <p id="impressionsEmpty" class="hint" hidden>今天还没有印记。</p>
+        <p id="impressionsError" class="error" role="alert" hidden></p>
+      </section>
       <header class="record-page-header"><button id="logBack" class="record-back text-button" type="button" aria-label="返回日志首页">‹</button><div class="record-heading-group"><h1 id="logDetailTitle" tabindex="-1"></h1><p id="logPageMeta" class="record-page-meta">正在读取…</p><p id="logPrivateHint" class="record-page-meta" hidden>只写给他自己</p></div><div class="record-page-actions"><button id="logSearchToggle" class="record-search-toggle" type="button" aria-label="搜索日志" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg></button></div></header>
       <section id="logUnavailable" class="records-empty" role="status" hidden></section>
       <section id="photoPage" hidden aria-label="照片墙">

@@ -5,7 +5,7 @@ window.ZiweiRecords=(()=>{
  const state=Object.fromEntries(['work','diary','memory'].map(k=>[k,{offset:0,next:null,q:'',category:'all',data:[],expanded:new Set()}]));
  const documents=new Map();
  let logOpen=false,memoryOpen=false,workSelected=null,diarySelected=null,memorySnapshot=null,historySession=0;
- const logTitles={work:'工作日志',diary:'个人日志',private:'私人日志',photos:'照片墙'};
+ const logTitles={work:'工作日志',diary:'个人日志',private:'私人日志',photos:'照片墙',impressions:'今日印记'};
  const pageMeta={};let memoryOriginalId=null,todayDiary=null,overviewRun=0;
  function pageChrome(){
   const sheet=visible==='logs'&&logOpen||visible==='memory'&&memoryOpen;
