@@ -107,6 +107,7 @@ function createWorkService(dataDir,options={}){
  };
  const fail=(id,e)=>{db.prepare("UPDATE usage SET status='unknown' WHERE task=? AND status='reserved'").run(id);state(id,'failed',String(e.message).slice(0,160));append('system','任务未完成：'+String(e.message).slice(0,160),{taskId:id,stage:'failed'});};
  const correctionInstruction='上一次审核命令或正文未通过程序校验。不能将空参数当成通过，不能直接放行需要修正的旧稿。若选择 work_document_create，必须在 toolCall.arguments.text 中给出完整修订正文（非说明、摘要或代码），保留用户指定的页面结构；禁止省略 text 或返回空对象。无法可靠修正则 approved:false 并说明原因。本次只纠正审核命令和正文，不再委派白鸦。若给出了 validationError.content，必须逐页满足其页数、汉字计数范围；页内表格文字也计数，可把时间表移到另一页但必须保留总页数。不能直接交付不合格旧稿。';
+ const chatReviewInstruction='本轮选择的是聊天：只审核并给出自然的纯文本回复，不生成文件，不要求用户阅读文档，不调用 work_document_create。审核通过时返回 approved:true、message 为最终回复、toolCall:{name:"work_document_deliver",arguments:{}}；可用 messages 分段。不通过则 approved:false 并给出具体修订意见。';
  const contentCheck=(c,text)=>['ppt','bundle'].includes(catalog(c.tool)?.kind)?requirements.inspect(c.context,text):{rule:null,issues:[]};
  const commandProblem=(r,c)=>reviewProblem(r,c.tool)||r.approved&&contentCheck(c,r.toolCall.name==='work_document_create'?r.toolCall.arguments.text:c.draft).issues.length&&'work_content_requirements_failed'||null;
  async function reviewDraft(id,c,deadline,recovery=false){
@@ -116,12 +117,13 @@ function createWorkService(dataDir,options={}){
    revisionBudget:{maxRounds:LIMITS.maxRevisionRounds,remainingRounds:recovery?0:LIMITS.maxRevisionRounds-c.round,finalReview:!!recovery||c.round===LIMITS.maxRevisionRounds},
    reviewInstruction:recovery?correctionInstruction:c.round===LIMITS.maxRevisionRounds?'这是本任务最后一次模型审核，不能再委派白鸦。若草稿有问题且能根据现有资料修正，请亲自调用 work_document_create，在 arguments.text 返回完整修订正文，不能返回空参数。逐项核对用户硬性要求；有指定PPT页数时保留相应页标题结构，不在页标题前增加独立说明段。若缺资料或无法可靠修正，仍返回 approved:false，不能放行错误草稿。':'审核用户要求及实际文件回执；可直接修订，或在剩余轮次内要求白鸦修订。直接修订时 work_document_create 的 arguments.text 必须是完整修订正文，不得省略。',
    inspection:{files:c.manifest,visualChecked:false},tools,...(recovery?{protocolAttempt:recovery==='content'?'content-repair-1':'resume-1'}:{}),...(c.contentRepair?{validationError:{content:contentCheck(c,c.draft)},reviewInstruction:correctionInstruction}:{})};
+  if(c.tool==='auto')payload.reviewInstruction=chatReviewInstruction;
   let review=await call(id,'review',payload,deadline),problem=commandProblem(review,c),protocolCorrection=false;
   // One explicit protocol correction only. It consumes the SAME task's calls,
   // daily budget and deadline; transport failures are never silently retried.
   if(problem&&!recovery&&task(id).calls<LIMITS.callsPerTask){
    protocolCorrection=true;
-   review=await call(id,'review',{...payload,protocolAttempt:'repair-1',draft:problem==='work_content_requirements_failed'&&review.toolCall.name==='work_document_create'?review.toolCall.arguments.text:c.draft,revisionBudget:{...payload.revisionBudget,remainingRounds:0,finalReview:true},reviewInstruction:correctionInstruction,validationError:{code:problem,content:problem==='work_content_requirements_failed'?contentCheck(c,review.toolCall.name==='work_document_create'?review.toolCall.arguments.text:c.draft):undefined,tool:review?.toolCall?.name==='work_document_create'?'work_document_create':'invalid_command',missingText:review?.toolCall?.name==='work_document_create'&&typeof review?.toolCall?.arguments?.text!=='string'}},deadline);
+   review=await call(id,'review',{...payload,protocolAttempt:'repair-1',draft:problem==='work_content_requirements_failed'&&review.toolCall.name==='work_document_create'?review.toolCall.arguments.text:c.draft,revisionBudget:{...payload.revisionBudget,remainingRounds:0,finalReview:true},reviewInstruction:c.tool==='auto'?chatReviewInstruction:correctionInstruction,validationError:{code:problem,content:problem==='work_content_requirements_failed'?contentCheck(c,review.toolCall.name==='work_document_create'?review.toolCall.arguments.text:c.draft):undefined,tool:review?.toolCall?.name==='work_document_create'?'work_document_create':'invalid_command',missingText:review?.toolCall?.name==='work_document_create'&&typeof review?.toolCall?.arguments?.text!=='string'}},deadline);
    problem=commandProblem(review,c);
   }
   if(problem)throw Error(problem);return {review,protocolCorrection};
@@ -174,10 +176,11 @@ function createWorkService(dataDir,options={}){
    for(const aid of body.attachments||[]){const a=files.get(aid),file=path.join(files.dir,aid);const doc=await extract(file,a.name);let text=doc?.text;if(!text&&a.mime==='text/plain')text=fs.readFileSync(file,'utf8');context+='\n附件 '+a.name+'：'+(text?text.slice(0,3500):'已保存，当前模型无法读取此格式的内容。');}
    if(context.length>7000)context=context.slice(0,6900)+'\n[资料超过读取上限，附件未完整读取。]';
    const available=toolRows().filter(t=>t.enabled&&t.authorized).map(t=>({id:t.id,name:t.name,kind:t.kind}));
-   const plan=await call(id,'plan',{task:context,tool:body.tool,availableTools:available},deadline);
+   const plan=await call(id,'plan',{task:context,tool:body.tool,availableTools:body.tool==='auto'?[]:available,...(body.tool==='auto'?{mode:'chat',instruction:'本轮为三人群聊，不生成文件。仍按 plan 协议返回 work_delegate，arguments.tool 必须为 auto，instruction 委派白鸦作纯文本回复；不要把聊天改成文档任务。'}:{})},deadline);
    const delegation=coordinatorCall(plan,'work_delegate');
    if(typeof plan.message!=='string'||typeof delegation.instruction!=='string'||!delegation.instruction.trim())throw Error('invalid_hermes_plan');
-   const selected=body.tool==='auto'?(delegation.tool||'auto'):body.tool;
+   // The selector labels auto as 聊天; file permission is not per-message consent.
+   const selected=body.tool;
    if(selected!=='auto')permit(selected);
    receipt(id,'ziwei','work_delegate',{tool:selected});
    bubbles('ziwei',plan.messages||plan.message.slice(0,3000),{taskId:id,stage:'delegated'});state(id,'executing');

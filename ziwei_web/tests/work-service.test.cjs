@@ -9,6 +9,21 @@ const setup=(overrides={})=>{const dir=fs.mkdtempSync(path.join(os.tmpdir(),'wor
 async function settled(svc,id='test-task'){for(let i=0;i<100;i++){const d=(await request(svc,'/api/work/messages')).body;if(!d.tasks.some(t=>t.id===id&&['queued','planning','executing','reviewing','generating'].includes(t.state)))return d;await new Promise(r=>setTimeout(r,10));}throw Error('not settled');}
 process.env.ZHIPU_API_KEY='isolated-fixture-key';
 const body=(id='test-task',extra={})=>({requestId:id,text:'@知微 请委派白鸦完成',tool:'auto',attachments:[],...extra});
+test('chat selection cannot be escalated into an authorized document task by the planner',async()=>{
+ const seen=[];const x=setup({client:{configured:()=>true,json:async(_,options)=>{
+  const b=JSON.parse(options.body);seen.push(b);
+  return {text:JSON.stringify(b.stage==='plan'?{message:'收到这条聊天',toolCall:{name:'work_delegate',arguments:{instruction:'纯文本回应，不做文档',tool:'bundle'}}}:{approved:true,message:'我们在这里，先聊一会儿。',toolCall:{name:'work_document_deliver',arguments:{}}}),usage:{prompt_tokens:5,completion_tokens:5}};
+ }}});try{
+  await request(x.svc,'/api/work/tools/configure','POST',{id:'bundle',revision:0,authorized:true});
+  await request(x.svc,'/api/work/send','POST',body('chat-only',{text:'我不想看文档，只想聊聊'}));
+  const d=await settled(x.svc,'chat-only');assert.equal(d.tasks[0].state,'completed');assert.equal(d.tasks[0].calls,3);
+  assert.equal(d.files.length,0);assert.deepEqual(d.data.at(-1).attachments||[],[]);
+  assert.deepEqual(seen[0].availableTools,[]);assert.equal(seen[0].mode,'chat');
+  assert.equal(seen[1].tool,'auto');assert.match(seen[1].reviewInstruction,/不生成文件/);
+  const executed=x.calls.find(c=>c.model==='glm-4-flash-250414');assert.equal(executed.tools,undefined);
+  assert.ok(d.toolRuns.every(t=>t.name!=='work_document_create'));
+ }finally{x.cleanup();}
+});
 test('native delegation, GLM execution, native review persist separately with three actual mocked transports',async()=>{const x=setup();try{
  assert.equal((await request(x.svc,'/api/work/send','POST',body())).code,202);const d=await settled(x.svc);assert.deepEqual(d.data.map(x=>x.role),['user','ziwei','glm','ziwei']);assert.equal(d.tasks[0].state,'completed');assert.equal(d.tasks[0].calls,3);assert.equal(d.usage.length,3);assert.equal(d.usage[0].billedCny,null);assert.equal(x.calls.length,3);
  const again=await request(x.svc,'/api/work/send','POST',body());assert.equal(again.body.replayed,true);assert.equal(x.calls.length,3);

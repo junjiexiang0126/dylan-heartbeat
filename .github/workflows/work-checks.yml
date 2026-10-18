@@ -24,3 +24,9 @@ jobs:
       - run: python3 -m unittest discover -s ../hermes_native/tests -p test_work_agent.py
       - run: npx playwright install --with-deps chromium webkit
       - run: npx playwright test e2e/work-studio.spec.js e2e/chat-minimal.spec.js e2e/chat-profiles.spec.js
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: work-browser-failure-evidence
+          path: ziwei_web/test-results/
+          retention-days: 7
