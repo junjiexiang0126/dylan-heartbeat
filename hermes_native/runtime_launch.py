@@ -43,8 +43,20 @@ if __name__ == '__main__':
         enabled = sorted(_get_platform_tools(config, 'api_server'))
         definitions = model_tools.get_tool_definitions(enabled_toolsets=enabled, quiet_mode=True)
         assert len(definitions) > 20
-        assert any(t.get('function', {}).get('name') == 'ziwei_status' for t in definitions), 'ziwei_status missing from resolved api_server tools'
-        print('[ziwei] ziwei_status visible in resolved api_server tool definitions.')
+        # Progressive disclosure may defer plugin tools behind the tool_search bridge,
+        # so the collapsed surface is not the authoritative resolution: check the raw
+        # catalog, then require the tool to be reachable from the visible surface.
+        catalog = model_tools.get_tool_definitions(enabled_toolsets=enabled, quiet_mode=True,
+                                                   skip_tool_search_assembly=True)
+        catalog_names = {t.get('function', {}).get('name') for t in catalog}
+        assert 'ziwei_status' in catalog_names, 'ziwei_status missing from resolved api_server tools'
+        visible_names = {t.get('function', {}).get('name') for t in definitions}
+        if 'ziwei_status' not in visible_names:
+            assert {'tool_search', 'tool_describe', 'tool_call'} <= visible_names, \
+                'ziwei_status deferred without a working tool_search bridge'
+            print('[ziwei] ziwei_status resolvable through the tool_search bridge.')
+        else:
+            print('[ziwei] ziwei_status visible in resolved api_server tool definitions.')
     else:
         tree = Path(os.environ.get('ZIWEI_TEST_TREE', '/opt/ziwei-runtime/current'))
         main = activate(tree)
