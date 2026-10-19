@@ -334,8 +334,11 @@ $('#chatFiles').onchange=async e=>{
       if(!confirm('开一段新的对话？\n旧记录都会留着。'))return;
       b.disabled=true;
       try{
-        var r=await fetch('/api/chat/session',{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':(window.__zwCsrf||'')}});
-        if(!r.ok) throw new Error('switch_failed');
+        /* 先取一次会话信息拿到当轮 CSRF，避免页面已登录时全局变量为空 */
+        var info=await fetch('/api/session',{credentials:'same-origin'}).then(function(x){return x.json();});
+        var tok=(info&&info.csrf)||window.__zwCsrf||'';
+        var r=await fetch('/api/chat/session',{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':tok}});
+        if(!r.ok){ throw new Error('switch_failed_'+r.status); }
         location.reload();
       }catch(e){ alert('切换没成功，再试一次。'); b.disabled=false; }
     });
