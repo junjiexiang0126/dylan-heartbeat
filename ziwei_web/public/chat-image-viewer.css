@@ -1,0 +1,14 @@
+/* Only the chat/Work image dialog: never change global dialog or page layout. */
+#chatImageViewer{
+  --viewer-edge:var(--ui-space-16,16px);
+  position:fixed;
+  inset:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
+  margin:auto;
+  width:calc(100vw - var(--viewer-edge) - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));
+  height:calc(100dvh - 2 * var(--viewer-edge) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+  max-height:calc(100dvh - 2 * var(--viewer-edge) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+}
+#chatImageViewer[open]{display:flex;flex-direction:column}
+#chatImageViewer > .viewer-toolbar{flex-shrink:0}
+#chatImageViewer > #chatImageName{flex-shrink:0;max-height:20%;overflow:auto}
+#chatImageViewer > #chatImageCanvas{flex:1;min-height:0;height:auto}
