@@ -1,0 +1,18 @@
+/* Only chat attachment groups. Keep upstream PhotoStack visuals/gesture constants untouched. */
+#chatMessages .chat-photostack {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin: 12px 24px 16px;
+  outline-offset: 6px;
+}
+#chatMessages .message-bubble > img.message-media.photostack-source-hidden {
+  display: none !important;
+}
+#chatMessages .chat-photostack .pstack-stage {
+  max-width: 100%;
+}
+#chatMessages .chat-photostack:focus-visible {
+  outline: 2px solid var(--accent);
+  border-radius: 14px;
+}
