@@ -325,3 +325,20 @@ $('#chatFiles').onchange=async e=>{
  function draft(text){if(!canDraft())return false;$('#chatInput').value=text;compose();return true;}
  return {start,stop,setProfiles,draft,canDraft,leave:()=>{if(!$('#chat').hidden){const t=$('#chatTimeline');readingPosition={top:t.scrollTop,follow:t.scrollHeight-t.scrollTop-t.clientHeight<80};}window.ZiweiChatCall?.end();if($('#chatImageViewer')?.open)$('#chatImageViewer').close();stopVoice();$('#chatInput').blur();}};
 })();
+
+/* 开一段新对话：旧记录保留 */
+(function(){
+  function bind(){
+    var b=document.getElementById('chatNewSession'); if(!b) return;
+    b.addEventListener('click',async function(){
+      if(!confirm('开一段新的对话？\n旧记录都会留着。'))return;
+      b.disabled=true;
+      try{
+        var r=await fetch('/api/chat/session',{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':(window.__zwCsrf||'')}});
+        if(!r.ok) throw new Error('switch_failed');
+        location.reload();
+      }catch(e){ alert('切换没成功，再试一次。'); b.disabled=false; }
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();

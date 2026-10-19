@@ -10,7 +10,13 @@ const SESSION_KEY='agent:main:web:yu';
 const enabled=process.env.ZIWEI_BRIDGE_ENABLED==='true';
 const base=hermesEndpoint(process.env);
 const secret=process.env.ZIWEI_HERMES_API_KEY||'';
-const sessionId=process.env.ZIWEI_HERMES_WEB_SESSION_ID||'';
+const SESSION_BASE=process.env.ZIWEI_HERMES_WEB_SESSION_ID||'';
+const SESSION_STATE_DIR=process.env.ZIWEI_WEB_DATA_DIR||path.join(__dirname,'.data');
+const SESSION_STATE_FILE=path.join(SESSION_STATE_DIR,'current-session.json');
+let sessionId=SESSION_BASE;
+try{const raw=JSON.parse(fs.readFileSync(SESSION_STATE_FILE,'utf8'));if(raw&&typeof raw.id==='string'&&/^[a-zA-Z0-9_-]{1,128}$/.test(raw.id))sessionId=raw.id;}catch(e){}
+function persistSession(){try{fs.mkdirSync(SESSION_STATE_DIR,{recursive:true});fs.writeFileSync(SESSION_STATE_FILE,JSON.stringify({id:sessionId,at:new Date().toISOString()}));}catch(e){}}
+function newSession(){const stamp=new Date().toISOString().replace(/[-:TZ.]/g,'').slice(0,14);const next=(SESSION_BASE||'ziwei-web')+'-'+stamp;if(!/^[a-zA-Z0-9_-]{1,128}$/.test(next))throw Error('session_id_invalid');sessionId=next;sessionReady=false;creationPromise=null;persistSession();return sessionId;}
 let sessionReady=false,creationPromise=null,streamBusy=false;
 function ready(){return !!(enabled&&base&&secret&&/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId));}
 function status(){return ready()}
@@ -85,4 +91,4 @@ async function proxy(req,res,pathname,url){
  }catch{if(!res.headersSent)err(res,502,'upstream_unavailable');else res.destroy()}
  finally{clearTimeout(timer);if(stream){try{ledger.finish(requestId,requestComplete)}finally{streamBusy=false}}}
 }
-module.exports={proxy,status,pathForHistory};
+module.exports={proxy,status,pathForHistory,newSession,currentSession:()=>sessionId};
