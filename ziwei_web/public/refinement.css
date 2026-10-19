@@ -267,3 +267,6 @@ html,body{overscroll-behavior:none}
 
 /* ===== 输入控件统一 16px：iOS 聚焦时不再自动放大页面 ===== */
 input,textarea,select,.chat-toolbar input,.chat-toolbar select{font-size:16px!important}
+
+/* 页面固定：不可缩放（配合 theme-init.js 的事件拦截，Safari 才真正生效） */
+html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
