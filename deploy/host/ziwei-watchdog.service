@@ -1,0 +1,5 @@
+[Unit]
+Description=Ziwei watchdog (health + auto restart + push alert)
+[Service]
+Type=oneshot
+ExecStart=/opt/ziwei-tools/watchdog.sh
