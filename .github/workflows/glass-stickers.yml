@@ -1,0 +1,26 @@
+name: Glass sticker HTTP preview
+on:
+  pull_request:
+    paths:
+      - 'ziwei_web/**'
+      - '.github/workflows/glass-stickers.yml'
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ziwei_web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npx playwright test e2e/glass-stickers.spec.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: glass-sticker-http-preview
+          path: ziwei_web/test-results/
+          retention-days: 14
