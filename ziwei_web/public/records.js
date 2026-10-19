@@ -210,7 +210,21 @@ window.ZiweiRecords=(()=>{
       const img=document.createElement('img');
       img.className='card-sticker'; img.alt=''; img.setAttribute('aria-hidden','true');
       const key=card.dataset.logKind?LOG_STICKERS[card.dataset.logKind]:MEMORY_STICKERS[card.dataset.memoryCategory];
-      img.src=card.dataset.stickerSrc||STICKERS[key||'heart'];
+      const source=card.dataset.stickerSrc||STICKERS[key||'heart'];
+      // Decoration must never expose the browser's broken-image icon. Retry
+      // one transient request with a distinct URL; never loop or replace art.
+      let retried=false;
+      img.hidden=true;
+      img.onload=()=>{img.hidden=false;};
+      img.onerror=()=>{
+        img.hidden=true;
+        if(retried)return;
+        retried=true;
+        const retry=new URL(source,location.href);
+        retry.searchParams.set('sticker_retry','1');
+        img.src=retry.href;
+      };
+      img.src=source;
       card.appendChild(img);
     });
   }
