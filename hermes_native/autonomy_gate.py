@@ -11,7 +11,21 @@ from datetime import datetime
 from pathlib import Path
 
 ACTIVE = {"pending", "in_progress"}
-STATES = ACTIVE | {"completed", "failed", "waiting_user", "deferred"}
+# Native kanban also uses waiting_front for work blocked on the Web frontend.
+# Recognize it as a waiting state, without treating it as runnable work.
+STATES = ACTIVE | {"completed", "failed", "waiting_user", "waiting_front", "deferred"}
+
+
+def _daily_opportunities():
+    """每天允许的自主唤醒次数：读 $HERMES_HOME/autonomy_gate.json，默认 15。"""
+    path = os.path.join(os.environ.get("HERMES_HOME", "/opt/data"), "autonomy_gate.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            value = int(json.load(fh).get("daily_opportunities", 15))
+        return max(1, min(48, value))
+    except Exception:
+        return 15
+
 
 
 def evaluate(home: Path, now: datetime) -> dict:
@@ -21,7 +35,7 @@ def evaluate(home: Path, now: datetime) -> dict:
     jobs_path = home / "cron" / "jobs.json"
     # Bad/missing task documents fail closed instead of triggering paid repairs.
     tasks = json.loads(tasks_path.read_text())
-    if not isinstance(tasks, list) or any(t.get("status") not in STATES for t in tasks):
+    if not isinstance(tasks, list) or any(not isinstance(t, dict) or t.get("status") not in STATES for t in tasks):
         raise ValueError("Invalid task state document")
     if jobs_path.exists():
         jobs = json.loads(jobs_path.read_text())
@@ -30,8 +44,14 @@ def evaluate(home: Path, now: datetime) -> dict:
         if any(j.get("name", "").startswith("ziwei-") and int(j.get("failure_streak") or 0) >= 3 for j in jobs):
             return {"wakeAgent": False, "reason": "three consecutive failures; operator review needed"}
     invalid_completions = []
+    waived_evidence = []
     for task in tasks:
         if task["status"] != "completed":
+            continue
+        # 历史遗留：这条规则生效前完成的、没留存产物。显式豁免并记进日志，
+        # 不伪造证据，也不让一条旧账把整台机器锁死。
+        if task.get("evidence_waived"):
+            waived_evidence.append(task.get("id"))
             continue
         paths = task.get("evidence", [])
         valid = bool(paths) and isinstance(paths, list)
@@ -51,20 +71,21 @@ def evaluate(home: Path, now: datetime) -> dict:
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
     if state.get("date") != date:
         state = {"date": date, "wakes": 0}
-    if int(state.get("wakes", 0)) >= 6:
-        return {"wakeAgent": False, "reason": "six daily opportunities used"}
+    if int(state.get("wakes", 0)) >= _daily_opportunities():
+        return {"wakeAgent": False, "reason": "daily opportunities used"}
     active = [t for t in tasks if t["status"] in ACTIVE]
     diary = workspace / "diary" / (date + ".md")
     diary_due = not (diary.is_file() and not diary.is_symlink() and diary.stat().st_size > 0)
     # An idle opportunity is still an opportunity: the agent chooses among the
     # actions below instead of the gate deciding that nothing may happen. The
-    # six daily opportunities, the failure pause, the evidence checks and the
+    # daily opportunities, the failure pause, the evidence checks and the
     # lock all still apply, and the counter is never reset here.
     idle = not active and not diary_due
     state["wakes"] += 1
     state["last_opportunity"] = now.isoformat()
     atomic_json(state_path, state)
     return {"wakeAgent": True, "time": now.isoformat(), "tasks": active,
+            "waived_evidence": waived_evidence,
             "diary_due": diary_due, "idle": idle, "opportunity": state["wakes"],
             "available_actions": ["contact_user", "rest", "self_directed_task",
                                   "publish_moment", "write_diary"],
@@ -90,15 +111,18 @@ def atomic_json(path: Path, data):
 
 def main():
     home = None
+    now = datetime.now().astimezone()
     try:
         home = Path(os.environ["HERMES_HOME"])
         with (home / ".autonomy-gate.lock").open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
-            result = evaluate(home, datetime.now().astimezone())
+            result = evaluate(home, now)
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
         # Hermes treats a nonzero script exit as prompt context and may still
         # invoke the model. Always return a successful wakeAgent=false gate.
         result = {"wakeAgent": False, "reason": "preflight invalid; operator review needed", "error_type": type(exc).__name__}
+    # Every refusal needs a timestamp too; do not log exception messages or data.
+    result.setdefault("time", now.isoformat())
     try:
         with (home / "logs" / "autonomy_preflight.jsonl").open("a") as log:
             log.write(json.dumps(result, ensure_ascii=False) + "\n")
