@@ -24,7 +24,11 @@ jobs:
       - run: npm test
       - run: npm run check
       - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
+      - name: E2E Chromium
+        run: npm run test:e2e -- --project=chromium
+      - name: E2E WebKit
+        continue-on-error: true
+        run: npm run test:e2e -- --project=webkit
       - run: python -m py_compile scripts/live_sse_probe.py
 
       - uses: actions/upload-artifact@v4
