@@ -120,3 +120,15 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
   background:transparent; box-shadow:none; border-color:transparent;
   -webkit-backdrop-filter:none; backdrop-filter:none;
 }
+
+/* —— 今日印记：完整保留原样（语 2026-10-19 明确：那是知微自己的表情贴纸，不许动） ——
+   印记卡里的 .imp-sticker（exp6 六张表情）与 .log-entry[data-log-kind="impressions"]
+   的爪印，全部回到 records-material 原本的图片与位置，本文件不接管。 */
+#logs .log-entry[data-log-kind="impressions"]::before{
+  top:auto; right:auto; left:auto; bottom:auto;
+  width:auto; height:auto; opacity:1; transform:none; filter:none;
+  background-image:url('/stickers/paw.png');
+  pointer-events:none;
+}
+#logs .log-entry[data-log-kind="impressions"] strong{padding-right:0}
+#logs .imp-card .imp-sticker{ position:relative; z-index:3 }
