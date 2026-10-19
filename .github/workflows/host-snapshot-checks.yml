@@ -1,0 +1,23 @@
+name: Host snapshot isolated checks
+on:
+  pull_request:
+    paths:
+      - 'deploy/**'
+      - '.github/workflows/host-snapshot-checks.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  snapshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate host scripts without operating host services
+        run: |
+          bash -n deploy/tools/backup.sh deploy/tools/prechange.sh
+          python -m py_compile deploy/tools/snapshot.py
+          python -m unittest discover -s deploy/tests -v

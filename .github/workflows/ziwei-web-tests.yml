@@ -1,0 +1,39 @@
+name: Ziwei Web isolated tests
+on:
+  push:
+    branches:
+      - feature/ziwei-pwa-phase1-foundation
+      - feature/ziwei-home-phase2-chat
+  pull_request:
+    paths:
+      - 'ziwei_web/**'
+      - '.github/workflows/ziwei-web-tests.yml'
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: ziwei_web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium webkit
+      - name: E2E Chromium
+        run: npm run test:e2e -- --project=chromium
+      - name: E2E WebKit
+        continue-on-error: true
+        run: npm run test:e2e -- --project=webkit
+      - run: python -m py_compile scripts/live_sse_probe.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: full-web-browser-evidence
+          path: ziwei_web/test-results/
+          retention-days: 7

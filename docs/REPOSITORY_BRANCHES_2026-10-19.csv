@@ -1,0 +1,67 @@
+branch,tip_sha,ahead_of_1eeb211,behind_1eeb211,disposition
+audit/handoff-inventory-20261017,d3c0777d5f5975b02c339ae9cea66afbec186b99,32,34,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+audit/handoff-on-integration,e7b396f4fc6b651d6ed7249aa35ce1ea039206a4,0,29,ancestor; retain until deployment refs checked
+audit/ziwei-autonomy-live-evidence-20261010,4e9efca18cf1fb16b4c97e446bdea9d81bb260e6,0,266,ancestor; retain until deployment refs checked
+bot/app-acceptance-20261017,809fbcf6fe027e5104138264cb7dc351fccda252,1,32,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+chore/migration-kit-20261019,25816e3daf66d06ad53b39c5ac61eba064da2bf6,1,22,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+develop/ziwei-hermes-unified-v1,9fc81c1ff811a3ac63e13066d71db5969a5ddfd4,0,261,ancestor; retain until deployment refs checked
+diagnostic/webkit-glass-probe-20261011,717bf7c54f028ff84b7483fab8fc093bee8e398b,19,214,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+docs/rollback-point-20261018,3f7764fc1d48abe418d451b62491720d06abfbdf,0,22,ancestor; retain until deployment refs checked
+feat/bubble-skin,d8fcc7248c7da0a39ca42677fc5df8b23fd84b3d,0,96,ancestor; retain until deployment refs checked
+feat/dev-next-resume,5eadfbc5a58e195433ce967181d7ba04d3e62846,13,23,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+feat/impressions-entry-20261018,920a67400a0853d609819eb2021f75116f34815d,0,15,ancestor; retain until deployment refs checked
+feat/impressions-on-integration,45870d68ec06ba0b5bcf78657a5c4c33d275e424,0,31,ancestor; retain until deployment refs checked
+feat/photo-wall-native,5b9287298fe0f64174b44d92eaeed0a660ac64b1,0,104,ancestor; retain until deployment refs checked
+feat/raven-on-home,aa7fce0e30fe7889cdb08265a5129e06806108fc,0,101,ancestor; retain until deployment refs checked
+feat/web-polish-batch1-20261018,a33d96090c9ff6f86435cf61b196a14e55bca506,0,18,ancestor; retain until deployment refs checked
+feat/ziwei-native-browser-persistence-v1,50634ef869ecc7166257fe4f896f45c31c102506,0,268,ancestor; retain until deployment refs checked
+feature/interaction-workbench,ae581ce5812af5d592d786732a658bf4fdf15974,15,121,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+feature/moments-web,782b99a9ec4039446fbf1a43731577fd935cdceb,0,133,ancestor; retain until deployment refs checked
+feature/native-records,7c2a911832a4dc1d9c3dd7b22b0c1b61e1ed54ec,0,126,ancestor; retain until deployment refs checked
+feature/raven-house-v2-20261017,e221e76f3c4f719956b480923890d4fd499bc5f5,0,84,ancestor; retain until deployment refs checked
+feature/web-chat-polish-20261016,97446341bbca237eae79aaa6240a447cfb899211,0,117,ancestor; retain until deployment refs checked
+feature/web-photos-actions-20261016,69658b5b2031454054c38e002d5f90623e15f1aa,0,98,ancestor; retain until deployment refs checked
+feature/web-raven-3d-20261016,cb45c8d2663e69c4d353ebae56c9ce1f0ee0c1ff,0,96,ancestor; retain until deployment refs checked
+feature/work-integration-20261017,2ee70b588aeeec6165415eb772bd13a167c7fdde,0,23,ancestor; retain until deployment refs checked
+feature/work-native-acceptance-20261017,01e35a1b84ecb11f6a907eb02932b001542f7c5c,16,85,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+feature/work-phase1-ui,56cb419f80fdea011c282a0d56e92a634d8bc127,16,121,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+feature/ziwei-autonomous-wake-v1,7c8b0b8350cc53587f5aa95dc792306b50d47b62,0,315,ancestor; retain until deployment refs checked
+feature/ziwei-chat-state-sync-v1,092d1ae9f6aa7f4ec0ca50677e90dd62dd26bd93,0,314,ancestor; retain until deployment refs checked
+feature/ziwei-google-drive-file-oauth-v1,2cb888823af695dcca70527e00bb4f463c4e58af,7,267,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+feature/ziwei-hermes-native-v1,b5d6806d0d5626cd84bf739fcad5c4b0810bcd8f,0,297,ancestor; retain until deployment refs checked
+feature/ziwei-hermes-test-v1,242562de0fc5bff23a5b2b0e2ac338140f94f3a4,0,309,ancestor; retain until deployment refs checked
+feature/ziwei-shared-memory-read-v1,137f4d0a7a1b94e7d2be41380e5c369a7ccbe9be,0,312,ancestor; retain until deployment refs checked
+feature/ziwei-web-connectivity-probe-v1,e356e5d661a17579ef720ef186925a5c42df58c6,3,262,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+fix/background-presets,48a2f7e1783e923857e93cd1b28cfecb649eb537,0,109,ancestor; retain until deployment refs checked
+fix/chat-call-avatar-wave,735bb14c2e6c3a843df6216373c4ef14b55cba76,0,137,ancestor; retain until deployment refs checked
+fix/chat-envelope-media,459831f9f447f00c3cff20890968feb8cc092137,13,121,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+fix/chat-file-delivery,c233f351f4763f20c070acd2ca40374e4ab6e920,0,136,ancestor; retain until deployment refs checked
+fix/chat-summary-segmentation-20261017,9743cd9dc51d51756027b441aae8a614630f2405,0,75,ancestor; retain until deployment refs checked
+fix/ci-webkit-route-interception-20261017,530cfb1eccd4e45d6777ec592512322d6a15894b,1,23,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+fix/contrast-pass,ff59308a166bd7e58838a2c2805bafe4bd2dba7d,0,106,ancestor; retain until deployment refs checked
+fix/diary-markdown-and-stale-orphans,073c478513208ac86d5b6642bdf9178d45015c28,0,105,ancestor; retain until deployment refs checked
+fix/diary-weather-mood-20261016,56b32607f993c73e76464f6f2acd9111d66be656,0,119,ancestor; retain until deployment refs checked
+fix/face-id-entry,245d87487e70a7d9415eb591051b0d84dc898952,0,134,ancestor; retain until deployment refs checked
+fix/memory-logs-bridge,7e1554071e01b02b9e08edc76fa48a65da930826,0,127,ancestor; retain until deployment refs checked
+fix/moments-native,1d298c1a4634e5cef3ff9cddcbc953cb7f33b23c,1,133,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+fix/restore-impressions-entry-20261018,50efa02dd0c7e309ac31e78624a799dbeef78626,3,28,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+fix/status-tool-visibility,d06d6479293a25bc564c056e1b1ac9a721871812,0,135,ancestor; retain until deployment refs checked
+fix/voice-bubble-compact,9fa5f1ced42ce30bc5fbca17afe4f44fccd6f6ec,0,110,ancestor; retain until deployment refs checked
+fix/voided-records-cleanup,406b6d08e19109a951323f16373866789d6d444a,0,97,ancestor; retain until deployment refs checked
+fix/web-e2e-screenshot-dir-20261016,540ad9120640f96f1918f3953b39a096b87fe8d7,0,120,ancestor; retain until deployment refs checked
+fix/web-mobile-ui-overhaul,e82cabcdaeaa5df30e1e3fbfb65c991adea6a9ad,0,138,ancestor; retain until deployment refs checked
+fix/web-record-pages-20261016,d200044c247a3d802e57b5ba62d2a2e91708fa3e,0,111,ancestor; retain until deployment refs checked
+fix/web-send-upload-race,f3ba9279b1c449fb3da1d5dc8390c985797240b3,4,206,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+fix/web-voice-media-20261016,afa25e1af4fb3e7878de87b7fec763c0dcf1b5df,0,112,ancestor; retain until deployment refs checked
+fix/work-chat-limit-text,7c297d622155c77841887ed66c9f85ed47a48dd2,27,34,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+fix/ziwei-cron-budget-image-20261018,e31cbf41a7a6e4aaae7b6a24d82f2478f29f22eb,13,85,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+fix/ziwei-existing-closeout-20261010,8350f791399916e2c9c061420aff3e6fe04abff7,0,263,ancestor; retain until deployment refs checked
+fix/ziwei-native-backup-profile-v1,e6d404faa7c3f8b69ef9143780f957f2096f03c3,0,286,ancestor; retain until deployment refs checked
+fix/ziwei-security-guardian-audit-20261010,1e0ffac3151d5473a957cc33e10c6ddc534f5481,0,283,ancestor; retain until deployment refs checked
+fix/ziwei-terminal-cwd-absolute-v1,3d95e7e4a5d3164b313452f5a00f001e5c0484fc,0,284,ancestor; retain until deployment refs checked
+integration/main-consolidation-20261017,f20f48b3f4b3beba9e43ec8e55aaa513d5645ace,2,23,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md
+integration/ziwei-20261016,1eeb21160ec78324d5bf591d61b5cd71b29044a6,0,0,ancestor; retain until deployment refs checked
+main,830c4a51c5cb3e408c868d2a0637e1ebd72502da,0,320,ancestor; retain until deployment refs checked
+probe-ziwei,7a9838c05a75108e83c0873233a6f058d7ba3fd9,0,93,ancestor; retain until deployment refs checked
+review/native-records-base-e9ed323,e9ed323c84afc7cb2a5266d6da9c6a91ff6ec7d5,0,129,ancestor; retain until deployment refs checked
+test/web-appearance-baseline-20261016,a483d05b15282bb0f81061226a6a0c5a82cd7aaa,1,107,nonancestor; see REPOSITORY_CLOSEOUT_2026-10-19.md

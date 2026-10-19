@@ -1,0 +1,180 @@
+'use strict';
+const $ = s => document.querySelector(s);
+let csrf = null, homeData = null, sessionData = null, pendingAvatars = {}, activeTab = 'home', refreshVersion = 0;
+const media = matchMedia('(prefers-color-scheme: dark)');
+function appearance() {
+  const p = homeData?.preferences || { theme: 'system', background: 'rose' };
+  document.documentElement.dataset.theme = p.theme === 'system' ? media.matches ? 'dark' : 'light' : p.theme;
+  document.documentElement.dataset.background = p.background;
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  if (bg) document.querySelectorAll('meta[name=theme-color]').forEach(m => { m.removeAttribute('media'); m.content = bg; });
+  // 记住解析后的主题与背景色：下次启动时，index.html 头部的内联脚本要在 iOS 取色之前写进 theme-color
+  try {
+    localStorage.setItem('zw_pref_theme', p.theme);
+    localStorage.setItem('zw_resolved_theme', document.documentElement.dataset.theme || 'light');
+    localStorage.setItem('zw_background', p.background);
+    if (bg) localStorage.setItem('zw_bg', bg);
+  } catch (e) {}
+}
+media.addEventListener('change', appearance);
+async function api(url, method = 'GET', body) {
+  const r = await fetch(url, { method, cache: 'no-store', headers: { ...(body ? {'Content-Type':'application/json'} : {}), ...(csrf ? {'X-Ziwei-CSRF':csrf} : {}) }, ...(body ? {body:JSON.stringify(body)} : {}) });
+  let data; try { data = await r.json(); } catch { throw Error('服务响应异常，请稍后重试'); }
+  if (!r.ok) {
+    if (r.status === 401 && url !== '/api/login' && !url.startsWith('/api/passkey/')) clearPrivateUI();
+    throw Error(r.status === 409 ? '资料已在其他页面更新，请重新打开设置后保存。' : r.status === 429 ? '尝试次数过多，请 15 分钟后重试。' : r.status === 503 ? '服务尚未配置此功能。' : r.status === 401 ? '验证失败，请检查密码或设备凭据。' : r.status === 413 ? '图片过大，请选择较小的图片。' : '操作未完成，请检查输入后重试。');
+  }
+  return data;
+}
+function tab(name) {
+  activeTab = name;
+  document.body.classList.toggle('work-view',name==='work'&&!!csrf);
+  window.ZiweiRecords?.show(name,csrf,text=>{if(!window.ZiweiChat?.canDraft())return false;tab('chat');return window.ZiweiChat.draft(text);});
+  if(name==='moments'&&csrf)window.ZiweiMoments?.start(csrf);else window.ZiweiMoments?.leave();
+  if(name!=='chat')window.ZiweiChat?.leave();
+  window.ZiweiChatAppearance?.setVisible(['chat','work'].includes(name)&&!!csrf);
+  document.querySelectorAll('.panel').forEach(p => p.hidden = p.id !== name);
+  document.querySelectorAll('[data-tab]').forEach(b => { b.classList.toggle('active',b.dataset.tab===name);b.setAttribute('aria-current',b.dataset.tab===name?'page':'false'); });
+  window.scrollTo({top:0});
+  if(name==='chat'&&csrf)window.ZiweiChat?.start(csrf);
+}
+function renderAvatar(el, profile) {
+  el.replaceChildren();
+  const child = document.createElement(profile.avatar ? 'img' : 'span');
+  if (profile.avatar) { child.src = profile.avatar; child.alt = profile.nickname + '的头像'; }
+  else child.textContent = [...profile.nickname][0];
+  el.append(child);
+}
+function renderHome() {
+  window.ZiweiMoments?.setProfiles({user:homeData.user,ziwei:homeData.ziwei});
+  $('#userName').textContent = homeData.user.nickname;
+  $('#ziweiName').textContent = homeData.ziwei.nickname;
+  renderAvatar($('#userAvatar'),homeData.user); renderAvatar($('#ziweiAvatar'),homeData.ziwei);renderAvatar($('#chatAvatar'),homeData.ziwei);window.ZiweiChat?.setProfiles({user:homeData.user,ziwei:homeData.ziwei});
+  $('#memorialText').textContent = homeData.memorial;
+  document.querySelector('.home .footnote').textContent=homeData.metOn?'每一日，都算数。':'相识纪念日，等你来确认。';
+  $('#daysTogether').textContent=homeData.daysTogether===null?'待确认':homeData.daysTogether+' 天';$('#daysTogether').dataset.confirmed=String(homeData.daysTogether!==null);$('#metOnValue').textContent=homeData.metOn||'待确认';window.ZiweiChatExtra?.presence(homeData.todayStatus);
+  $('#dateLabel').textContent = new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',weekday:'long',timeZone:'Asia/Bangkok'}).format(new Date());
+  renderCalendar();
+  appearance();
+}
+function renderCalendar() {
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'numeric',day:'numeric'}).formatToParts(new Date());
+  const value=type=>Number(parts.find(p=>p.type===type).value),year=value('year'),month=value('month'),today=value('day');
+  $('#calendarTitle').textContent=year+' · '+month+'月';
+  const grid=$('#calendarDays');grid.replaceChildren();
+  const first=new Date(Date.UTC(year,month-1,1)).getUTCDay(),count=new Date(Date.UTC(year,month,0)).getUTCDate();
+  for(let i=0;i<first;i++){const blank=document.createElement('span');blank.setAttribute('aria-hidden','true');grid.append(blank);}
+  for(let day=1;day<=count;day++){const date=document.createElement('time');date.dateTime=year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');date.textContent=day;date.setAttribute('aria-label',year+'年'+month+'月'+day+'日');if(day===today)date.setAttribute('aria-current','date');grid.append(date);}
+}
+function clearPrivateUI() {
+  window.ZiweiRecords?.stop();window.ZiweiMoments?.stop();window.ZiweiPoke?.stop();
+  window.ZiweiChat?.stop();window.ZiweiChat?.setProfiles({user:{nickname:'你',avatar:null},ziwei:{nickname:'知微',avatar:null}});
+  window.ZiweiChatExtra?.presence(null);$('#metOn').value='';$('#metOnValue').textContent='待确认';$('#daysTogether').textContent='待确认';refreshVersion++;csrf=null; homeData=null; sessionData=null; pendingAvatars={};
+  if($('#settings').open)$('#settings').close();
+  $('#app').hidden=true;$('#settingsButton').hidden=true;$('#login').hidden=false;
+  $('#userAvatar').replaceChildren();$('#ziweiAvatar').replaceChildren();$('#chatAvatar').replaceChildren();$('#userName').textContent='';$('#ziweiName').textContent='';$('#memorialText').textContent='';$('#historyList').replaceChildren();
+  $('#profileForm').reset();$('#verifyPassword').value='';appearance();
+}
+function passkeyUnavailableReason() {
+  if (!window.isSecureContext) return '设备解锁需要 HTTPS 安全连接，请使用正式网页地址。';
+  if (!window.PublicKeyCredential || !navigator.credentials?.create || !navigator.credentials?.get) return '当前浏览器不支持通行密钥，请用 Safari 打开正式网址后重试。';
+  if (!sessionData?.passkeyAvailable) return '服务端尚未启用通行密钥，请检查网页服务的正式访问地址配置。';
+  return '';
+}
+function renderPasskeyControls() {
+  const reason=passkeyUnavailableReason();
+  $('#unlockButton').hidden=false;$('#unlockButton').disabled=!!reason;
+  $('#unlockHint').textContent=reason || '已开启后可用 Face ID / 设备解锁。首次请用访问密码登录，再到右上角设置顶部开启。';
+  $('#registerPasskey').disabled=!!reason;
+  $('#passkeyMessage').textContent=reason || (sessionData.passkeyCount ? `已保存 ${sessionData.passkeyCount} 个设备解锁凭据。锁定后可用 Face ID / 设备解锁。` : '尚未开启：输入访问密码，点击“开启 Face ID / 设备解锁”创建通行密钥。');
+  $('#removePasskeys').disabled=!sessionData?.passkeyCount;
+}
+async function refresh() {
+  const version=++refreshVersion;const s = await api('/api/session');if(version!==refreshVersion)return;sessionData=s;csrf=s.csrf;
+  if (!s.authenticated) { clearPrivateUI(); sessionData=s; renderPasskeyControls(); return; }
+  const h=await api('/api/home');if(version!==refreshVersion)return;homeData=h;renderHome();
+  $('#login').hidden=true;$('#app').hidden=false;$('#settingsButton').hidden=false;window.ZiweiPoke?.configure(csrf);window.ZiweiMoments?.connect(csrf);
+  if(activeTab==='chat')window.ZiweiChat?.start(csrf);
+  if(activeTab==='moments')window.ZiweiMoments?.start(csrf);
+  if(['logs','memory'].includes(activeTab))window.ZiweiRecords?.show(activeTab,csrf,text=>{if(!window.ZiweiChat?.canDraft())return false;tab('chat');return window.ZiweiChat.draft(text);});
+}
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault(); const button=e.submitter;button.disabled=true;$('#loginError').textContent='';
+  try { await api('/api/login','POST',{password:$('#password').value});$('#password').value='';tab('home');await refresh(); }
+  catch(e) { $('#loginError').textContent=e.message; } finally { button.disabled=false; }
+});
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
+$('#homeDiaryDoor').onclick=()=>{tab('logs');document.querySelector('[data-log-kind="diary"]').click();};
+$('#settingsButton').onclick=async()=>{
+  try {
+    homeData=await api('/api/home');renderHome();pendingAvatars={};$('#profileForm').reset();
+    $('#metOn').max=new Date(Date.now()+7*3600000).toISOString().slice(0,10);$('#metOn').value=homeData.metOn||'';$('#userNickname').value=homeData.user.nickname;$('#ziweiNickname').value=homeData.ziwei.nickname;$('#theme').value=homeData.preferences.theme;$('#background').value=homeData.preferences.background;
+    $('#settingsMessage').textContent='';$('#verifyPassword').value='';
+    sessionData=await api('/api/session');
+    renderPasskeyControls();
+    $('#historyList').replaceChildren();
+    homeData.profileHistory.slice().reverse().forEach(h=>{const li=document.createElement('li');li.textContent=`${new Intl.DateTimeFormat('zh-CN',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Bangkok'}).format(new Date(h.at))} · 你修改了${h.who==='user'?'你的':'知微的'}资料：${h.before.nickname} → ${h.after.nickname}${h.before.avatar!==h.after.avatar?'（头像已变更）':''}`;$('#historyList').append(li);});
+    if(!homeData.profileHistory.length){const li=document.createElement('li');li.textContent='还没有资料变更。';$('#historyList').append(li);}
+    $('#settings').showModal();$('#settings').scrollTop=0;$('#verifyPassword').blur();
+  }catch(e){$('#loginError').textContent=e.message;}
+};
+$('#closeSettings').onclick=()=>{$('#settings').close();pendingAvatars={};$('#verifyPassword').value='';};
+$('#settings').addEventListener('close',()=>{$('#verifyPassword').value='';pendingAvatars={};});
+async function prepareAvatar(file) {
+  if(!file || !['image/png','image/jpeg','image/webp'].includes(file.type) || file.size>8*1024*1024)throw Error('请选择 8 MB 以内的 PNG、JPEG 或 WebP 图片。');
+  const url=URL.createObjectURL(file);
+  try {
+    const img=new Image();img.src=url;await img.decode();
+    const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
+    const c=canvas.getContext('2d');const size=Math.min(img.width,img.height);c.drawImage(img,(img.width-size)/2,(img.height-size)/2,size,size,0,0,256,256);
+    return canvas.toDataURL('image/jpeg',.82);
+  }finally{URL.revokeObjectURL(url);}
+}
+for(const who of ['user','ziwei']) {
+  $('#'+who+'AvatarFile').onchange=async e=>{ $('#saveProfile').disabled=true; try {pendingAvatars[who]=await prepareAvatar(e.target.files[0]);$('#settingsMessage').textContent='头像已准备好，请保存。';}catch(e){$('#settingsMessage').textContent='图片无法读取，请选择有效的 PNG、JPEG 或 WebP 图片。';}finally{$('#saveProfile').disabled=false;} };
+  $('#clear'+(who==='user'?'User':'Ziwei')+'Avatar').onclick=()=>{pendingAvatars[who]=null;$('#'+who+'AvatarFile').value='';$('#settingsMessage').textContent='保存后恢复默认头像。';};
+}
+$('#profileForm').onsubmit=async e=>{
+  e.preventDefault();$('#saveProfile').disabled=true;
+  try {
+    const body={revision:homeData.revision,relationship:{metOn:$('#metOn').value||null},user:{nickname:$('#userNickname').value},ziwei:{nickname:$('#ziweiNickname').value},preferences:{theme:$('#theme').value,background:$('#background').value}};
+    for(const who of ['user','ziwei'])if(Object.hasOwn(pendingAvatars,who))body[who].avatar=pendingAvatars[who];
+    homeData=await api('/api/home','PUT',body);pendingAvatars={};appearance();renderHome();$('#settingsMessage').textContent='已保存。';
+  }catch(e){$('#settingsMessage').textContent=e.message;}finally{$('#saveProfile').disabled=false;}
+};
+function decode(v){return Uint8Array.from(atob(v.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(v.length/4)*4,'=')),c=>c.charCodeAt(0));}
+function encode(v){return btoa(String.fromCharCode(...new Uint8Array(v))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');}
+function credentialJSON(c) {
+  const r=c.response;
+  return {id:c.id,rawId:encode(c.rawId),type:c.type,clientExtensionResults:c.getClientExtensionResults(),authenticatorAttachment:c.authenticatorAttachment,response:{clientDataJSON:encode(r.clientDataJSON),...(r.attestationObject?{attestationObject:encode(r.attestationObject),transports:r.getTransports?.()||[]}:{authenticatorData:encode(r.authenticatorData),signature:encode(r.signature),userHandle:r.userHandle?encode(r.userHandle):null})}};
+}
+function optionsJSON(o) {
+  const v={...o,challenge:decode(o.challenge)};
+  if(v.user)v.user={...v.user,id:decode(v.user.id)};
+  for(const key of ['excludeCredentials','allowCredentials'])if(v[key])v[key]=v[key].map(c=>({...c,id:decode(c.id)}));
+  return v;
+}
+function deviceError(e){return ['NotAllowedError','AbortError'].includes(e.name)?'设备解锁已取消或超时。若系统没有弹窗，请检查 iPhone 的面容与密码、通行密钥设置后重试；也可继续使用访问密码。':e.name==='InvalidStateError'?'此设备已保存解锁凭据，可锁定后直接解锁。':e.name==='SecurityError'?'通行密钥的网页域名不匹配，请从正式网址重新进入。':e.name==='NotSupportedError'?'当前设备无法创建此通行密钥，请检查系统通行密钥设置，或在 Safari 中重试。':e.message;}
+$('#registerPasskey').onclick=async()=>{
+  if(!$('#verifyPassword').value){$('#passkeyMessage').textContent='请先输入访问密码，再开启 Face ID / 设备解锁。';$('#verifyPassword').focus();return;}
+  $('#registerPasskey').disabled=true;
+  try {const o=await api('/api/passkey/register/options','POST',{password:$('#verifyPassword').value});$('#verifyPassword').value='';const c=await navigator.credentials.create({publicKey:optionsJSON(o)});await api('/api/passkey/register/verify','POST',credentialJSON(c));sessionData.passkeyCount=(sessionData.passkeyCount||0)+1;$('#passkeyMessage').textContent='设备解锁已开启。下次锁定后点击“用 Face ID / 设备解锁”。';$('#removePasskeys').disabled=false;}
+  catch(e){$('#passkeyMessage').textContent=deviceError(e);}finally{$('#verifyPassword').value='';$('#registerPasskey').disabled=false;}
+};
+$('#unlockButton').onclick=async()=>{
+  $('#unlockButton').disabled=true;$('#loginError').textContent='';
+  try {const o=await api('/api/passkey/login/options','POST',{});const c=await navigator.credentials.get({publicKey:optionsJSON(o)});await api('/api/passkey/login/verify','POST',credentialJSON(c));tab('home');await refresh();}
+  catch(e){$('#loginError').textContent=deviceError(e);}finally{$('#unlockButton').disabled=false;}
+};
+$('#removePasskeys').onclick=async()=>{
+  try {await api('/api/passkey/remove-all','POST',{password:$('#verifyPassword').value});sessionData.passkeyCount=0;$('#passkeyMessage').textContent='所有设备解锁凭据已移除。';$('#removePasskeys').disabled=true;}catch(e){$('#passkeyMessage').textContent=e.message;}finally{$('#verifyPassword').value='';}
+};
+async function logout(all) {try {await api(all?'/api/logout-all':'/api/logout','POST');clearPrivateUI();tab('home');await refresh();}catch(e){$('#passkeyMessage').textContent=e.message;}}
+$('#logout').onclick=()=>logout(false);$('#logoutAll').onclick=()=>logout(true);
+// A restored back/forward page must recheck its server session before displaying private data.
+window.addEventListener('pagehide',clearPrivateUI);
+window.addEventListener('pageshow',()=>refresh().catch(()=>{clearPrivateUI();$('#loginError').textContent='无法连接服务，请稍后重试。';}));
+window.addEventListener('focus',()=>{if(homeData)refresh().catch(()=>{});});
+document.addEventListener('ziwei-session-expired',()=>{clearPrivateUI();refresh().catch(()=>{});});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+appearance();tab('home');

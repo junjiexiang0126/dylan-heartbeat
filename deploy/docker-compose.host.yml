@@ -1,0 +1,46 @@
+# Reviewed reconstruction template, NOT a claim about the currently running image.
+# Preserve the field snapshot in docs/handoff/docker-compose.host.reported-20261019.yml.
+# Set image references built from the reviewed commit before use. No automatic build/deploy.
+services:
+  hermes:
+    image: "${ZIWEI_HERMES_IMAGE:?Set an immutable reviewed Hermes image reference}"
+    container_name: ziwei-hermes
+    restart: unless-stopped
+    # Keep this repository image's default entrypoint AND bootstrap command.
+    # Do not execute runtime_launch.py as a bare executable or invent --replace flags.
+    ports:
+      - "127.0.0.1:8642:8642"
+    volumes:
+      - /opt/hermes-data:/opt/data
+      - /opt/ziwei-runtime:/opt/ziwei-runtime
+    env_file:
+      - /opt/ziwei-hermes.env
+    environment:
+      HERMES_HOME: /opt/data
+      HERMES_WRITE_SAFE_ROOT: /opt/data/workspace
+      TZ: Asia/Bangkok
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+  web:
+    image: "${ZIWEI_WEB_IMAGE:?Set an immutable reviewed Web image reference}"
+    container_name: ziwei-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - /opt/ziwei-web-data:/webdata
+    env_file:
+      - /opt/ziwei-web.env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      ZIWEI_WEB_DATA_DIR: /webdata
+      TZ: Asia/Bangkok
+    depends_on:
+      - hermes
+# WECOM credentials must be available to the container through the protected env_file.
+# Host Caddy remains outside this template. Do not create a second public ingress.

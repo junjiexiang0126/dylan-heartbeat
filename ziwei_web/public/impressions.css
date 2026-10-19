@@ -1,0 +1,169 @@
+/* 今日印记 · 时间轴页（新页面，只作用于 #impressions） */
+#impressionsPage{
+  --imp-line: rgba(190,120,142,.55);
+  --imp-line-w: 1px;
+  --imp-dot: 13px;
+  --imp-dot-ring: rgba(255,255,255,.9);
+  --imp-col: 62px;                 /* 时间轴左栏宽 */
+  --imp-gap: 14px;                 /* 节点到卡片 */
+  --imp-year-size: 30px;
+  --imp-month-size: 11px;
+  --imp-day-size: 15px;
+  --imp-title-size: 15.5px;
+  --imp-body-size: 12.5px;
+  --imp-meta-size: 10.5px;
+  --imp-card-radius: 20px;
+  --imp-card-pad: 13px 14px;
+  --imp-card-fill-a: rgba(255,252,247,.86);
+  --imp-card-fill-b: rgba(255,243,240,.66);
+  --imp-card-ring-a: rgba(226,158,172,.85);
+  --imp-card-ring-b: rgba(255,228,216,.40);
+  --imp-card-ring-c: rgba(206,132,154,.55);
+  --imp-shadow: 0 6px 16px rgba(140,86,104,.09), 0 1px 2px rgba(140,86,104,.06);
+  --imp-sticker: 54px;             /* 卡片右上角贴纸尺寸 */
+}
+
+#impressionsPage .imp-head{ padding: 4px 2px 14px }
+#impressionsPage .imp-head h1{ font: 500 26px/1.3 "Songti SC", serif; margin: 6px 0 6px; color: var(--ink) }
+#impressionsPage .imp-head p{ font-size: 12px; color: var(--muted); margin: 0 }
+
+/* —— 分组：年份 / 月份 / 日期 —— */
+#impressionsPage .imp-group{ margin-top: 22px }
+#impressionsPage .imp-year{ font: 500 var(--imp-year-size)/1 "Songti SC", serif; color: var(--accent); letter-spacing: .02em }
+#impressionsPage .imp-month{ font-size: var(--imp-month-size); letter-spacing: .34em; color: var(--muted); margin-top: 6px }
+#impressionsPage .imp-day{ display: flex; align-items: baseline; gap: 8px; margin: 12px 0 4px }
+#impressionsPage .imp-day strong{ font: 500 var(--imp-day-size)/1.2 "Songti SC", serif; color: var(--ink) }
+#impressionsPage .imp-day span{ font-size: 10px; color: var(--muted); letter-spacing: .12em }
+
+/* —— 时间轴：左侧竖线 + 节点，右侧气泡卡 —— */
+#impressionsPage .imp-list{ position: relative; padding-left: var(--imp-col); margin: 6px 0 0 }
+#impressionsPage .imp-list::before{ display: none }
+#impressionsPage .imp-item{ position: relative; margin-bottom: 12px }
+#impressionsPage .imp-time{
+  position: absolute; left: calc(-1 * var(--imp-col)); top: 12px; width: calc(var(--imp-col) * .50);
+  text-align: right; font-size: var(--imp-meta-size); white-space: nowrap; color: var(--muted); letter-spacing: .02em;
+}
+#impressionsPage .imp-item::before{     /* 圆形节点 */
+  content: ''; position: absolute; left: calc(var(--imp-col) * .58 - var(--imp-col) - var(--imp-dot) / 2);
+  top: 16px; width: var(--imp-dot); height: var(--imp-dot); border-radius: 50%;
+  background: var(--accent); z-index: 2; box-shadow: 0 0 0 4px #f7ece9, 0 0 0 5px rgba(190,120,142,.25);
+}
+
+#impressionsPage .imp-card{
+  position: relative; text-align: left; width: 100%;
+  background: linear-gradient(165deg, var(--imp-card-fill-a), var(--imp-card-fill-b));
+  border: 0; border-radius: var(--imp-card-radius); padding: var(--imp-card-pad);
+  box-shadow: var(--imp-shadow);
+  -webkit-backdrop-filter: blur(14px) saturate(135%); backdrop-filter: blur(14px) saturate(135%);
+}
+#impressionsPage .imp-card::after{
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: linear-gradient(140deg, var(--imp-card-ring-a), var(--imp-card-ring-b) 45%, var(--imp-card-ring-c));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude; pointer-events: none;
+}
+#impressionsPage .imp-card strong{ display: block; font-size: var(--imp-title-size); line-height: 1.45; color: var(--ink); padding-right: calc(var(--imp-sticker) + 20px) }
+#impressionsPage .imp-card p{ font-size: var(--imp-body-size); line-height: 1.6; color: var(--muted); margin: 5px 0 0; padding-right: calc(var(--imp-sticker) + 18px) }
+#impressionsPage .imp-card .imp-cat{ font-size: 9px; letter-spacing: .16em; color: var(--accent); display: block; margin-bottom: 3px }
+#impressionsPage .imp-card .imp-open{ display: inline-block; margin-top: 7px; font-size: 10.5px; color: var(--accent) }
+
+/* 贴纸位：素材到位后只改 --imp-sticker-img */
+#impressionsPage .imp-sticker{
+  position: absolute; right: 10px; top: 10px;
+  width: var(--imp-sticker); height: var(--imp-sticker);
+  background-image: var(--imp-sticker-img, none);
+  background-size: contain; background-repeat: no-repeat; background-position: center;
+  pointer-events: none;
+}
+#impressionsPage .imp-sticker:empty::after{
+  content: attr(data-label);
+  display: grid; place-items: center; width: 100%; height: 100%;
+  border: 1px dashed rgba(200,120,142,.45); border-radius: 50%;
+  font-size: 8.5px; color: rgba(180,73,107,.75); letter-spacing: .04em;
+}
+#impressionsPage .imp-demo{ margin: 2px 2px 0; font-size: 10px; color: #b4496b; letter-spacing: .04em }
+
+
+/* —— 整页一条细轴线（贯穿所有日期分组）—— */
+#impressionsPage .imp-rail{ position: relative }
+#impressionsPage .imp-rail::before{
+  content: ''; position: absolute; left: calc(var(--imp-col) * .58); top: 4px; bottom: 4px;
+  width: var(--imp-line-w); background: rgba(190,120,142,.55);
+}
+/* 日期块盖住轴线，让它从字后穿过而不是穿过字 */
+#impressionsPage .imp-year, #impressionsPage .imp-month, #impressionsPage .imp-day{
+  position: relative; z-index: 1; padding-left: 4px;
+}
+#impressionsPage .imp-year::before, #impressionsPage .imp-month::before, #impressionsPage .imp-day::before{
+  content: ''; position: absolute; left: -2px; right: -2px; top: -3px; bottom: -3px;
+  background: #f7ece9; z-index: -1; border-radius: 4px;
+}
+/* 阴影与占位圈加深一点 */
+#impressionsPage{ --imp-shadow: 0 8px 20px rgba(140,86,104,.13), 0 1px 3px rgba(140,86,104,.08); }
+#impressionsPage .imp-sticker:empty::after{
+  border-color: rgba(186,96,124,.55); background: rgba(255,255,255,.35);
+  font-size: 9px; color: rgba(168,62,97,.9);
+}
+
+/* 今日印记：在日志二级页里显示，其余内容收起 */
+#impressionsPage{ display: none }
+body.impressions-open #impressionsPage{ display: block }
+body.impressions-open #logReader,
+body.impressions-open #logPageMeta,
+body.impressions-open #logPrivateHint,
+body.impressions-open #photoPage,
+body.impressions-open #logUnavailable{ display: none !important }
+body.impressions-open .record-page-header h1::after{ content: '' }
+
+/* ——— 卡片里的表情贴纸：六格那批（更清楚） ——— */
+#impressionsPage{ --imp-sticker: 58px }
+#impressionsPage .imp-sticker{
+  width: var(--imp-sticker); height: var(--imp-sticker);
+  background-size: contain; background-repeat: no-repeat; background-position: center;
+  filter: drop-shadow(0 2px 4px rgba(140,86,104,.14));
+}
+/* 工作 / 完成：戴耳机打电脑 */
+#impressionsPage .imp-sticker[data-kind="work"],
+#impressionsPage .imp-sticker[data-kind="file"],
+#impressionsPage .imp-sticker[data-kind="task"]{ background-image: url('/stickers/expressions/exp6-04.png') }
+/* 发消息 / 朋友圈：挥手打招呼 */
+#impressionsPage .imp-sticker[data-kind="message"],
+#impressionsPage .imp-sticker[data-kind="moments"]{ background-image: url('/stickers/expressions/exp6-01.png') }
+/* 开心 / 逛花园：吃面笑开 */
+#impressionsPage .imp-sticker[data-kind="happy"],
+#impressionsPage .imp-sticker[data-kind="garden"]{ background-image: url('/stickers/expressions/exp6-05.png') }
+/* 休息：抱着猫安心 */
+#impressionsPage .imp-sticker[data-kind="rest"]{ background-image: url('/stickers/expressions/exp6-06.png') }
+/* 写日记：抱着玩偶、软下来 */
+#impressionsPage .imp-sticker[data-kind="diary"]{ background-image: url('/stickers/expressions/exp6-02.png') }
+/* 默记：缩起来、藏住 */
+#impressionsPage .imp-sticker[data-kind="memo"]{ background-image: url('/stickers/expressions/exp6-03.png') }
+#impressionsPage .imp-sticker[data-kind]::after{ display: none }
+
+
+/* ——— 印记详情：底部抽屉 ——— */
+#impressionsDetail{
+  position: fixed; left: 12px; right: 12px; bottom: calc(92px + env(safe-area-inset-bottom));
+  z-index: 40; max-height: 62dvh; overflow: auto;
+  background: linear-gradient(165deg, rgba(255,252,247,.97), rgba(255,243,240,.94));
+  border-radius: 22px; padding: 18px 18px 14px;
+  box-shadow: 0 12px 34px rgba(120,70,90,.24), 0 2px 6px rgba(120,70,90,.12);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+}
+#impressionsDetail h2{ font-size: 16px; line-height: 1.45; color: var(--ink); margin: 4px 0 2px }
+#impressionsDetail .imp-detail-time{ font-size: 11px; color: var(--muted); margin: 0 0 8px }
+#impressionsDetail .imp-detail-body{ font-size: 13px; line-height: 1.65; color: var(--ink); margin: 0 0 8px }
+#impressionsDetail .imp-detail-path{ font-size: 10.5px; color: var(--muted); word-break: break-all; margin: 0 0 10px }
+#impressionsDetail .imp-detail-hint{ font-size: 11px; color: var(--muted); margin: 0 0 10px }
+#impressionsDetail .imp-detail-link{ border: 1px solid rgba(200,120,142,.5); background: rgba(255,255,255,.6);
+  color: var(--accent); border-radius: 12px; padding: 8px 14px; font-size: 12px; margin-right: 8px }
+#impressionsDetail .imp-detail-close{ border: 0; background: transparent; color: var(--muted); font-size: 11px; padding: 8px 4px }
+#impressionsPage .imp-card[data-detail]:active{ transform: scale(.995) }
+
+/* 时间范围切换（语 2026-10-18：印记要能按日期查） */
+#impressionsPage .imp-range{ display:flex; gap:8px; margin:2px 0 12px }
+#impressionsPage .imp-range .text-button{ font-size:11px; padding:5px 12px; border-radius:14px;
+  border:1px solid var(--border); background:var(--input); color:var(--muted); letter-spacing:.04em }
+#impressionsPage .imp-range .text-button.active{ color:var(--ink); border-color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 14%, transparent) }

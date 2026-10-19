@@ -1,0 +1,3 @@
+#!/command/with-contenv sh
+set -e
+exec /opt/hermes/.venv/bin/python /opt/ziwei-native/runtime_guard.py

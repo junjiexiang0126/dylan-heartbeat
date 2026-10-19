@@ -1,0 +1,17 @@
+name: Ziwei Hermes component contracts
+on:
+  push:
+    branches: [feature/ziwei-hermes-test-v1]
+    paths: ['hermes_test/**', '.github/workflows/ziwei-hermes-contracts.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s hermes_test/tests -v
