@@ -25,6 +25,7 @@
 - 将作业预算补丁的契约测试指向现有 `hermes_native/patches/cron/`，没有再复制第二份补丁。两分支补丁内容完全相同，Dockerfile 已应用现有补丁。
 - 从旧整合分支保留 diary 测试的可移植 import 修复；不改变日记行为。
 - 保留当前 Playwright 的 `serviceWorkers: block`、失败 trace 与截图，不用旧分支文件覆盖。
+- 从旧印记分支选取错误显示修复：先渲染空列表，再显示读取失败，避免 render 清掉错误；保留当前日期筛选与重新加载行为。隔离 DOM 执行中，原版离线后错误隐藏；修复后可见，成功重试后清除。
 - 保留当前 runtime launcher；旧分支对工具搜索 API 的兼容修改需要官方固定镜像验证，不能只凭语法正确发布。
 
 工具的部署及 owner 使用说明见 `DEV_NEXT_INTEGRATION_2026-10-19.md`。
@@ -46,7 +47,7 @@
 | fix/chat-envelope-media | 同上旧聊天分叉；不能从路径或标题推断全量等价。保留待比对。 |
 | fix/ci-webkit-route-interception-20261017 | 目标 serviceWorkers:block 已存在于基线（94b2998）。保留当前截图/trace；无需合入旧完整配置。 |
 | fix/moments-native | 替代 bootstrap 自动刷新策略；基线已有受控 preflight_upgrade。保留历史，不引入另一个启动期自动替换闸门的路径。 |
-| fix/restore-impressions-entry-20261018 | 基线已恢复入口并增加日期范围；仍有独有错误显示改动，不因功能名相同就删除。需单独核对错误可见性后选取，不能回滚日期范围实现。 |
+| fix/restore-impressions-entry-20261018 | 基线已恢复入口并增加日期范围；本轮复现离线错误被 render 清除，并只选取错误显示顺序修复，保留当前日期范围与重载实现。其他历史引用保留。 |
 | fix/web-send-upload-race | merge-base 到分支 tip 无净文件差异；4 个不可达提交均有 patch 等价项。无需重复整合。保留回滚引用。 |
 | fix/work-chat-limit-text | 部分首页/贴纸恢复已进入基线（29 个变更路径 blob 相同），memos/schedule/notes 等仍未进入。保留，缺失功能明确列为待整合。 |
 | fix/ziwei-cron-budget-image-20261018 | 8 个变更路径中 6 个已与基线一致，预算补丁和 Work 核心在其中；web_bridge/Dockerfile 为不同后续版本，不能整分支倒灌。 |
@@ -70,12 +71,12 @@
 跳过的 6 项为需要官方 Hermes 源码和 OpenAI SDK 的 Work 请求契约测试，不计为通过。
 已有租约测试 7 项，加新增 CLI 子进程用例 7 项；均真实运行于临时目录。
 Python 编译检查、Playwright 配置 Node 语法检查通过。
-没有运行浏览器回归、Docker 固定镜像、真实模型调用或线上验收。
+本地没有运行浏览器回归、Docker 固定镜像、真实模型调用或线上验收。印记离线及成功重试用隔离 DOM 执行验证。CI 检查入口已补充到当前整合分支，远端结果见 PR。
 
 ## 发布门槛与下一步
 
 1. 保留本 PR 为审查入口，先取得 CI 结果。不能仅凭本地部分测试将 main 标记为生产就绪。
-2. 对 notes/memos/schedule、旧聊天 tool_actions、今日印记错误显示逐项移植及验证；源分支均保留。
+2. 对 notes/memos/schedule、旧聊天 tool_actions 逐项移植及验证；源分支均保留。
 3. 修复迁移工具包，并在隔离目录做备份—恢复—校验，确认单主实例后才能用于真实迁移。
 4. 从最终选定的生产主机读取当前源码、未提交修改和 profile 配置，核对 10 次机会、24 轮及八条旧任务豁免的实际实现。密钥不得入库。
 5. 核对 main 是否仍绑定旧生产自动部署；确认后才能通过受保护 PR 归一主线。不得绕过保护或默认把旧 #41 当最新版本。
