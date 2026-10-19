@@ -125,3 +125,25 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
 @media (hover:none){
   #logs .log-entry:active::before,#memory .memory-entry:active::before{ opacity:.48 }
 }
+
+/* —— 补齐真机上真正的卡片类 ——
+   2026-10-19 真机截图反馈：日志总览页用的是 .record-card，记忆总览页用的是
+   .memory-entry；之前只写了 .log-entry（那是日志详情里的列表项），所以看不到变化。 */
+#logs .record-card,
+#memory .record-card{
+  background:rgba(255,255,255,.40);
+  border:1px solid rgba(255,255,255,.92);
+  box-shadow:0 0 0 1px rgba(255,255,255,.55),0 1px 0 rgba(255,255,255,.95) inset,
+             0 12px 30px rgba(170,130,115,.18),0 3px 8px rgba(170,130,115,.08);
+  -webkit-backdrop-filter:blur(18px) saturate(160%);
+  backdrop-filter:blur(18px) saturate(160%);
+}
+#logs .record-card::after,#memory .record-card::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
+  background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0) 38%);
+}
+#logs .record-card>*,#memory .record-card>*{position:relative;z-index:2}
+:root[data-theme=dark] #logs .record-card,:root[data-theme=dark] #memory .record-card{
+  background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.20)}
+/* 记忆页的主卡与小组卡统一到同一材质 */
+#memory .memory-entry.memory-primary{background:rgba(255,255,255,.46)}
