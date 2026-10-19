@@ -3,7 +3,7 @@
    一、一套变量，两页共用：玻璃、边框、圆角、阴影、内边距、贴纸尺寸/偏移/层级全在这里。
    二、贴纸是卡片内的真实元素（.card-sticker），不是伪元素；卡片没了它就没了。
    三、贴纸实色：不用 opacity、不用 filter 压低颜色；复用现有透明 PNG，不重画素材。
-   四、今日印记页完全不参与：.imp-card 与 .imp-sticker 一行都不碰。
+   四、今日印记仅统一日志入口材质；二级 .imp-card 与 .imp-sticker 不改。
 */
 
 /* ========== 一、共用变量 ========== */
@@ -162,7 +162,7 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
   -webkit-backdrop-filter:none; backdrop-filter:none;
 }
 
-/* ========== 五、今日印记：一行都不改 ==========
+/* ========== 五、今日印记：保留入口爪印与二级页面 ==========
    .imp-card / .imp-sticker / .log-entry[data-log-kind="impressions"] 的爪印
    全部交回 records-material 原本的规则，本文件不接管。 */
 #logs .log-entry[data-log-kind="impressions"]::before{
@@ -233,3 +233,17 @@ html[data-reduce-glass=true]{
 @media(prefers-reduced-transparency:reduce){
   :root{--zw-glass-bg:var(--bg);--zw-glass-active-bg:var(--bg);--zw-glass-blur:none}
 }
+
+/* Only the overview entrance joins the existing glass material. Keep the
+   timeline/detail cards, expression stickers and entrance paw unchanged. */
+#logs > .log-entry-grid > .log-entry[data-log-kind="impressions"]{
+  background:var(--zw-glass-bg);
+  border:var(--zw-glass-border-w) solid var(--zw-glass-border);
+  border-radius:var(--log-entry-radius);
+  padding:var(--log-entry-padding);
+  box-shadow:var(--zw-glass-shadow);
+  -webkit-backdrop-filter:var(--zw-glass-blur);
+  backdrop-filter:var(--zw-glass-blur);
+}
+#logs > .log-entry-grid > .log-entry[data-log-kind="impressions"].active{background:var(--zw-glass-active-bg)}
+#logs > .log-entry-grid > .log-entry[data-log-kind="impressions"]::after{content:none;display:none}
