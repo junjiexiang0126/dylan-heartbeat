@@ -47,3 +47,7 @@
 - **尚待 iPhone 真机**：Safari 与已添加到主屏幕的 PWA，检查右上贴纸在滚动/返回/横竖屏和自选壁纸下是否裁切、是否挡文字、玻璃模糊与点击是否正常。物理设备未验收；不能将 Chromium 或 Playwright WebKit 的通过视作真机通过。
 
 未经用户确认，不合并、不部署；后续若整合到 main，应仅整合本需求的前端与测试文档，先检查主线并行运维改动，避免用整条分支覆盖主线。
+
+## 补充 CI 结论
+
+最终测试提交 0b170e7 的 [Web polish regression checks 39228197971](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/39228197971) 已成功：102/102 单元测试、语法检查及该工作流中的聊天/Work/Raven 浏览器回归通过。[Work isolated checks 39228198241](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/39228198241) 也成功。更广的 Ziwei Web isolated tests 39228198112 在记录此结果时仍运行中，不将其算作通过。
