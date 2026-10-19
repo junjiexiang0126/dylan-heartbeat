@@ -5,7 +5,7 @@ const safeError=e=>/^[a-z0-9_]{1,80}$/.test(e?.message||'')?e.message:'moments_s
 function createMomentsService(dir,{client,now=()=>Date.now(),random=Math.random,background=true}={}){
  const env={...process.env,ZIWEI_HERMES_WEB_SESSION_ID:(process.env.ZIWEI_HERMES_WEB_SESSION_ID||'').slice(0,115)+'-moments'};
  client=client||new HermesClient(env);
- const store=new MomentsStore(dir,hash(client.base+'|'+client.session+'|'+client.key),{now,random});
+ const store=new MomentsStore(dir,hash(client.base+'|ziwei-home|'+client.key),{now,random})  /* 本地库 scope 不跟随会话号 */;
  const imageRoot=path.join(dir,'moments-files');fs.mkdirSync(imageRoot,{recursive:true,mode:0o700});const files=new MomentsFiles(imageRoot,store);
  let closed=false,syncing=null,working=false,ready=false,lastSync=store.meta('last_native_sync')||null,lastError=null;const timers=[];
  function json(res,status,value){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));}
