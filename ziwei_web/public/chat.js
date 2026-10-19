@@ -340,7 +340,7 @@ $('#chatFiles').onchange=async e=>{
         var r=await fetch('/api/chat/session',{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':tok}});
         if(!r.ok){ throw new Error('switch_failed_'+r.status); }
         location.reload();
-      }catch(e){ alert('切换没成功，再试一次。'); b.disabled=false; }
+      }catch(e){ alert('切换没成功：'+(e&&e.message?e.message:e)+''); b.disabled=false; }
     });
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
