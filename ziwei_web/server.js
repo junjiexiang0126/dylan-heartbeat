@@ -197,21 +197,23 @@ const server=http.createServer(async(req,res)=>{try{
   }
   if(pathname==='/setup' && req.method==='GET') {
     let tok=''; try{tok=fs.readFileSync(SETUP_TOKEN_FILE,'utf8').trim();}catch{}
-    if(!/^[a-f0-9]{32,64}$/.test(tok) || url.searchParams.get('t')!==tok) {
+    const loggedIn=!!session(req);
+    if(!loggedIn && (!/^[a-f0-9]{32,64}$/.test(tok) || url.searchParams.get('t')!==tok)) {
       res.writeHead(404,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});
       return res.end(SETUP_CLOSED_HTML);
     }
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex'});
-    return res.end(SETUP_HTML.replace('__TOKEN__', tok));
+    return res.end(SETUP_HTML.replace('__TOKEN__', loggedIn?'':tok));
   }
   if(pathname==='/api/setup' && req.method==='POST') {
     if(!validOrigin(req)){console.log('SETUP_FAILED origin', req.headers.origin, req.headers.host);return json(res,403,{error:'origin_rejected'});}
     let tok=''; try{tok=fs.readFileSync(SETUP_TOKEN_FILE,'utf8').trim();}catch{}
-    if(!tok){console.log('SETUP_FAILED closed');return json(res,410,{error:'setup_closed'});}
+    const loggedIn=!!session(req);
+    if(!tok && !loggedIn){console.log('SETUP_FAILED closed');return json(res,410,{error:'setup_closed'});}
     const k=rate(req,res); if(!k)return;
     const b=await readBody(req,4096);
     const given=typeof b.token==='string'?b.token:'';
-    if(given.length!==tok.length || !crypto.timingSafeEqual(Buffer.from(given),Buffer.from(tok))){console.log('SETUP_FAILED bad_token', given.length, tok.length);return json(res,403,{error:'invalid_token'});}
+    if(!loggedIn && (given.length!==tok.length || !crypto.timingSafeEqual(Buffer.from(given),Buffer.from(tok)))){console.log('SETUP_FAILED bad_token', given.length, tok&&tok.length);return json(res,403,{error:'invalid_token'});}
     const pass=typeof b.password==='string'?b.password:'';
     if(pass.length<8){console.log('SETUP_FAILED short');return json(res,400,{error:'password_too_short'});}
     if(pass.length>512)return json(res,400,{error:'invalid_input'});
