@@ -196,7 +196,7 @@ window.ZiweiRecords=(()=>{
 (function(){
   const SET=['/stickers/sticker-sakura.svg','/stickers/sticker-rose.svg','/stickers/sticker-bow.svg'];
   function decorate(root){
-    const cards=root.querySelectorAll('#logs .log-entry:not([data-log-kind="impressions"]), #memory .memory-entry');
+    const cards=root.querySelectorAll('#logs .log-entry:not([data-log-kind="impressions"]), #memory .memory-main-group, #memory .memory-entry:not(.memory-primary)');
     cards.forEach((card,i)=>{
       if(card.querySelector(':scope > .card-sticker'))return;
       const img=document.createElement('img');
@@ -207,8 +207,8 @@ window.ZiweiRecords=(()=>{
   }
   function boot(){
     decorate(document);
-    const mo=new MutationObserver(()=>decorate(document));
-    mo.observe(document.body,{childList:true,subtree:true});
+    // These overview entrances are stable index.html nodes. Only their content
+    // and hidden state change; chat/clock mutations never need redecoration.
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
