@@ -6,6 +6,7 @@ opportunities, and inspect file evidence before accepting a task's completion.
 import fcntl
 import json
 import os
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -51,7 +52,7 @@ def _legacy_waiver(task):
             and isinstance(reason, str) and bool(reason.strip()))
 
 
-def evaluate(home: Path, now: datetime) -> dict:
+def evaluate(home: Path, now: datetime, *, persist=True) -> dict:
     workspace = home / "workspace"
     state_path = home / "autonomy_gate_state.json"
     tasks_path = workspace / "tasks.json"
@@ -107,7 +108,8 @@ def evaluate(home: Path, now: datetime) -> dict:
     idle = not active and not diary_due
     state["wakes"] += 1
     state["last_opportunity"] = now.isoformat()
-    atomic_json(state_path, state)
+    if persist:
+        atomic_json(state_path, state)
     return {"wakeAgent": True, "time": now.isoformat(), "tasks": active,
             "waived_evidence": waived_evidence, "daily_limit": daily_limit,
             "diary_due": diary_due, "idle": idle, "opportunity": state["wakes"],
@@ -133,27 +135,41 @@ def atomic_json(path: Path, data):
             os.unlink(name)
 
 
-def main():
+def main(argv=None):
+    args = [] if argv is None else argv
+    dry_run = args == ["--dry-run"]
     home = None
     now = datetime.now().astimezone()
     try:
+        if args not in ([], ["--dry-run"]):
+            raise ValueError("Unsupported gate arguments")
         home = Path(os.environ["HERMES_HOME"])
-        with (home / ".autonomy-gate.lock").open("a") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX)
-            result = evaluate(home, now)
+        if dry_run:
+            result = evaluate(home, now, persist=False)
+        else:
+            with (home / ".autonomy-gate.lock").open("a") as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                result = evaluate(home, now)
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
         # Hermes treats a nonzero script exit as prompt context and may still
         # invoke the model. Always return a successful wakeAgent=false gate.
         result = {"wakeAgent": False, "reason": "preflight invalid; operator review needed", "error_type": type(exc).__name__}
     # Every refusal needs a timestamp too; do not log exception messages or data.
     result.setdefault("time", now.isoformat())
+    if dry_run:
+        # Never attach this diagnostic mode as a paid Cron gate: it cannot authorize a wake.
+        result["would_wake"] = bool(result.get("wakeAgent"))
+        result["wakeAgent"] = False
+        result["diagnostic_only"] = True
+        result["active_task_count"] = len(result.pop("tasks", []))
     try:
-        with (home / "logs" / "autonomy_preflight.jsonl").open("a") as log:
-            log.write(json.dumps(result, ensure_ascii=False) + "\n")
+        if not dry_run:
+            with (home / "logs" / "autonomy_preflight.jsonl").open("a") as log:
+                log.write(json.dumps(result, ensure_ascii=False) + "\n")
     except (OSError, TypeError):
         pass  # Losing an audit sink must not turn the gate into a paid run.
     print(json.dumps(result, ensure_ascii=False))
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

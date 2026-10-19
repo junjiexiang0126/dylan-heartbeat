@@ -71,3 +71,18 @@ class HandoffGateTests(unittest.TestCase):
         self.assertEqual(gate.evaluate(self.home, self.now)['daily_limit'], 15)
         (self.home / 'autonomy_gate.json').write_text('{"daily_opportunities": 10}')
         self.assertEqual(gate.evaluate(self.home, self.now)['daily_limit'], 10)
+
+    def test_dry_run_does_not_write_files_consume_opportunity_or_authorize_cron(self):
+        self.tasks([{'id': 'private-task', 'title': 'private contents', 'status': 'pending'}])
+        before = {str(p.relative_to(self.home)): p.read_bytes() for p in self.home.rglob('*') if p.is_file()}
+        output = io.StringIO()
+        with patch.dict(gate.os.environ, {'HERMES_HOME': str(self.home)}), contextlib.redirect_stdout(output):
+            gate.main(['--dry-run'])
+        result = json.loads(output.getvalue())
+        self.assertFalse(result['wakeAgent'])
+        self.assertTrue(result['would_wake'])
+        self.assertTrue(result['diagnostic_only'])
+        self.assertEqual(result['active_task_count'], 1)
+        self.assertNotIn('private contents', output.getvalue())
+        after = {str(p.relative_to(self.home)): p.read_bytes() for p in self.home.rglob('*') if p.is_file()}
+        self.assertEqual(after, before)
