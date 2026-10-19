@@ -84,3 +84,43 @@
 3. 老对话附件未挂回：新旧消息 id 体系不同（`native-<hash>` vs UUID），文件与记录已就位，关联 0 条。
 4. `/opt/data/workspace/dev/wt-cron` 工作目录存在性待核。
 5. Bark 通知与 PWA 推送未迁移。
+
+
+---
+
+## 七、现场取证增量：闸门脚本为什么曾回到六次（2026-10-19 只读采集）
+
+采集方式：只读命令（sha256sum / stat / cat / grep / 只读 sqlite）。未重启服务、未覆盖脚本、未导出密钥。采集时容器镜像 ID `sha256:6fcabc7949d6…`，挂载 `/opt/hermes-data → /opt/data`、`/opt/ziwei-runtime → /opt/ziwei-runtime`。
+
+### 7.1 文件与哈希
+
+| 位置 | sha256（前 12） | 大小 | mtime | 说明 |
+|---|---|---|---|---|
+| `/opt/hermes-data/scripts/autonomy_gate.py`（宿主=容器内同一文件） | `7c434c7919ea` | 6397 B | 2026-10-19 11:39:43 | 当前生效：含 `evidence_waived` 豁免 + 读 `autonomy_gate.json` 的上限 |
+| `/opt/ziwei-native/autonomy_gate.py`（镜像内模板） | `58d0b2fa916d` | 5594 B | 2026-10-18 19:27 | 6 次写死、无豁免；这是"回退到 6"的那份来源 |
+| `scripts/autonomy_gate.py.bak-20261019` | — | 6041 B | 2026-10-19 10:50 | 当时的 10 次版本（豁免 + 上限 10） |
+| `scripts/autonomy_gate.py.bak-20261019b` | — | 5960 B | 2026-10-19 11:39 | 现场实际存在的版本：**有豁免、但上限是写死 6** |
+| `scripts/autonomy_gate.before-2cba28d1….py` | — | 5256 B | 2026-10-18 10:25 | 更早的升级前备份 |
+| `scripts/autonomy_gate.before-de3d8c5a….py` | — | 4638 B | 2026-10-15 22:28 | 更早的升级前备份 |
+
+升级回执 `autonomy_gate.upgrade-receipt.json`（225 B，2026-10-18 20:22）内容：`state=already_current`，`old_sha256 = new_sha256 = 58d0b2fa…`，`owner=root`，`mode=0444`。
+
+### 7.2 已确认的事实
+
+1. 容器启动器里确实存在把镜像模板写进数据卷的代码：`/opt/ziwei-native/bootstrap.py:25-30`——**当 `scripts/autonomy_gate.py` 不存在时**，用 `/opt/ziwei-native/autonomy_gate.py` 写入一份。写入的就是 6 次那份（`58d0b2fa…`）。
+2. 另有一条覆盖路径：`/opt/ziwei-native/preflight_upgrade.py:52-99`，但它受环境变量开关约束——`ZIWEI_PREFLIGHT_UPGRADE_SHA256` 未设置时 `upgrade()` 直接返回 `not_requested`。实测该变量**不存在**（`env | grep -c` 结果为 0），因此本次回退**不是**官方升级流程做的。
+3. 现有备份链的体量差（6041 → 5960）说明 10:50 的 10 次版本，在 11:39 之前被换成了「6 次 + 豁免」的中间状态，再被 11:39 的现行版覆盖。
+4. 10:50 之后没有任何会话消息提到 `autonomy_gate`（`state.db` 全文检索 `like '%autonomy_gate%'`，时间戳 > 10:50，命中 0 条），所以没有证据表明是某个 agent 会话按对话改的。
+
+### 7.3 尚未定论
+
+到底是「文件被短暂删除 → bootstrap 重新播种 6 次模板」，还是「11:23-11:26 重建容器的窗口里由某个初始化步骤覆盖」，目前**证据不足**，不下结论。两个候选机制都已定位到具体代码行，可继续验证的方式：
+- 在一次性目录里模拟"文件缺失 → 启动"，观察 bootstrap 是否播种 `58d0b2fa…`；
+- 查看容器 `StartedAt` 与文件 mtime 的对应关系（11:23-11:26 有两次容器重建）；
+- 若要长期免疫：把 `scripts/` 里的闸门脚本改为**只从镜像外的受控来源**初始化，或让 bootstrap 播种后立即记录回执。
+
+### 7.4 当前判定（只读复算）
+
+- `evaluate()` 返回 `wakeAgent: true`，`waived_evidence` 8 条，`opportunity` 计数正常递增。
+- 上限来自 `/opt/data/autonomy_gate.json` 的 `daily_opportunities`（当前 15）。
+- 调度点 15 个（0,2,4,6,8,10,12,14,16,17,18,19,20,21,22），下一次触发 12:00 已过、按表继续。
