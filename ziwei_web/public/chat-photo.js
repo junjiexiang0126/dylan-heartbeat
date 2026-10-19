@@ -14,13 +14,14 @@
   const body=bubble.parentElement;if(!body)return;
   const images=[...bubble.querySelectorAll('img.message-media')];
   let group=groups.get(bubble);
+  if(group&&images.length===0)return;
   if(group&&group.images.length===images.length)return;
   if(group){group.stage?.remove();group.stream?.remove();group.images.forEach(i=>{if(i.isConnected)i.remove();});group.stack?.destroy?.();}
   if(!images.length)return;
   const stage=document.createElement('div');stage.className='zw-photo-stage';stage.setAttribute('aria-label','图片消息');
   bubble.after(stage);
   const stream=document.createElement('div');stream.className='zw-photo-stream';stream.hidden=true;stage.after(stream);
-  images.forEach(img=>{img.classList.add('zw-photo-original');stage.append(img);});
+  images.forEach(img=>{img.onclick=null;img.classList.add('zw-photo-original');stage.append(img);});
   const current={images,stage,stream,stack:null,expanded:false,collapse:null};
   groups.set(bubble,current);
   const meaningful=[...bubble.children].some(n=>n.matches('.message-quote,.file-card,.file-delivery,.voice-message,.chat-process-details')||(n.matches('.message-content')&&n.textContent.trim())||(!n.matches('.message-content')&&n.textContent.trim()));
