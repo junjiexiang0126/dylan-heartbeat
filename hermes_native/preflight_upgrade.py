@@ -10,7 +10,8 @@ from pathlib import Path
 ROOT_UID = 0
 OLD_SHA = 'de3d8c5a784f2bf1bae8880e9991e99d49f4e4bbeb5145cfb1cfd4f551c6f6f1'
 PREVIOUS_SHA = '2cba28d19ce9b47bd1e6420112f9dff2c3cd5b211410b637e5252a7b312d96c9'
-NEW_SHA = '58d0b2fa916d866532a250fc566a99d121b0ea62f49344941a7c65eb73569340'
+PREVIOUS_IMAGE_SHA = '58d0b2fa916d866532a250fc566a99d121b0ea62f49344941a7c65eb73569340'
+NEW_SHA = '21b990f0ebeab21cc11abf779fefb9da8e034c6853f0abefa96283fdaeb4bfbf'
 
 
 def digest(data):
@@ -83,7 +84,7 @@ def upgrade(home: Path, source=Path('/opt/ziwei-native/autonomy_gate.py')):
         scripts = os.open('scripts', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=home_fd)
         old = read_regular(scripts, 'autonomy_gate.py')
         current = digest(old)
-        if current not in (OLD_SHA, PREVIOUS_SHA, NEW_SHA):
+        if current not in (OLD_SHA, PREVIOUS_SHA, PREVIOUS_IMAGE_SHA, NEW_SHA):
             raise RuntimeError('preflight_upgrade_unknown_previous_hash')
         if current != NEW_SHA:
             backup_name = 'autonomy_gate.before-' + current + '.py'

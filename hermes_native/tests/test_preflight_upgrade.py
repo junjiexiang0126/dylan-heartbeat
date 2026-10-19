@@ -7,6 +7,15 @@ from unittest.mock import patch
 spec=importlib.util.spec_from_file_location('upgrade',Path(__file__).parents[1]/'preflight_upgrade.py');upgrade=importlib.util.module_from_spec(spec);spec.loader.exec_module(upgrade)
 
 class UpgradeTests(unittest.TestCase):
+    def test_reviewed_image_hash_matches_the_shipped_gate(self):
+        # setUp patches NEW_SHA for the temporary upgrade fixture; read the actual source constant.
+        import ast
+        module = ast.parse((Path(__file__).parents[1] / 'preflight_upgrade.py').read_text())
+        declared = next(ast.literal_eval(node.value) for node in module.body
+                        if isinstance(node, ast.Assign)
+                        and any(isinstance(target, ast.Name) and target.id == 'NEW_SHA' for target in node.targets))
+        gate = Path(__file__).parents[1] / 'autonomy_gate.py'
+        self.assertEqual(declared, upgrade.digest(gate.read_bytes()))
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.home=Path(self.temp.name);(self.home/'scripts').mkdir();self.old=b'print("old")\n';self.new=b'print("new")\n';self.source=self.home/'image.py';self.source.write_bytes(self.new);self.target=self.home/'scripts/autonomy_gate.py';self.target.write_bytes(self.old);self.target.chmod(0o444)
         for p in [patch.object(upgrade,'ROOT_UID',os.getuid()),patch.object(upgrade,'OLD_SHA',upgrade.digest(self.old)),patch.object(upgrade,'NEW_SHA',upgrade.digest(self.new)),patch.dict(os.environ,{'ZIWEI_PREFLIGHT_UPGRADE_SHA256':upgrade.digest(self.new)})]:p.start();self.addCleanup(p.stop)

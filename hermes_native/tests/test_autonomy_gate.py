@@ -27,7 +27,7 @@ class GateTests(unittest.TestCase):
         (self.home / "workspace/tasks.json").write_text(json.dumps(value))
 
     def test_idle_and_daily_cap(self):
-        for _ in range(6):
+        for _ in range(gate.DEFAULT_DAILY_OPPORTUNITIES):
             self.assertTrue(gate.evaluate(self.home, self.now)["wakeAgent"])
         self.assertFalse(gate.evaluate(self.home, self.now)["wakeAgent"])
         (self.home / "workspace/diary/2026-10-10.md").write_text("real diary")

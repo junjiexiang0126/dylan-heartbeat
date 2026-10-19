@@ -16,6 +16,41 @@ ACTIVE = {"pending", "in_progress"}
 STATES = ACTIVE | {"completed", "failed", "waiting_user", "waiting_front", "deferred"}
 
 
+LEGACY_EVIDENCE_WAIVERS = frozenset({
+    "home-raven-only-time", "action-timeline-above-bubble",
+    "ci-fix-remaining-workflows", "branch-audit-17", "backend-ci-work-webkit",
+    "vision-routing-fix", "web-polish-batch1-remain", "hermes-impressions-route",
+})
+DEFAULT_DAILY_OPPORTUNITIES = 15  # Reported current setting; never rewrite a profile's config.
+
+
+def _daily_opportunities(home: Path):
+    """Use the evaluated profile, not a possibly different process environment.
+
+    Missing configuration uses the documented default. Unreadable, malformed or
+    out-of-range explicit configuration refuses the wake instead of raising its cap.
+    """
+    path = home / "autonomy_gate.json"
+    try:
+        settings = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return DEFAULT_DAILY_OPPORTUNITIES
+    if not isinstance(settings, dict):
+        raise ValueError("Invalid autonomy gate configuration")
+    value = settings.get("daily_opportunities", DEFAULT_DAILY_OPPORTUNITIES)
+    if type(value) is not int or not 1 <= value <= 48:
+        raise ValueError("Invalid daily opportunities")
+    return value
+
+
+def _legacy_waiver(task):
+    reason = task.get("evidence_waived")
+    if isinstance(reason, dict):
+        reason = reason.get("reason")
+    return (task.get("id") in LEGACY_EVIDENCE_WAIVERS
+            and isinstance(reason, str) and bool(reason.strip()))
+
+
 def evaluate(home: Path, now: datetime) -> dict:
     workspace = home / "workspace"
     state_path = home / "autonomy_gate_state.json"
@@ -32,8 +67,14 @@ def evaluate(home: Path, now: datetime) -> dict:
         if any(j.get("name", "").startswith("ziwei-") and int(j.get("failure_streak") or 0) >= 3 for j in jobs):
             return {"wakeAgent": False, "reason": "three consecutive failures; operator review needed"}
     invalid_completions = []
+    waived_evidence = []
     for task in tasks:
         if task["status"] != "completed":
+            continue
+        # 历史遗留：这条规则生效前完成的、没留存产物。显式豁免并记进日志，
+        # 不伪造证据，也不让一条旧账把整台机器锁死。
+        if _legacy_waiver(task):
+            waived_evidence.append(task.get("id"))
             continue
         paths = task.get("evidence", [])
         valid = bool(paths) and isinstance(paths, list)
@@ -53,20 +94,22 @@ def evaluate(home: Path, now: datetime) -> dict:
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
     if state.get("date") != date:
         state = {"date": date, "wakes": 0}
-    if int(state.get("wakes", 0)) >= 6:
-        return {"wakeAgent": False, "reason": "six daily opportunities used"}
+    daily_limit = _daily_opportunities(home)
+    if int(state.get("wakes", 0)) >= daily_limit:
+        return {"wakeAgent": False, "reason": "daily opportunities used", "daily_limit": daily_limit}
     active = [t for t in tasks if t["status"] in ACTIVE]
     diary = workspace / "diary" / (date + ".md")
     diary_due = not (diary.is_file() and not diary.is_symlink() and diary.stat().st_size > 0)
     # An idle opportunity is still an opportunity: the agent chooses among the
     # actions below instead of the gate deciding that nothing may happen. The
-    # six daily opportunities, the failure pause, the evidence checks and the
+    # daily opportunities, the failure pause, the evidence checks and the
     # lock all still apply, and the counter is never reset here.
     idle = not active and not diary_due
     state["wakes"] += 1
     state["last_opportunity"] = now.isoformat()
     atomic_json(state_path, state)
     return {"wakeAgent": True, "time": now.isoformat(), "tasks": active,
+            "waived_evidence": waived_evidence, "daily_limit": daily_limit,
             "diary_due": diary_due, "idle": idle, "opportunity": state["wakes"],
             "available_actions": ["contact_user", "rest", "self_directed_task",
                                   "publish_moment", "write_diary"],

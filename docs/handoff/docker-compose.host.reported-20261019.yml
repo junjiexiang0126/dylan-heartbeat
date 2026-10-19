@@ -1,0 +1,48 @@
+# 知微之家 · 宿主实际部署定义（新加坡 43 的现况，2026-10-19 核对）
+#
+# 用途：把「手工 docker run 出来的容器」写成文件。以后搬家只做三件事：
+#   1) 装 Docker 与 Caddy
+#   2) 填 /opt/ziwei-hermes.env（600，含所有密钥，含 WECOM 四项）
+#   3) docker compose -f docker-compose.host.yml up -d
+#
+# 一条重要事实（踩过）：
+#   微信（wecom）平台读的是**容器环境变量** WECOM_BOT_ID / WECOM_SECRET /
+#   WECOM_HOME_CHANNEL / WECOM_HOME_CHANNEL_THREAD_ID，不是 $HERMES_HOME/.env。
+#   所以这四项必须进 env_file，否则网关日志里连一行 wecom 都不会出现，
+#   platforms.wecom.enabled: true 也不会让它启动。
+#
+# 镜像里带 s6 监督；入口保持镜像默认（python + runtime_launch.py gateway run --replace），
+# 不要自己另拼启动命令，拼错会以 126 退出（2026-10-19 试过一次）。
+
+services:
+  hermes:
+    image: ziwei-hermes:local
+    container_name: ziwei-hermes
+    restart: unless-stopped
+    command: ["/opt/ziwei-native/runtime_launch.py", "gateway", "run", "--replace"]
+    ports:
+      - "127.0.0.1:8642:8642"          # 只给本机 Caddy，不直接暴露公网
+    volumes:
+      - /opt/hermes-data:/opt/data      # 身份、记忆、聊天库、cron、skills、workspace
+      - /opt/ziwei-runtime:/opt/ziwei-runtime
+    env_file:
+      - /opt/ziwei-hermes.env           # 600；含 DEEPSEEK/GARDEN/AREDINK/API_SERVER_KEY/WECOM*
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8642/health || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+
+  web:
+    image: ziwei-web:integration
+    container_name: ziwei-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - /opt/ziwei-web-data:/app/data
+    env_file:
+      - /opt/ziwei-web.env              # 600；NODE_ENV=production、ZIWEI_HERMES_*、登录口令
+
+# Caddy 不在 compose 里：宿主 systemd 管理（/etc/caddy/Caddyfile），
+# 负责 zhiweilove.me 与 hermes.zhiweilove.me 的证书与反代。
