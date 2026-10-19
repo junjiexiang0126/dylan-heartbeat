@@ -216,3 +216,34 @@ html[data-reduce-glass=true]{--paper-fill:var(--bg);--record-card-fill:var(--bg)
    这样既满足「唯一根壁纸」，也不会在首次打开时白屏。 */
 body:not(.has-space-wallpaper){background:var(--bg)}
 body.has-space-wallpaper,body.has-space-wallpaper html{background:transparent}
+
+
+/* ===== 2026-10-19 修正 A：底部导航不再是实心奶白块，改成透壁纸的玻璃 ===== */
+nav{
+  background:rgba(255,255,255,.26);
+  border:1px solid rgba(255,255,255,.42);
+  -webkit-backdrop-filter:blur(20px) saturate(165%);
+  backdrop-filter:blur(20px) saturate(165%);
+  box-shadow:0 10px 28px rgba(20,12,18,.14);
+}
+:root[data-theme=dark] nav{
+  background:rgba(22,17,24,.34);
+  border-color:rgba(255,255,255,.16);
+  box-shadow:0 10px 28px rgba(0,0,0,.32);
+}
+nav button{text-shadow:0 1px 2px rgba(20,12,18,.30)}
+:root[data-theme=dark] nav button{text-shadow:0 1px 3px rgba(0,0,0,.55)}
+
+/* ===== 2026-10-19 修正 B：亮壁纸上的小字要有对比，否则压雪就糊 ===== */
+.message-label,.message-actions button,.message-actions a,
+.chat-compose small,.chat-toolbar small,.compose-actions small,
+.hint,.eyebrow,.section-heading .eyebrow,.home-footer,.footnote,
+.message time,.log-entry-meta,.memory-entry-count,.memory-entry-link,
+.log-entry-description,.memory-entry-description{
+  text-shadow:0 1px 2px rgba(255,255,255,.55), 0 0 1px rgba(20,12,18,.18);
+}
+:root[data-theme=dark] .message-label,:root[data-theme=dark] .hint,
+:root[data-theme=dark] .eyebrow,:root[data-theme=dark] .log-entry-description,
+:root[data-theme=dark] .memory-entry-description{
+  text-shadow:0 1px 3px rgba(0,0,0,.6);
+}
