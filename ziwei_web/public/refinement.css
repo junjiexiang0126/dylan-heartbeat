@@ -285,3 +285,16 @@ html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adju
   height:auto;
   min-height:100dvh;
 }
+
+/* ===== iOS 26 PWA 已知缺陷的兜底（按用户提供的社区经验）=====
+   WebKit bug 301108：standalone 下 viewport-fit=cover 失效，
+   height:100% 会算成“可视高度减安全区”，于是底部/顶部露出画布色。
+   对策：普通浏览用 100%，安装到主屏（standalone）时改用 100vh 绕过。 */
+html,body{height:100%}
+@media (display-mode: standalone){
+  html,body{height:100vh}
+  .space-wallpaper{height:100vh;min-height:100vh}
+}
+/* 底部安全区：iOS 26 有时把 env() 报成 0，给 20px 兜底，避免贴死 Home 条 */
+nav{bottom:max(20px, env(safe-area-inset-bottom, 0px))}
+.panel{padding-bottom:calc(var(--nav-h) + var(--nav-offset) + max(24px, env(safe-area-inset-bottom, 0px)))}
