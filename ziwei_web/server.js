@@ -112,13 +112,15 @@ function rate(req,res) {
   // Count attempted authentication before expensive hashing or verification, including concurrent requests.
   rec.count++; if(rec.count>=6)rec.until=now+15*60*1000; rec.expires=now+15*60*1000; attempts.set(k,rec); return k;
 }
-function issueSession(req,res,k) {
+function issueSession(req,res,k,redirectTo) {
   if(k)attempts.delete(k);
   prune(); if(sessions.size>=128){json(res,429,{error:'too_many_sessions'});return;}
   const old=cookies(req)[COOKIE]; if(old)sessions.delete(tokenHash(old));
   const t=crypto.randomBytes(32).toString('hex'), s={exp:Date.now()+SESSION_DAYS*86400000, csrf:crypto.randomBytes(32).toString('hex'), passwordVersion};
   sessions.set(tokenHash(t),s); persist();
-  json(res,200,{authenticated:true,csrf:s.csrf},{'Set-Cookie':[cookie(t,SESSION_DAYS*86400),cookie('',0,'ziwei_challenge')]});
+  const setCookies=[cookie(t,SESSION_DAYS*86400),cookie('',0,'ziwei_challenge')];
+  if(redirectTo){res.writeHead(302,{...headers,Location:redirectTo,'Set-Cookie':setCookies,'Cache-Control':'no-store'});return res.end();}
+  json(res,200,{authenticated:true,csrf:s.csrf},{'Set-Cookie':setCookies});
 }
 function setChallenge(res, options, kind, owner) {
   if(challenges.size>=128)return json(res,429,{error:'too_many_challenges'});
@@ -194,7 +196,7 @@ const server=http.createServer(async(req,res)=>{try{
     }
     /* 15 分钟内可重复点击：单次有效太脆，用户点两下或我用 curl 核验就会作废 */
     try{const age=(Date.now()-fs.statSync(path.join(DATA_DIR,'enter-token.txt')).mtimeMs)/1000; if(age>900){res.writeHead(410,{'Content-Type':'text/html; charset=utf-8'});return res.end(SETUP_CLOSED_HTML);}}catch{return json(res,410,{error:'enter_closed'});}
-    return issueSession(req,res,null);
+    return issueSession(req,res,null,'/');
   }
   if(pathname==='/setup' && req.method==='GET') {
     let tok=''; try{tok=fs.readFileSync(SETUP_TOKEN_FILE,'utf8').trim();}catch{}
