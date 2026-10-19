@@ -273,3 +273,15 @@ html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adju
 
 /* 日志 / 记忆页与其它四页对齐：容器透明，壁纸与底光同源 */
 #logs,#memory,#logs .panel,#memory .panel,#logs .shell,#memory .shell{background:transparent}
+
+/* ===== 底部黑边修正（2026-10-19）=====
+   原因：壁纸层只铺到 100dvh，iPhone 底部 Home 指示条那一条安全区在层外，
+   露出的是画布默认色（深色主题下就是黑）。把壁纸层向四边各扩一个安全区即可盖住。 */
+.space-wallpaper{
+  inset:calc(-1 * env(safe-area-inset-top,0px))
+        calc(-1 * env(safe-area-inset-right,0px))
+        calc(-1 * env(safe-area-inset-bottom,0px))
+        calc(-1 * env(safe-area-inset-left,0px));
+  height:auto;
+  min-height:100dvh;
+}
