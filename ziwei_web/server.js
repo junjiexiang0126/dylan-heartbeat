@@ -15,6 +15,12 @@ const ORIGIN = process.env.ZIWEI_WEB_ORIGIN || '';
 const originURL = ORIGIN ? new URL(ORIGIN) : null;
 if (originURL && (originURL.origin !== ORIGIN || (originURL.protocol !== 'https:' && !(['localhost','127.0.0.1'].includes(originURL.hostname) && !SECURE)))) throw Error('Invalid ZIWEI_WEB_ORIGIN');
 const SESSION_FILE = path.join(DATA_DIR, 'sessions.json'), AUTH_FILE = path.join(DATA_DIR, 'auth.json');
+const PASSWORD_FILE = path.join(DATA_DIR, 'password.json'), SETUP_TOKEN_FILE = path.join(DATA_DIR, 'setup-token.txt');
+let pwSalt = 'ziwei-pwa-password-check-v3', pwHash = null;
+try {
+  const raw = JSON.parse(fs.readFileSync(PASSWORD_FILE, 'utf8'));
+  if (raw && typeof raw.salt === 'string' && /^[a-f0-9]{32,64}$/.test(raw.salt) && typeof raw.hash === 'string' && /^[a-f0-9]{64}$/.test(raw.hash)) { pwSalt = raw.salt; pwHash = Buffer.from(raw.hash, 'hex'); }
+} catch {}
 const SESSION_DAYS = 30, MAX_BODY = 400000, COOKIE = 'ziwei_sid';
 const publicDir = path.join(__dirname, 'public');
 const files = {'/raven-view.js':'raven-view.js','/raven.css':'raven.css','/raven-preview.html':'raven-preview.html','/raven-preview.js':'raven-preview.js','/models/raven.glb':'models/raven.glb','/models/raven-poster.png':'models/raven-poster.png','/models/raven-manifest.json':'models/raven-manifest.json','/photos.js':'photos.js','/photos.css':'photos.css','/voice-ui.js':'voice-ui.js','/paper.svg':'paper.svg','/theme-init.js':'theme-init.js','/chat-render.js':'chat-render.js','/file-viewer.js':'file-viewer.js','/refinement.css':'refinement.css','/bubble-skin.css':'bubble-skin.css','/skin-wing.svg':'skin-wing.svg','/skin-raven.svg':'skin-raven.svg','/skin-paw.svg':'skin-paw.svg','/skin-heart.svg':'skin-heart.svg','/skin-star.svg':'skin-star.svg','/tokens.css':'tokens.css','/records.js':'records.js','/records.css':'records.css','/save-file.js':'save-file.js','/impressions.js':'impressions.js','/impressions.css':'impressions.css','/records-material.css':'records-material.css','/flow-glow.css':'flow-glow.css','/EBGaramond.woff2':'EBGaramond.woff2','/home.css':'home.css','/stickers/watercolor-heart-v1.png':'stickers/watercolor-heart-v1.png','/stickers/watercolor-ribbon-v1.png':'stickers/watercolor-ribbon-v1.png','/stickers/watercolor-blossoms-v1.png':'stickers/watercolor-blossoms-v1.png','/stickers/watercolor-leaves-v1.png':'stickers/watercolor-leaves-v1.png','/stickers/books.png':'stickers/books.png','/stickers/button-flower.png':'stickers/button-flower.png','/stickers/button-plain.png':'stickers/button-plain.png','/stickers/card-frame.png':'stickers/card-frame.png','/stickers/corner-ribbon-left.png':'stickers/corner-ribbon-left.png','/stickers/corner-ribbon-right.png':'stickers/corner-ribbon-right.png','/stickers/diary.png':'stickers/diary.png','/stickers/flower-bud.png':'stickers/flower-bud.png','/stickers/flower-front.png':'stickers/flower-front.png','/stickers/flower-side.png':'stickers/flower-side.png','/stickers/lock.png':'stickers/lock.png','/stickers/paw.png':'stickers/paw.png','/stickers/petals.png':'stickers/petals.png','/stickers/sticker-sakura.svg':'stickers/sticker-sakura.svg','/stickers/sticker-rose.svg':'stickers/sticker-rose.svg','/stickers/sticker-bow.svg':'stickers/sticker-bow.svg','/stickers/photo-frame.png':'stickers/photo-frame.png','/stickers/ribbon-bow.png':'stickers/ribbon-bow.png','/stickers/ribbon-flow.png':'stickers/ribbon-flow.png','/stickers/small-flower.png':'stickers/small-flower.png','/stickers/expressions/exp6-01.png':'stickers/expressions/exp6-01.png','/stickers/expressions/exp6-02.png':'stickers/expressions/exp6-02.png','/stickers/expressions/exp6-03.png':'stickers/expressions/exp6-03.png','/stickers/expressions/exp6-04.png':'stickers/expressions/exp6-04.png','/stickers/expressions/exp6-05.png':'stickers/expressions/exp6-05.png','/stickers/expressions/exp6-06.png':'stickers/expressions/exp6-06.png','/':'index.html','/index.html':'index.html','/app.js':'app.js','/chat.js':'chat.js','/chat-extra.js':'chat-extra.js','/raven.js':'raven.js','/chat-call.js':'chat-call.js','/workbench.js':'workbench.js','/work.js':'work.js','/work.css':'work.css','/moments.js':'moments.js','/moments.css':'moments.css','/style.css':'style.css','/chat.css':'chat.css','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/font-preview.html':'font-preview.html','/icon-512.png':'icon-512.png'};
@@ -63,8 +69,8 @@ const photos=require('./photos').createPhotos({authorized:req=>!!session(req)});
 const sessions = new Map(), attempts = new Map(), challenges = new Map();
 let authEpoch = 0;
 const authenticating = new Set();
-const passwordKey = crypto.scryptSync(PASSWORD, 'ziwei-pwa-password-check-v3', 32);
-const passwordVersion = crypto.createHash('sha256').update(passwordKey).digest('hex');
+let passwordKey = pwHash || crypto.scryptSync(PASSWORD, pwSalt, 32);
+let passwordVersion = crypto.createHash('sha256').update(passwordKey).digest('hex');
 for (const [key,v] of load(SESSION_FILE, [])) {
   if (/^[a-f0-9]{64}$/.test(key) && v.exp > Date.now() && /^[a-f0-9]{64}$/.test(v.csrf) && v.passwordVersion === passwordVersion) sessions.set(key,v);
 }
@@ -95,7 +101,7 @@ function readBody(req, limit=MAX_BODY) {
     req.on('error',reject);
   });
 }
-async function validPassword(pass) { const key=await new Promise((resolve,reject)=>crypto.scrypt(pass,'ziwei-pwa-password-check-v3',32,(e,k)=>e?reject(e):resolve(k))); return crypto.timingSafeEqual(key,passwordKey); }
+async function validPassword(pass) { const key=await new Promise((resolve,reject)=>crypto.scrypt(pass,pwSalt,32,(e,k)=>e?reject(e):resolve(k))); return crypto.timingSafeEqual(key,passwordKey); }
 function cookie(value,age,name=COOKIE) { return name+'='+value+'; Path=/; HttpOnly; SameSite=Strict; Max-Age='+age+(SECURE?'; Secure':''); }
 function rate(req,res) {
   const k=tokenHash(req.socket.remoteAddress||'unknown'), now=Date.now();
@@ -123,6 +129,47 @@ function consumeChallenge(req,kind,owner) {
   const k=tokenHash(id), c=challenges.get(k); challenges.delete(k);
   if(!c || c.kind!==kind || c.owner!==owner || c.exp<=Date.now())throw Error('invalid_challenge'); return c.challenge;
 }
+const SETUP_HTML = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>设置登录密码</title><style>
+:root{color-scheme:light}
+body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#f6efea;color:#3a2f2b;
+font:16px/1.7 -apple-system,"PingFang SC","Songti SC",serif;padding:24px;box-sizing:border-box}
+.card{width:100%;max-width:380px;background:#fffdfb;border-radius:22px;padding:26px 22px;
+box-shadow:0 18px 40px rgba(120,90,80,.14);border:1px solid #efe2da}
+h1{font-size:19px;margin:0 0 6px;font-weight:600}
+p{font-size:14px;color:#8a7a72;margin:0 0 18px}
+input{width:100%;box-sizing:border-box;font-size:17px;padding:13px 14px;border-radius:14px;
+border:1px solid #e5d5cc;background:#fff;margin-bottom:12px;outline:none}
+input:focus{border-color:#c9a89a}
+button{width:100%;font-size:16px;padding:14px;border:0;border-radius:14px;background:#b5846f;color:#fff;font-weight:600}
+button:disabled{opacity:.55}
+.hint{font-size:13px;color:#a08e86;margin-top:12px;min-height:20px}
+</style></head><body><div class="card">
+<h1>给这扇门配一把钥匙</h1>
+<p>这是你自己的服务器。设一个只有你知道的密码，之后就用它进来。</p>
+<input id="p1" type="password" placeholder="新密码（至少 8 位）" autocomplete="new-password">
+<input id="p2" type="password" placeholder="再输一次" autocomplete="new-password">
+<button id="go">设好了，进去</button>
+<div class="hint" id="hint"></div>
+</div><script>
+var T="__TOKEN__";
+document.getElementById('go').onclick=async function(){
+  var a=document.getElementById('p1').value,b=document.getElementById('p2').value,h=document.getElementById('hint');
+  if(a.length<8){h.textContent='至少 8 位';return;}
+  if(a!==b){h.textContent='两次不一样';return;}
+  this.disabled=true;h.textContent='正在保存…';
+  try{
+    var r=await fetch('/api/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:T,password:a})});
+    if(!r.ok){var j=await r.json().catch(function(){return{};});h.textContent='没成功：'+(j.error||r.status);this.disabled=false;return;}
+    h.textContent='好了，正在进去…';location.replace('/');
+  }catch(e){h.textContent='网络没通，再试一次';this.disabled=false;}
+};
+</script></body></html>`;
+
+const SETUP_CLOSED_HTML = `<!doctype html><meta charset="utf-8"><title>未开放</title>
+<body style="font:16px/1.8 -apple-system,sans-serif;padding:40px;color:#5a4b45">
+<p>这个设置入口现在没有开放。</p><p>要重新开放，让知微在服务器上生成一个设置链接。</p></body>`;
 const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,'http://localhost'), pathname=url.pathname;
   if(pathname==='/health' && req.method==='GET')return json(res,200,{status:'ok',component:'ziwei-web-foundation'});
@@ -135,6 +182,34 @@ const server=http.createServer(async(req,res)=>{try{
     if(pass.length>512)return json(res,400,{error:'invalid_input'});
     if(!await validPassword(pass))return json(res,401,{error:'invalid_credentials'});
     return issueSession(req,res,k);
+  }
+  if(pathname==='/setup' && req.method==='GET') {
+    let tok=''; try{tok=fs.readFileSync(SETUP_TOKEN_FILE,'utf8').trim();}catch{}
+    if(!/^[a-f0-9]{32,64}$/.test(tok) || url.searchParams.get('t')!==tok) {
+      res.writeHead(404,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});
+      return res.end(SETUP_CLOSED_HTML);
+    }
+    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex'});
+    return res.end(SETUP_HTML.replace('__TOKEN__', tok));
+  }
+  if(pathname==='/api/setup' && req.method==='POST') {
+    if(!validOrigin(req))return json(res,403,{error:'origin_rejected'});
+    let tok=''; try{tok=fs.readFileSync(SETUP_TOKEN_FILE,'utf8').trim();}catch{}
+    if(!tok)return json(res,410,{error:'setup_closed'});
+    const k=rate(req,res); if(!k)return;
+    const b=await readBody(req,4096);
+    const given=typeof b.token==='string'?b.token:'';
+    if(given.length!==tok.length || !crypto.timingSafeEqual(Buffer.from(given),Buffer.from(tok)))return json(res,403,{error:'invalid_token'});
+    const pass=typeof b.password==='string'?b.password:'';
+    if(pass.length<8)return json(res,400,{error:'password_too_short'});
+    if(pass.length>512)return json(res,400,{error:'invalid_input'});
+    const salt=crypto.randomBytes(16).toString('hex');
+    const hash=await new Promise((resolve,reject)=>crypto.scrypt(pass,salt,32,(e,k2)=>e?reject(e):resolve(k2)));
+    fs.writeFileSync(PASSWORD_FILE, JSON.stringify({salt, hash:hash.toString('hex'), at:new Date().toISOString()}), {mode:0o600});
+    try{fs.unlinkSync(SETUP_TOKEN_FILE);}catch{}
+    pwSalt=salt; passwordKey=hash; passwordVersion=crypto.createHash('sha256').update(passwordKey).digest('hex');
+    sessions.clear(); persist();
+    return json(res,200,{ok:true});
   }
   if(pathname.startsWith('/api/passkey/login/') && req.method==='POST') {
     if(!validOrigin(req))return json(res,403,{error:'origin_rejected'});
