@@ -86,21 +86,18 @@
   cancelAnimationFrame(frame);
   frame=requestAnimationFrame(()=>{
     if(root.hidden||app.hidden)return;
+    // Match the proven private-chat layout: the panel ends above the
+    // real navigation or visible keyboard, whichever comes first.
     const viewport=window.visualViewport;
-    const visibleBottom=viewport?viewport.offsetTop+viewport.height:window.innerHeight;
-    const nav=document.querySelector('nav');
-    const navTop=nav&&!nav.hidden?nav.getBoundingClientRect().top:visibleBottom;
-    const panelTop=root.getBoundingClientRect().top;
-    // The fixed navigation and the Work composer must share one measured boundary.
-    // When the keyboard opens, the visual viewport is the upper boundary instead.
-    const bottom=Math.min(navTop,visibleBottom-12);
-    const available=Math.max(120,Math.floor(bottom-panelTop-10));
-    root.style.setProperty('--work-available-height',available+'px');
-    root.style.removeProperty('height');
+    const bottom=viewport?viewport.offsetTop+viewport.height:innerHeight;
+    const nav=document.querySelector('nav').getBoundingClientRect();
+    const top=root.getBoundingClientRect().top;
+    root.style.height=Math.max(0,Math.min(nav.top,bottom)-8-top)+'px';
     if(typeof window.__workScrollBottom==='function')window.__workScrollBottom();
   });
 }
  window.addEventListener('resize',layout);window.visualViewport?.addEventListener('resize',layout);window.visualViewport?.addEventListener('scroll',layout);
+ if(window.ResizeObserver)new ResizeObserver(layout).observe(document.querySelector('nav'));
  function compose(){const edit=document.activeElement===input;$('workForm').classList.toggle('is-editing',edit);$('workForm').style.setProperty('--actions-row',String((quote?2:1)+(edit?1:0)));input.style.height=edit?Math.min(112,Math.max(64,input.scrollHeight))+'px':'36px';layout();}input.addEventListener('focus',compose);input.addEventListener('blur',compose);
  const sync=()=>{const visible=!app.hidden&&!root.hidden;if(!visible){clearInterval(timer);timer=null;if(app.hidden){epoch++;data=null;profiles={};attachments=[];quote=null;payload=null;input.value='';conversation.replaceChildren();chips();}return;}
   layout();if(!timer){void api('/api/home').then(x=>{profiles=x;paint();}).catch(()=>{});void refresh();timer=setInterval(()=>{if(!document.hidden)void refresh();},2000);}};
