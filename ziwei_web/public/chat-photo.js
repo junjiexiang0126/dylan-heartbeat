@@ -2,15 +2,16 @@
 /* Shared photo UI: original message images remain the source of truth. */
 (()=>{
  const selectors=['#chatMessages','#work .work-conversation'];
- const groups=new WeakMap(), bound=new WeakSet();
+ const groups=new WeakMap(), bound=new WeakSet(), imageGroups=new WeakMap();
  let scheduled=false;
  function bindImage(img,group){
+  imageGroups.set(img,group);
   if(bound.has(img))return;
   bound.add(img);
   let timer=null;
   img.addEventListener('click',e=>{
    e.stopPropagation();clearTimeout(timer);
-   timer=setTimeout(()=>{timer=null;if(group?.expanded)group.collapse();},270);
+   timer=setTimeout(()=>{timer=null;const current=imageGroups.get(img);if(current?.expanded)current.collapse();},270);
   });
   img.addEventListener('dblclick',e=>{
    e.preventDefault();e.stopPropagation();clearTimeout(timer);timer=null;
@@ -42,7 +43,7 @@
   groups.set(bubble,current);
   const meaningful=[...bubble.children].some(n=>n.matches('.message-quote,.file-card,.file-delivery,.voice-message,.chat-process-details')||(n.matches('.message-content')&&n.textContent.trim())||(!n.matches('.message-content')&&n.textContent.trim()));
   bubble.classList.toggle('zw-photo-empty-bubble',!meaningful);
-  images.forEach(img=>{img.onclick=null;stage.append(img);bindImage(img,current);});
+  images.forEach(img=>{img.onclick=null;img.onkeydown=null;stage.append(img);bindImage(img,current);});
   if(images.length===1){current.dispose=()=>{stage.remove();stream.remove();};return;}
   images.forEach(img=>img.hidden=true);
   const host=document.createElement('div');host.className='zw-photo-stack';stage.append(host);
