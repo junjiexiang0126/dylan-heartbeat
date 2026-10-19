@@ -85,3 +85,37 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
 #logs.record-open .log-entry,#memory.record-open .memory-entry{
   background:transparent;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
 }
+
+/* —— 右上角探出的柔纱贴纸（按 2026-10-19 教程规范） ——
+   层级：页面背景 → 玻璃卡（z-index 0）→ 贴纸（z-index 1）→ 文字（z-index 2）
+   贴纸 top/right 各 -8px 探出卡片边缘；默认 .35，卡片悬浮时 .48；不接收点击。 */
+#logs .log-entry,#memory .memory-entry{ position:relative; overflow:visible; }
+#logs .log-entry::before,#memory .memory-entry::before{
+  content:""; position:absolute; top:-8px; right:-8px; width:46px; height:46px; z-index:1;
+  background:url('/stickers/petals.png') center/contain no-repeat;
+  opacity:.35; pointer-events:none; transform:rotate(-6deg);
+  filter:drop-shadow(0 2px 5px rgba(180,120,140,.18));
+  transition:opacity .25s ease,transform .25s ease;
+}
+#logs .log-entry:nth-child(2n)::before,#memory .memory-entry:nth-child(2n)::before{
+  background-image:url('/stickers/flower-side.png'); transform:rotate(5deg);
+}
+#logs .log-entry:nth-child(3n)::before,#memory .memory-entry:nth-child(3n)::before{
+  background-image:url('/stickers/ribbon-bow.png'); width:52px; height:40px; transform:rotate(-3deg);
+}
+/* 文字必须压在贴纸之上 */
+#logs .log-entry>*,#memory .memory-entry>*{ position:relative; z-index:2; }
+/* 标题给右上角留出空间，贴纸不压字 */
+#logs .log-entry strong,#memory .memory-entry strong{ padding-right:34px; }
+/* 悬浮联动：卡片微浮，贴纸同步提亮 */
+@media (hover:hover){
+  #logs .log-entry,#memory .memory-entry{ transition:transform .25s ease,box-shadow .25s ease }
+  #logs .log-entry:hover,#memory .memory-entry:hover{ transform:translateY(-2px) }
+  #logs .log-entry:hover::before,#memory .memory-entry:hover::before{ opacity:.48; transform:rotate(-6deg) translateY(-1px) }
+}
+/* 阅读态不显示贴纸 */
+#logs.record-open .log-entry::before,#memory.record-open .memory-entry::before{ display:none }
+/* 触屏设备没有 hover，靠按下时反馈 */
+@media (hover:none){
+  #logs .log-entry:active::before,#memory .memory-entry:active::before{ opacity:.48 }
+}
