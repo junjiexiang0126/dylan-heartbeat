@@ -8,7 +8,7 @@
 - 与 4292b28 逐项比较：`--glow-1..4` 全部色值、`--glow-strength`、`body::after` 渐变层、`zw-glow-drift` 动画均完全一致；没有修改壁纸、主题数据、背景素材或其他背景 CSS。
 - 普通玻璃卡片白色 alpha 从 .46 降为 .12，夜间 .06；选中态 .18 / .10。继续使用真实 `backdrop-filter: blur(14px) saturate(150%)` 和 WebKit 前缀，不用彩色渐变充当玻璃。
 - 共享白色描边 alpha .42；保留圆角、阴影、内边距和贴纸变量。记忆主卡仍是一层材质，右上贴纸露出外框；重复旧 PNG 伪元素仍关闭。
-- 不再使用上一轮预览中的三张简化 SVG 作为默认贴纸，改为复用现有 `small-flower.png`、`petals.png`、`ribbon-bow.png`。素材文件未重绘、未改动；旧 SVG 也不删除。
+- 不再使用上一轮预览中的三张简化 SVG 作为默认贴纸，改为复用现有 `small-flower.png`、`petals.png`、`diary.png`。素材文件未重绘、未改动；旧 SVG 也不删除。
 - 没有修改今日印记的表情素材、脚本或样式。没有合并或部署，没有修改新家。
 
 ## 怎样换贴纸
@@ -29,3 +29,5 @@ Chromium / Playwright WebKit 仍不代表物理 iPhone。视觉效果仍需用�
 - [专项 CI 39233454563](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/39233454563) 成功，Chromium / WebKit 两项目通过；四档宽度两页共 16 张白昼截图，另有 4 张夜间截图和两份 audit.json。
 - artifact `12178545716`，包含本轮完整真实页面预览；背景保护、PNG 访问/解码、新玻璃底、14px 模糊、定位、刷新去重和阅读/返回断言通过。
 - 未将这些自动化结果当作用户视觉认可或 iPhone 真机验收；线上未变。
+
+截图复核发现旧 ribbon-bow.png 带零碎边缘，默认第三张进一步改用现有完整 diary.png。背景和玻璃参数保持不变；上面 CI 是此前素材组合的验收，最终素材组合以本轮 PR 最新专项运行和截图为准。

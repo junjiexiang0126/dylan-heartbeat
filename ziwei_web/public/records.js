@@ -196,7 +196,7 @@ window.ZiweiRecords=(()=>{
 (function(){
   // Replace these paths to change the sticker set; an entrance can override
   // one image with data-sticker-src. Size/offset remain shared CSS variables.
-  const SET=['/stickers/small-flower.png','/stickers/petals.png','/stickers/ribbon-bow.png'];
+  const SET=['/stickers/small-flower.png','/stickers/petals.png','/stickers/diary.png'];
   function decorate(root){
     const cards=root.querySelectorAll('#logs .log-entry:not([data-log-kind="impressions"]), #memory .memory-main-group, #memory .memory-entry:not(.memory-primary)');
     cards.forEach((card,i)=>{
