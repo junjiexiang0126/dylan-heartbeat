@@ -25,7 +25,8 @@
 body.work-view .chat-top-identity,body.work-view .chat-top-actions{display:none}body.work-view .topbar{display:none}
 nav.glass{grid-template-columns:repeat(6,minmax(0,1fr))}
 @media(max-width:550px){nav.glass button{font-size:var(--ui-font-9,9px);letter-spacing:0}}
-body.work-view #work.work-panel{height:calc(100dvh - var(--nav-h) - var(--nav-offset) - var(--nav-clear) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - var(--ui-space-20))}
+/* Work already sits above the fixed nav; do not subtract the shared page's nav-clear a second time. */
+body.work-view #work.work-panel{height:calc(100dvh - var(--nav-h) - var(--nav-offset) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - var(--ui-space-8))}
 #work #workForm{grid-template-columns:var(--work-toolbar-size) minmax(0,1fr) auto var(--work-toolbar-size)}
 #workForm .work-tool-picker,#workForm #workSend,#workForm #workAttach{grid-row:var(--actions-row,1)}
 #workForm #workAttachments:empty{display:none}
