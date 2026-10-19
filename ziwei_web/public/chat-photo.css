@@ -1,0 +1,20 @@
+/* Chat and Work only: image messages never inherit glass bubble styling. */
+:is(#chat,#work) .message-bubble.zw-photo-empty-bubble{display:none!important}
+:is(#chat,#work) .zw-photo-stage,:is(#chat,#work) .zw-photo-stream{width:min(100%,260px);max-width:100%;margin:6px 0 10px}
+:is(#chat,#work) .message.user .zw-photo-stage,:is(#chat,#work) .message.user .zw-photo-stream{margin-left:auto}
+:is(#chat,#work) .zw-photo-original{display:block;width:auto;max-width:100%;max-height:260px;height:auto;object-fit:contain;border-radius:14px;margin:0;cursor:pointer}
+:is(#chat,#work) .zw-photo-original[hidden]{display:none!important}
+:is(#chat,#work) .zw-photo-stack{display:block;width:185px;max-width:100%;padding:8px 25px 8px 22px;box-sizing:content-box;cursor:pointer}
+:is(#chat,#work) .zw-photo-stack .pstack-stage{max-width:100%}
+:is(#chat,#work) .zw-photo-expanded .zw-photo-stack{display:none}
+:is(#chat,#work) .zw-photo-stream[hidden]{display:none!important}
+:is(#chat,#work) .zw-photo-stream{display:flex;flex-direction:column;gap:12px;opacity:0;transform:translateY(-8px);transition:opacity .28s ease,transform .28s ease}
+:is(#chat,#work) .zw-photo-stream.is-visible{opacity:1;transform:none}
+:is(#chat,#work) .zw-photo-stream img{max-width:100%;max-height:260px;object-fit:contain;align-self:flex-start}
+@media(prefers-reduced-motion:reduce){:is(#chat,#work) .zw-photo-stream{transition:none}}
+/* Existing viewer becomes a minimal fullscreen image surface. */
+dialog#chatImageViewer{position:fixed;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:#000!important;box-shadow:none!important;overflow:hidden!important}
+#chatImageViewer::backdrop{background:#000!important}
+#chatImageViewer .viewer-toolbar,#chatImageViewer #chatImageName{display:none!important}
+#chatImageViewer #chatImageCanvas{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:pan-y}
+#chatImageViewer #chatImageFull{width:auto!important;height:auto!important;max-width:100vw!important;max-height:100dvh!important;object-fit:contain!important;-webkit-touch-callout:default;user-select:auto;-webkit-user-select:auto}
