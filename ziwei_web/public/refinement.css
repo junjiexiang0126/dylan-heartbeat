@@ -1,5 +1,5 @@
 /* Semantic values live in tokens.css. Wallpaper stays crisp; surfaces carry glass. */
-html{background:var(--bg)}
+html{background:transparent} /* 根画布不再写纯色：壁纸载入后由下面的规则铺同一张图 */
 body{background:transparent;color:var(--ink)}
 .ambient{opacity:var(--home-ambient-opacity)}
 .glass{box-shadow:var(--surface-shadow);border-color:var(--surface-border)}
@@ -247,3 +247,17 @@ nav button{text-shadow:0 1px 2px rgba(20,12,18,.30)}
 :root[data-theme=dark] .memory-entry-description{
   text-shadow:0 1px 3px rgba(0,0,0,.6);
 }
+
+/* ===== 根画布与壁纸同源：解决「上方白底、下方图片」的分区 =====
+   iOS PWA 里状态栏/安全区那一条属于根画布，只有把同一张图铺到 html 上，
+   才不会在壁纸上方露出一条浏览器默认白底。
+   仍然只有一个壁纸来源：chat-render.js 把同一份 dataURL 同时写给 #spaceWallpaper 与 html。 */
+html[data-space-wallpaper="1"]{
+  background-image:var(--space-wallpaper-image);
+  background-size:cover;
+  background-position:center center;
+  background-repeat:no-repeat;
+  background-attachment:fixed;
+}
+/* 顶部栏与各面板背景统一透明，让壁纸连续 */
+.topbar,.shell,.panel,#app,.chat-heading,.section-heading{background:transparent}

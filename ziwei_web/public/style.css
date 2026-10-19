@@ -150,7 +150,7 @@ nav.glass button.active svg{stroke:var(--accent)}
 
 /* Root canvas: keep the document's own background continuous across iOS viewport changes.
    Does not change status-bar metadata, scrolling, safe-area padding, or navigation. */
-html{min-height:100%;background:var(--bg)}
+html{min-height:100%;background:transparent}
 body{min-height:100%;background-color:transparent}
 
 /* iOS root canvas and safe-area layout: shared across all panels. */
