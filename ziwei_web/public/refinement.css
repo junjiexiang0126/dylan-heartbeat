@@ -299,3 +299,7 @@ html,body{min-height:100%}
 /* 底部安全区：iOS 26 有时把 env() 报成 0，给 20px 兜底，避免贴死 Home 条 */
 nav{bottom:max(20px, env(safe-area-inset-bottom, 0px))}
 .panel{padding-bottom:calc(var(--nav-h) + var(--nav-offset) + max(24px, env(safe-area-inset-bottom, 0px)))}
+
+/* 顶部安全区统一用探测值：env() 报 0 时用 --zw-safe-top 兜底，六页一致 */
+.topbar{padding-top:calc(27px + var(--zw-safe-top, env(safe-area-inset-top, 0px)))}
+#work .work-heading{padding-top:calc(var(--work-inset) + var(--zw-safe-top, env(safe-area-inset-top, 0px)))}

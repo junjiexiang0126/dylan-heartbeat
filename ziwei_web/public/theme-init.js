@@ -13,3 +13,22 @@
   window.addEventListener('wheel',function(e){ if(e.ctrlKey) e.preventDefault(); },{passive:false});
   document.documentElement.style.touchAction='manipulation';
 })();
+
+/* 安全区兜底：iOS 部分版本/形态下 env(safe-area-inset-top) 会报 0，
+   但状态栏仍然浮在页面之上，内容就被压住。这里实测一次，为 0 时按 47px 兜底。 */
+(function(){
+  try{
+    var probe=document.createElement('div');
+    probe.style.cssText='position:fixed;top:0;left:0;width:0;height:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none';
+    document.documentElement.appendChild(probe);
+    var cs=getComputedStyle(probe);
+    var top=parseFloat(cs.paddingTop)||0, bottom=parseFloat(cs.paddingBottom)||0;
+    probe.remove();
+    var standalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+    var dpr=window.devicePixelRatio||2;
+    if(top===0&&standalone&&dpr>=2.5){ top=47; }
+    if(bottom===0&&standalone&&dpr>=2.5){ bottom=34; }
+    document.documentElement.style.setProperty('--zw-safe-top',top+'px');
+    document.documentElement.style.setProperty('--zw-safe-bottom',bottom+'px');
+  }catch(e){}
+})();
