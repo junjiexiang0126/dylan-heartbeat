@@ -36,3 +36,36 @@ test('full application glass and sticker HTTP preview',async({page},info)=>{
  results.push({styles:await page.locator('link[rel=stylesheet]').evaluateAll(es=>es.map(e=>({href:e.getAttribute('href'),loaded:!!e.sheet}))),failed});
  fs.writeFileSync(info.outputPath('audit.json'),JSON.stringify(results,null,2));expect(failed).toEqual([]);
 });
+
+test('six pages share glow and the root canvas without changing safe-area layout',async({page},info)=>{
+ test.setTimeout(120000);
+ await page.setViewportSize({width:390,height:844});await page.goto('/');
+ await page.locator('#password').fill('isolated-e2e-password-123456');await page.locator('#loginForm button').click();await expect(page.locator('#app')).toBeVisible();
+ await page.emulateMedia({reducedMotion:'reduce'});
+ for(const section of ['home','chat','moments','memory','logs','work']){
+  await page.locator('[data-tab='+section+']').click();
+  const painted=await page.evaluate(()=>{const root=getComputedStyle(document.documentElement),body=getComputedStyle(document.body),glow=getComputedStyle(document.body,'::after'),ambient=getComputedStyle(document.querySelector('.ambient'));return {root:root.backgroundImage,glow:glow.backgroundImage,opacity:glow.opacity,strength:root.getPropertyValue('--glow-strength').trim(),ambientTop:ambient.top,bodyTop:body.marginTop,attachment:root.backgroundAttachment};});
+  expect(painted.root).toContain('radial-gradient');expect(painted.glow).toContain('radial-gradient');expect(Number(painted.opacity)).toBe(Number(painted.strength));expect(painted.ambientTop).toBe('0px');expect(painted.bodyTop).toBe('0px');expect(painted.attachment.split(',').map(x=>x.trim()).every(x=>x==='fixed')).toBe(true);
+  await page.screenshot({path:info.outputPath('unified-'+section+'-390.png'),fullPage:true});
+ }
+ await page.evaluate(()=>document.body.classList.add('has-space-wallpaper'));
+ expect(await page.evaluate(()=>getComputedStyle(document.documentElement).backgroundImage)).toBe('none');
+ expect(await page.evaluate(()=>getComputedStyle(document.body,'::after').opacity)).toBe('0');
+ await page.evaluate(()=>document.body.classList.remove('has-space-wallpaper'));
+});
+
+test('heart retries one failed request and hides a permanently failed decoration',async({page})=>{
+ let original=0,retry=0;
+ await page.route('**/stickers/watercolor-heart-v1.png*',route=>{const u=new URL(route.request().url());if(u.searchParams.has('sticker_retry')){retry++;return route.continue();}original++;return route.abort('failed');});
+ await page.goto('/');
+ const hearts=page.locator('.card-sticker[src*="watercolor-heart-v1.png"]');
+ await expect(hearts).toHaveCount(2);
+ await expect.poll(()=>hearts.evaluateAll(es=>es.every(e=>e.complete&&e.naturalWidth>0&&!e.hidden))).toBe(true);
+ expect(original).toBeGreaterThan(0);expect(retry).toBeGreaterThan(0);
+ await page.unroute('**/stickers/watercolor-heart-v1.png*');
+ let failures=0;
+ await page.route('**/stickers/watercolor-heart-v1.png*',route=>{failures++;return route.abort('failed');});
+ await page.reload();
+ await expect.poll(()=>hearts.evaluateAll(es=>es.length===2&&es.every(e=>e.complete&&e.naturalWidth===0&&e.hidden&&e.src.includes('sticker_retry=1')))).toBe(true);
+ const bounded=failures;await page.waitForTimeout(250);expect(failures).toBe(bounded);expect(failures).toBeLessThanOrEqual(4);
+});
