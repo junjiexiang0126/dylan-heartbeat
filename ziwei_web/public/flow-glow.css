@@ -1,38 +1,62 @@
-/* 知微之家 · 流光底 + 统一玻璃（日志页 / 记忆页）
-   2026-10-19 与语定稿并修正：
-   ① 保留纸感底，只在其上叠一层极淡彩光，仅这两页出现；
-   ② 全站玻璃收成一套参数（此前三套并存：本文件 40% 白、records-material 的 85% 奶白、全局 .glass 的 85%）；
-   ③ 柔粉描边保留，由 records-material 的装饰层负责，不再被覆盖；
-   ④ 贴纸：records-material 已按日志种类配好图（books/diary/lock/photo/paw），
-      本文件只统一位置、透明度与交互，**不再替换图片**——上一版把成套贴纸冲成了花瓣，是真的踩坑。 */
+/* 知微之家 · 日志页 / 记忆页 共用材质与贴纸（2026-10-19 第二版，按语的统一规范重写）
 
+   一、一套变量，两页共用：玻璃、边框、圆角、阴影、内边距、贴纸尺寸/偏移/层级全在这里。
+   二、贴纸是卡片内的真实元素（.card-sticker），不是伪元素；卡片没了它就没了。
+   三、贴纸实色：不用 opacity、不用 filter 压低颜色；素材本身是饱和玫瑰粉的 SVG。
+   四、今日印记页完全不参与：.imp-card 与 .imp-sticker 一行都不碰。
+*/
+
+/* ========== 一、共用变量 ========== */
 :root{
-  --ziwei-glass-fill:rgb(255 255 255 / .40);
-  --ziwei-glass-border:rgb(255 255 255 / .92);
-  --ziwei-glass-blur:blur(18px) saturate(160%);
-  --ziwei-glass-shadow:0 0 0 1px rgb(255 255 255 / .55),
-                       0 1px 0 rgb(255 255 255 / .95) inset,
-                       0 12px 30px rgb(170 130 115 / .18),
-                       0 3px 8px rgb(170 130 115 / .08);
+  /* 玻璃 */
+  --zw-glass-bg:rgb(255 255 255 / .46);          /* 奶白半透明底 */
+  --zw-glass-blur:blur(18px) saturate(150%);     /* 背后模糊（两页同值） */
+  --zw-glass-border:rgb(255 255 255 / .90);      /* 卡片描边颜色 */
+  --zw-glass-border-w:1px;
+  --zw-glass-radius:20px;                        /* 圆角 */
+  --zw-glass-shadow:0 1px 0 rgb(255 255 255 / .92) inset,
+                   0 10px 26px rgb(170 130 115 / .16),
+                   0 3px 8px rgb(170 130 115 / .07);
+  --zw-card-pad-block:16px;                      /* 卡片内边距 */
+  --zw-card-pad-inline:16px;
+
+  /* 文字与标签 */
+  --zw-card-title-size:15px;
+  --zw-card-body-size:13px;
+  --zw-label-bg:rgb(255 255 255 / .70);
+  --zw-label-ink:#8a5c6f;
+  --zw-label-radius:999px;
+
+  /* 贴纸（尺寸、偏移、层级三件套） */
+  --zw-sticker-size:52px;
+  --zw-sticker-offset:-10px;                     /* 向右上探出卡片 */
+  --zw-sticker-z:2;                              /* 卡片内容 z-index 3，文字永远在上 */
+  --zw-sticker-rotate:-8deg;
+
+  /* 流光（仅在日志/记忆页出现） */
   --glow-1:255,143,176; --glow-2:255,184,119; --glow-3:185,140,255; --glow-4:255,217,138;
   --glow-strength:.62;
 }
 :root[data-theme=dark]{
-  --ziwei-glass-fill:rgb(255 255 255 / .10);
-  --ziwei-glass-border:rgb(255 255 255 / .20);
-  --ziwei-glass-shadow:0 0 0 1px rgb(255 255 255 / .08),0 1px 0 rgb(255 255 255 / .22) inset,0 12px 30px rgb(0 0 0 / .34);
+  --zw-glass-bg:rgb(255 255 255 / .10);
+  --zw-glass-border:rgb(255 255 255 / .20);
+  --zw-glass-shadow:0 1px 0 rgb(255 255 255 / .20) inset,0 12px 30px rgb(0 0 0 / .34);
+  --zw-label-bg:rgb(255 255 255 / .14);
+  --zw-label-ink:#f0d7de;
   --glow-strength:.34;
 }
 :root[data-background=sky]{
   --glow-1:143,195,255; --glow-2:168,228,234; --glow-3:185,182,255; --glow-4:207,230,255;
   --glow-strength:.60;
+  --zw-glass-shadow:0 1px 0 rgb(255 255 255 / .92) inset,0 10px 26px rgb(110 140 170 / .16),0 3px 8px rgb(110 140 170 / .07);
 }
 :root[data-background=sage]{
   --glow-1:185,217,138; --glow-2:223,215,154; --glow-3:143,201,168; --glow-4:233,226,176;
   --glow-strength:.60;
+  --zw-glass-shadow:0 1px 0 rgb(255 255 255 / .92) inset,0 10px 26px rgb(140 160 110 / .16),0 3px 8px rgb(140 160 110 / .07);
 }
 
-/* —— 流光层：只在这两页出现 —— */
+/* ========== 二、流光层（只在两页出现） ========== */
 body::after{
   content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
   opacity:0; transition:opacity .45s ease;
@@ -40,63 +64,92 @@ body::after{
     radial-gradient(72% 56% at 6% 4%,  rgba(var(--glow-1),.95) 0%, rgba(var(--glow-1),0) 70%),
     radial-gradient(66% 52% at 97% 16%, rgba(var(--glow-2),.92) 0%, rgba(var(--glow-2),0) 68%),
     radial-gradient(78% 58% at 4% 94%, rgba(var(--glow-3),.90) 0%, rgba(var(--glow-3),0) 70%),
-    radial-gradient(58% 46% at 94% 88%, rgba(var(--glow-4),.88) 0%, rgba(var(--glow-4),0) 66%);
+    radial-gradient(52% 40% at 94% 88%, rgba(var(--glow-4),.88) 0%, rgba(var(--glow-4),0) 66%);
 }
 body:has(#logs:not([hidden]))::after,
 body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
 @media (prefers-reduced-motion: no-preference){
   body:has(#logs:not([hidden]))::after,
-  body:has(#memory:not([hidden]))::after{ animation:ziwei-glow-drift 34s ease-in-out infinite alternate }
+  body:has(#memory:not([hidden]))::after{ animation:zw-glow-drift 34s ease-in-out infinite alternate }
 }
-@keyframes ziwei-glow-drift{
+@keyframes zw-glow-drift{
   0%{ transform:translate3d(0,0,0) scale(1) }
   50%{ transform:translate3d(2.2vw,-2vh,0) scale(1.06) }
   100%{ transform:translate3d(-2vw,2.4vh,0) scale(.96) }
 }
 
-/* —— 统一玻璃：两页所有卡片类走同一套参数 —— */
+/* ========== 三、两页共用的玻璃卡 ==========
+   isolation:isolate 让贴纸的层叠只在卡片内部比较，不受祖先层叠影响；
+   不用 transform / filter / contain，避免在 iOS 上形成新的包含块把贴纸带偏。 */
 #logs .record-card,
 #logs .log-entry,
 #logs .log-today,
-#logs .imp-card,
 #memory .record-card,
 #memory .memory-entry,
 #memory .memory-primary,
 #memory .memory-main-group{
   position:relative;
-  background:var(--ziwei-glass-fill);
-  border:1px solid var(--ziwei-glass-border);
-  box-shadow:var(--ziwei-glass-shadow);
-  -webkit-backdrop-filter:var(--ziwei-glass-blur);
-  backdrop-filter:var(--ziwei-glass-blur);
+  isolation:isolate;
+  overflow:visible;
+  background:var(--zw-glass-bg);
+  border:var(--zw-glass-border-w) solid var(--zw-glass-border);
+  border-radius:var(--zw-glass-radius);
+  box-shadow:var(--zw-glass-shadow);
+  -webkit-backdrop-filter:var(--zw-glass-blur);
+  backdrop-filter:var(--zw-glass-blur);
+  padding:var(--zw-card-pad-block) var(--zw-card-pad-inline);
 }
-/* 选中态稍实一点，看得出「当前这一篇」 */
-#logs .log-entry.active{ background:rgba(255,255,255,.66) }
-:root[data-theme=dark] #logs .log-entry.active{ background:rgba(255,255,255,.18) }
+#logs .log-entry.active{ background:rgb(255 255 255 / .70) }
+:root[data-theme=dark] #logs .log-entry.active{ background:rgb(255 255 255 / .18) }
 
-/* 文字压在装饰与贴纸之上 */
-#logs .record-card>*,#logs .log-entry>*,#logs .log-today>*,#logs .imp-card>*,
-#memory .record-card>*,#memory .memory-entry>*{ position:relative; z-index:2 }
+/* 内容层压在贴纸之上 */
+/* 注意：必须排除 .card-sticker，否则这条（id+class+子代）会盖掉贴纸的 absolute 定位，
+   在真机上表现就是贴纸掉进文档流、跑到卡片左上角——上一版就是这个原因。 */
+#logs .record-card>*:not(.card-sticker),
+#logs .log-entry>*:not(.card-sticker),
+#logs .log-today>*:not(.card-sticker),
+#memory .record-card>*:not(.card-sticker),
+#memory .memory-entry>*:not(.card-sticker){ position:relative; z-index:3 }
 
-/* —— 右上角贴纸：真实元素，实色，无边框无阴影 ——
-   由 records.js 挂进每张卡片；卡片移除则贴纸一起消失。
-   今日印记的 .imp-card 不在装饰范围内，它用自己那套表情贴纸。 */
+/* 统一的标题与标签视觉 */
+#logs .log-entry strong,#memory .memory-entry strong{
+  font-size:var(--zw-card-title-size); line-height:1.5; padding-right:calc(var(--zw-sticker-size) + 6px);
+}
+#logs .log-entry-description,#memory .memory-entry-description{
+  font-size:var(--zw-card-body-size); line-height:1.72;
+}
+#logs .log-entry-label,#memory .memory-entry-count,#memory .memory-entry-link{
+  background:var(--zw-label-bg); color:var(--zw-label-ink);
+  border-radius:var(--zw-label-radius);
+  padding:2px 9px; font-size:11px;
+}
+
+/* ========== 四、贴纸组件 ==========
+   结构：卡片(position:relative; isolation:isolate)
+        └─ img.card-sticker(position:absolute; inset-inline-end/block-start 各 -10px; z-index:2)
+   为什么这样能在 iPhone 上稳：不用 right/left 而是 inset-inline-end，方向无关；
+   不用 filter/transform 在祖先上，卡片本身不形成新的包含块；
+   贴纸不设 opacity、不设 filter，颜色即素材本色。 */
 .card-sticker{
-  position:absolute; top:-8px; right:-8px; left:auto; bottom:auto;
-  width:46px; height:46px; object-fit:contain;
-  z-index:2; pointer-events:none; opacity:1;
+  position:absolute;
+  inset-block-start:var(--zw-sticker-offset);
+  inset-inline-end:var(--zw-sticker-offset);
+  width:var(--zw-sticker-size); height:var(--zw-sticker-size);
+  object-fit:contain;
+  z-index:var(--zw-sticker-z);
+  pointer-events:none;
+  opacity:1;
   border:0; box-shadow:none; background:none; filter:none;
-  transform:rotate(-6deg);
+  transform:rotate(var(--zw-sticker-rotate));
+  transition:transform .22s ease;
 }
-#memory .card-sticker:nth-of-type(2n){transform:rotate(5deg)}
-#logs .log-entry,#memory .memory-entry{overflow:visible}
-#logs .log-entry strong,#memory .memory-entry strong{padding-right:34px}
-#logs.record-open .card-sticker{display:none}
 @media (hover:hover){
-  #logs .log-entry,#memory .memory-entry{transition:transform .25s ease}
-  #logs .log-entry:hover,#memory .memory-entry:hover{transform:translateY(-2px)}
+  #logs .log-entry:hover .card-sticker,
+  #memory .memory-entry:hover .card-sticker{ transform:rotate(calc(var(--zw-sticker-rotate) * -.4)) scale(1.05) }
 }
-/* 阅读态：收起玻璃与流光，回到干净纸面 */
+#logs.record-open .card-sticker{ display:none }
+
+/* 阅读态：收起材质，回到干净纸面 */
 #logs.record-open::after,#memory.record-open::after{ display:none }
 #logs.record-open .record-card,#memory.record-open .record-card,
 #logs.record-open .log-entry,#memory.record-open .memory-entry{
@@ -104,9 +157,9 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
   -webkit-backdrop-filter:none; backdrop-filter:none;
 }
 
-/* —— 今日印记：完整保留原样（语 2026-10-19 明确：那是知微自己的表情贴纸，不许动） ——
-   印记卡里的 .imp-sticker（exp6 六张表情）与 .log-entry[data-log-kind="impressions"]
-   的爪印，全部回到 records-material 原本的图片与位置，本文件不接管。 */
+/* ========== 五、今日印记：一行都不改 ==========
+   .imp-card / .imp-sticker / .log-entry[data-log-kind="impressions"] 的爪印
+   全部交回 records-material 原本的规则，本文件不接管。 */
 #logs .log-entry[data-log-kind="impressions"]::before{
   top:auto; right:auto; left:auto; bottom:auto;
   width:auto; height:auto; opacity:1; transform:none; filter:none;
@@ -114,4 +167,4 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
   pointer-events:none;
 }
 #logs .log-entry[data-log-kind="impressions"] strong{padding-right:0}
-#logs .imp-card .imp-sticker{ position:relative; z-index:3 }
+#logs .log-entry[data-log-kind="impressions"] .card-sticker{ display:none }

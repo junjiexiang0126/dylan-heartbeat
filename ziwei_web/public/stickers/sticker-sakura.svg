@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+ <defs>
+  <radialGradient id="p" cx="50%" cy="80%" r="75%">
+   <stop offset="0%" stop-color="#ffd0dc"/><stop offset="45%" stop-color="#ff7fa3"/><stop offset="100%" stop-color="#e0355f"/>
+  </radialGradient>
+  <radialGradient id="c" cx="50%" cy="50%" r="60%">
+   <stop offset="0%" stop-color="#ffe9a8"/><stop offset="100%" stop-color="#ffb14e"/>
+  </radialGradient>
+ </defs>
+ <g transform="translate(64 64)">
+  <g>
+   <path d="M0 4 C-16 -8 -18 -34 -6 -46 C2 -54 12 -44 12 -30 C12 -16 6 -2 0 4Z" fill="url(#p)"/>
+   <path d="M0 4 C-6 -10 -8 -30 -2 -42" stroke="#c0204a" stroke-opacity=".35" stroke-width="1.6" fill="none"/>
+  </g>
+  <g transform="rotate(72)"><path d="M0 4 C-16 -8 -18 -34 -6 -46 C2 -54 12 -44 12 -30 C12 -16 6 -2 0 4Z" fill="url(#p)"/></g>
+  <g transform="rotate(144)"><path d="M0 4 C-16 -8 -18 -34 -6 -46 C2 -54 12 -44 12 -30 C12 -16 6 -2 0 4Z" fill="url(#p)"/></g>
+  <g transform="rotate(216)"><path d="M0 4 C-16 -8 -18 -34 -6 -46 C2 -54 12 -44 12 -30 C12 -16 6 -2 0 4Z" fill="url(#p)"/></g>
+  <g transform="rotate(288)"><path d="M0 4 C-16 -8 -18 -34 -6 -46 C2 -54 12 -44 12 -30 C12 -16 6 -2 0 4Z" fill="url(#p)"/></g>
+  <circle r="9" fill="url(#c)"/>
+ </g>
+</svg>
