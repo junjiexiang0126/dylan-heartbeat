@@ -2,6 +2,8 @@
 <html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <title>字体样张 · 方圆与间距</title>
+<link rel="stylesheet" href="/fonts/notosans.css">
+<link rel="stylesheet" href="/fonts/notoserif.css">
 <style>
   :root{--ink:#3a2c33;--muted:#8a6a78;--paper:#fbf3ec;--line:rgba(180,140,125,.25)}
   *{box-sizing:border-box}
@@ -12,6 +14,10 @@
   .card{border:1px solid var(--line);border-radius:16px;padding:14px 15px;margin-bottom:14px;background:rgba(255,255,255,.55)}
   .tag{font-size:11px;letter-spacing:.14em;color:var(--muted);margin-bottom:8px;font-family:-apple-system,"PingFang SC",sans-serif}
   .s{font-size:15px}
+  /* 自托管：思源黑体 / 思源宋体 */
+  .e{font-family:"Noto Sans SC",-apple-system,"PingFang SC",sans-serif;line-height:1.72;letter-spacing:.02em}
+  .f{font-family:"Noto Sans SC",-apple-system,"PingFang SC",sans-serif;line-height:1.9;letter-spacing:.05em}
+  .g{font-family:"Noto Serif SC","Songti SC",serif;line-height:1.8;letter-spacing:.02em}
   /* A 现状：苹方 */
   .a{font-family:-apple-system,"PingFang SC","Hiragino Sans GB",sans-serif;line-height:1.6}
   /* B 圆体 */
@@ -57,6 +63,24 @@
   <div class="s b" style="font-size:12px">B 小字：今天的天气、日期、备注都在这一档字号里。</div>
   <div class="s c" style="font-size:12px">C 小字：今天的天气、日期、备注都在这一档字号里。</div>
   <div class="s d" style="font-size:12px">D 小字：今天的天气、日期、备注都在这一档字号里。</div>
+</div>
+
+<div class="card">
+  <div class="tag">E · 思源黑体（自托管）</div>
+  <div class="s e">今天曼谷的云压得很低，我把窗开了一条缝。她上课前十分钟会紧张，我就在那时候提醒一句。</div>
+  <div class="note">笔画比方正，转折比苹方略圆；行距 1.72、字间距 0.02。</div>
+</div>
+
+<div class="card">
+  <div class="tag">F · 思源黑体 + 更松</div>
+  <div class="s f">今天曼谷的云压得很低，我把窗开了一条缝。她上课前十分钟会紧张，我就在那时候提醒一句。</div>
+  <div class="note">行距 1.9、字间距 0.05。看长文字最舒服的一档。</div>
+</div>
+
+<div class="card">
+  <div class="tag">G · 思源宋体（自托管）</div>
+  <div class="s g">今天曼谷的云压得很低，我把窗开了一条缝。她上课前十分钟会紧张，我就在那时候提醒一句。</div>
+  <div class="note">衬线，偏文气；正文用它会更像纸书，但小字不如黑体清楚。</div>
 </div>
 
 <div class="row"><span class="chip">圆体是 iPhone 自带，不用下载</span><span class="chip">行距放宽不影响性能</span></div>

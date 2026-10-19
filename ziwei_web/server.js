@@ -218,6 +218,17 @@ const server=http.createServer(async(req,res)=>{try{
     if(req.method==='HEAD') return res.end();
     return fs.createReadStream(abs).pipe(res);
   }
+  // 自托管字体目录：/fonts/*（woff2 分片 + css），2026-10-19 加
+  if(pathname.startsWith('/fonts/')){
+    let rel=pathname.slice(7).replace(/^\/+/,'');
+    const ext=path.extname(rel).toLowerCase();
+    if(rel.includes('..')||!['.woff2','.css'].includes(ext))return json(res,404,{error:'not_found'});
+    const abs=path.join(publicDir,'fonts',rel);
+    if(!fs.existsSync(abs))return json(res,404,{error:'not_found'});
+    res.writeHead(200,{'Content-Type':ext==='.css'?'text/css; charset=utf-8':'font/woff2',...headers});
+    if(req.method==='HEAD')return res.end();
+    return fs.createReadStream(abs).pipe(res);
+  }
   const f=files[pathname];if(!f)return json(res,404,{error:'not_found'});
   res.writeHead(200,{'Content-Type':types[path.extname(f)],...headers});if(req.method==='HEAD')return res.end();fs.createReadStream(path.join(publicDir,f)).pipe(res);
 } catch(e) { if(!res.headersSent)json(res,e.message==='body_too_large'?413:400,{error:e.message==='body_too_large'?'body_too_large':'bad_request'}); }});
