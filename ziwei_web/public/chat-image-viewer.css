@@ -1,0 +1,88 @@
+/* Chat image viewer only. Never alter Work, Moments, global dialog, or page chrome.
+ * A fixed viewport-sized top-layer dialog keeps all controls below iOS status bar.
+ */
+dialog#chatImageViewer.chat-image-viewer {
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  display: none;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) max(12px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 12px) max(12px, env(safe-area-inset-left, 0px));
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  background: var(--bg) !important;
+  color: var(--ink);
+  overscroll-behavior: contain;
+}
+dialog#chatImageViewer.chat-image-viewer[open] { display: flex; }
+dialog#chatImageViewer.chat-image-viewer::backdrop { background: var(--bg); }
+#chatImageViewer .viewer-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  position: relative;
+  z-index: 1;
+}
+#chatImageViewer .viewer-toolbar button,
+#chatImageViewer .viewer-toolbar a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 10px;
+  touch-action: manipulation;
+}
+#chatImageViewer .viewer-toolbar a { font-size: 13px; }
+#chatImageName {
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: 3.2em;
+  margin: 8px 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+  font-size: 12px;
+}
+#chatImageCanvas {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+}
+#chatImageFull {
+  display: block;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  max-height: 100%;
+  object-fit: contain;
+  margin: auto;
+}
+#chatImageFull[data-zoomed="true"] { max-height: none; }
+@media (max-height: 420px) {
+  dialog#chatImageViewer.chat-image-viewer { padding-top: calc(env(safe-area-inset-top, 0px) + 4px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px); }
+  #chatImageViewer .viewer-toolbar { gap: 4px; }
+  #chatImageName { margin: 2px 0; }
+}
