@@ -338,10 +338,25 @@ $('#chatFiles').onchange=async e=>{
         var tok=(info&&info.csrf)||'';
         var r=await fetch('/api/chat/session',{method:'POST',credentials:'same-origin',headers:{'X-Ziwei-CSRF':tok}});
         if(!r.ok) throw new Error('switch_failed_'+r.status);
-        document.body.insertAdjacentHTML('beforeend','<div id="zwSwitchTip" style="position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:rgba(255,252,250,.92);font:16px/1.8 -apple-system,PingFang SC,serif;color:#5a4b45">正在换一段新的…请稍等</div>');
+        try{localStorage.setItem('zw-open-chat','1');}catch(e){}
+        document.body.insertAdjacentHTML('beforeend','<div id="zwSwitchTip" style="position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:rgba(38,30,27,.94);font:19px/1.9 -apple-system,PingFang SC,serif;color:#fff5ef;letter-spacing:.04em">正在换一段新的…<br>大约十几秒，好了会自动回到聊天</div>');
         setTimeout(function(){location.reload();},12000);
       }catch(e){ alert('没换成：'+(e&&e.message?e.message:e)); b.disabled=false; }
     });
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
+
+/* 切换对话回来后直接落到聊天页 */
+(function(){
+  function go(){
+    try{
+      if(localStorage.getItem('zw-open-chat')==='1'){
+        localStorage.removeItem('zw-open-chat');
+        var t=document.querySelector('[data-tab="chat"]');
+        if(t) t.click();
+      }
+    }catch(e){}
+  }
+  setTimeout(go,600);
 })();
