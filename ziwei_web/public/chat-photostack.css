@@ -16,3 +16,41 @@
   outline: 2px solid var(--accent);
   border-radius: 14px;
 }
+
+/* Expanded thumbnails remain inside the original message bubble. */
+#chatMessages .chat-photostack-grid:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  width: min(260px, 100%);
+  margin: 12px 0;
+}
+#chatMessages .chat-photostack-thumb {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--glass);
+  aspect-ratio: 1;
+}
+#chatMessages .chat-photostack-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+#chatMessages .chat-photostack-collapse:not([hidden]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  margin: 4px 0 10px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--glass);
+  color: var(--ink);
+  font-size: 12px;
+}
