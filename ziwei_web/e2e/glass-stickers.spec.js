@@ -45,7 +45,7 @@ test('six pages share glow and the root canvas without changing safe-area layout
  for(const section of ['home','chat','moments','memory','logs','work']){
   await page.locator('[data-tab='+section+']').click();
   const painted=await page.evaluate(()=>{const root=getComputedStyle(document.documentElement),body=getComputedStyle(document.body),glow=getComputedStyle(document.body,'::after'),ambient=getComputedStyle(document.querySelector('.ambient'));return {root:root.backgroundImage,glow:glow.backgroundImage,opacity:glow.opacity,strength:root.getPropertyValue('--glow-strength').trim(),ambientTop:ambient.top,bodyTop:body.marginTop,attachment:root.backgroundAttachment};});
-  expect(painted.root).toContain('radial-gradient');expect(painted.glow).toContain('radial-gradient');expect(Number(painted.opacity)).toBe(Number(painted.strength));expect(painted.ambientTop).toBe('0px');expect(painted.bodyTop).toBe('0px');expect(painted.attachment).toBe('fixed');
+  expect(painted.root).toContain('radial-gradient');expect(painted.glow).toContain('radial-gradient');expect(Number(painted.opacity)).toBe(Number(painted.strength));expect(painted.ambientTop).toBe('0px');expect(painted.bodyTop).toBe('0px');expect(painted.attachment.split(',').map(x=>x.trim()).every(x=>x==='fixed')).toBe(true);
   await page.screenshot({path:info.outputPath('unified-'+section+'-390.png'),fullPage:true});
  }
  await page.evaluate(()=>document.body.classList.add('has-space-wallpaper'));
