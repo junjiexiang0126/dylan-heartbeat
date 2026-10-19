@@ -10,7 +10,16 @@ const SESSION_KEY='agent:main:web:yu';
 const enabled=process.env.ZIWEI_BRIDGE_ENABLED==='true';
 const base=hermesEndpoint(process.env);
 const secret=process.env.ZIWEI_HERMES_API_KEY||'';
-const sessionId=process.env.ZIWEI_HERMES_WEB_SESSION_ID||'';
+const SESSION_BASE=process.env.ZIWEI_HERMES_WEB_SESSION_ID||'';
+/* 2026-10-19：允许开新的一段对话。持久化在进程内存里，重启回到基础会话号。 */
+let sessionId=SESSION_BASE;
+function newSession(){
+  const stamp=new Date().toISOString().replace(/[-:TZ.]/g,'').slice(0,14);
+  const next=(SESSION_BASE||'ziwei-web')+'-'+stamp;
+  if(!/^[a-zA-Z0-9_-]{1,128}$/.test(next)) throw Error('session_id_invalid');
+  sessionId=next; sessionReady=false; creationPromise=null;
+  return sessionId;
+}
 let sessionReady=false,creationPromise=null,streamBusy=false;
 function ready(){return !!(enabled&&base&&secret&&/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId));}
 function status(){return ready()}
@@ -85,4 +94,4 @@ async function proxy(req,res,pathname,url){
  }catch{if(!res.headersSent)err(res,502,'upstream_unavailable');else res.destroy()}
  finally{clearTimeout(timer);if(stream){try{ledger.finish(requestId,requestComplete)}finally{streamBusy=false}}}
 }
-module.exports={proxy,status,pathForHistory};
+module.exports={proxy,status,pathForHistory,newSession,currentSession:()=>sessionId};

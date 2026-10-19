@@ -93,7 +93,7 @@ async function refresh() {
   const version=++refreshVersion;const s = await api('/api/session');if(version!==refreshVersion)return;sessionData=s;csrf=s.csrf;
   if (!s.authenticated) { clearPrivateUI(); sessionData=s; renderPasskeyControls(); return; }
   const h=await api('/api/home');if(version!==refreshVersion)return;homeData=h;renderHome();
-  $('#login').hidden=true;$('#app').hidden=false;$('#settingsButton').hidden=false;window.ZiweiPoke?.configure(csrf);window.ZiweiMoments?.connect(csrf);
+  $('#login').hidden=true;$('#app').hidden=false;window.__zwCsrf=csrf;$('#settingsButton').hidden=false;window.ZiweiPoke?.configure(csrf);window.ZiweiMoments?.connect(csrf);
   if(activeTab==='chat')window.ZiweiChat?.start(csrf);
   if(activeTab==='moments')window.ZiweiMoments?.start(csrf);
   if(['logs','memory'].includes(activeTab))window.ZiweiRecords?.show(activeTab,csrf,text=>{if(!window.ZiweiChat?.canDraft())return false;tab('chat');return window.ZiweiChat.draft(text);});
