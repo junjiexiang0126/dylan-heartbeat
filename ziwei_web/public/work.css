@@ -29,3 +29,14 @@ body.work-view #work.work-panel{height:calc(100dvh - var(--nav-h) - var(--nav-of
 #work #workForm{grid-template-columns:var(--work-toolbar-size) minmax(0,1fr) auto var(--work-toolbar-size)}
 #workForm .work-tool-picker,#workForm #workSend,#workForm #workAttach{grid-row:var(--actions-row,1)}
 #workForm #workAttachments:empty{display:none}
+
+/* 2026-10-19 与聊天页对齐：聊天页最后一条规则把高度改成 auto + min-height:0，
+   Work 页却停在「固定算高度」上，于是内容被压在安全区里、输入区被挤掉。
+   这里用同一条规则收口，不是给 Work 开例外，而是让它和聊天页同一套。 */
+.work-panel{
+  height:auto;
+  min-height:0;
+  padding-bottom:calc(var(--nav-h) + var(--nav-offset) + var(--nav-clear) + env(safe-area-inset-bottom,0px));
+}
+/* 面板内部各区块自己滚，不把整页撑开 */
+.work-panel > *{min-height:0}
