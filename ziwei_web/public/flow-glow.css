@@ -81,7 +81,7 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
 /* —— 贴纸：统一换成右上角那一套（语 2026-10-19 明确：原来按种类配的全部删掉） —— */
 #logs .log-entry,#memory .memory-entry{ overflow:visible }
 #logs .log-entry::before,#memory .memory-entry::before{
-  content:""; top:-8px; right:-8px; left:auto; bottom:auto;
+  content:""; position:absolute; top:-8px; right:-8px; left:auto; bottom:auto;
   width:46px; height:46px; border-radius:0;
   background:url('/stickers/petals.png') center/contain no-repeat;
   opacity:.35; z-index:1; pointer-events:none;
