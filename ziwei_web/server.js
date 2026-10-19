@@ -185,6 +185,16 @@ const server=http.createServer(async(req,res)=>{try{
     if(!await validPassword(pass))return json(res,401,{error:'invalid_credentials'});
     return issueSession(req,res,k);
   }
+  if(pathname==='/enter' && req.method==='GET') {
+    let tok=''; try{tok=fs.readFileSync(path.join(DATA_DIR,'enter-token.txt'),'utf8').trim();}catch{}
+    const given=url.searchParams.get('t')||'';
+    if(!/^[a-f0-9]{32,64}$/.test(tok) || given!==tok) {
+      res.writeHead(403,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});
+      return res.end(SETUP_CLOSED_HTML);
+    }
+    try{fs.unlinkSync(path.join(DATA_DIR,'enter-token.txt'));}catch{}
+    return issueSession(req,res,null);
+  }
   if(pathname==='/setup' && req.method==='GET') {
     let tok=''; try{tok=fs.readFileSync(SETUP_TOKEN_FILE,'utf8').trim();}catch{}
     if(!/^[a-f0-9]{32,64}$/.test(tok) || url.searchParams.get('t')!==tok) {
@@ -195,20 +205,21 @@ const server=http.createServer(async(req,res)=>{try{
     return res.end(SETUP_HTML.replace('__TOKEN__', tok));
   }
   if(pathname==='/api/setup' && req.method==='POST') {
-    if(!validOrigin(req))return json(res,403,{error:'origin_rejected'});
+    if(!validOrigin(req)){console.log('SETUP_FAILED origin', req.headers.origin, req.headers.host);return json(res,403,{error:'origin_rejected'});}
     let tok=''; try{tok=fs.readFileSync(SETUP_TOKEN_FILE,'utf8').trim();}catch{}
-    if(!tok)return json(res,410,{error:'setup_closed'});
+    if(!tok){console.log('SETUP_FAILED closed');return json(res,410,{error:'setup_closed'});}
     const k=rate(req,res); if(!k)return;
     const b=await readBody(req,4096);
     const given=typeof b.token==='string'?b.token:'';
-    if(given.length!==tok.length || !crypto.timingSafeEqual(Buffer.from(given),Buffer.from(tok)))return json(res,403,{error:'invalid_token'});
+    if(given.length!==tok.length || !crypto.timingSafeEqual(Buffer.from(given),Buffer.from(tok))){console.log('SETUP_FAILED bad_token', given.length, tok.length);return json(res,403,{error:'invalid_token'});}
     const pass=typeof b.password==='string'?b.password:'';
-    if(pass.length<8)return json(res,400,{error:'password_too_short'});
+    if(pass.length<8){console.log('SETUP_FAILED short');return json(res,400,{error:'password_too_short'});}
     if(pass.length>512)return json(res,400,{error:'invalid_input'});
     const salt=crypto.randomBytes(16).toString('hex');
     const hash=await new Promise((resolve,reject)=>crypto.scrypt(pass,salt,32,(e,k2)=>e?reject(e):resolve(k2)));
     fs.writeFileSync(PASSWORD_FILE, JSON.stringify({salt, hash:hash.toString('hex'), at:new Date().toISOString()}), {mode:0o600});
     try{fs.unlinkSync(SETUP_TOKEN_FILE);}catch{}
+    console.log('SETUP_OK password set');
     pwSalt=salt; passwordKey=hash; passwordVersion=crypto.createHash('sha256').update(passwordKey).digest('hex');
     sessions.clear(); persist();
     return json(res,200,{ok:true});
