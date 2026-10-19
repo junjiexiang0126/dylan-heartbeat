@@ -27,7 +27,7 @@ nav.glass{grid-template-columns:repeat(6,minmax(0,1fr))}
 @media(max-width:550px){nav.glass button{font-size:var(--ui-font-9,9px);letter-spacing:0}}
 /* Work-only composer alignment: avoid subtracting the shared nav clearance twice. */
 /* Work-only iPhone safe-area fallback and panel-to-nav alignment. */
-body.work-view #work.work-panel{--work-safe-top:env(safe-area-inset-top,0px);margin-top:var(--work-safe-top);height:var(--work-available-height,calc(100dvh - var(--work-safe-top) - var(--nav-h) - var(--nav-offset) - env(safe-area-inset-bottom,0px) - 12px))}
+body.work-view #work.work-panel{--work-safe-top:env(safe-area-inset-top,0px);margin-top:var(--work-safe-top);height:calc(100dvh - var(--work-safe-top) - var(--nav-h) - var(--nav-offset) - env(safe-area-inset-bottom,0px) - 12px)}
 #work #workForm{grid-template-columns:var(--work-toolbar-size) minmax(0,1fr) auto var(--work-toolbar-size)}
 #workForm .work-tool-picker,#workForm #workSend,#workForm #workAttach{grid-row:var(--actions-row,1)}
 #workForm #workAttachments:empty{display:none}
