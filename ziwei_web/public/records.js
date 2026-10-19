@@ -137,7 +137,11 @@ window.ZiweiRecords=(()=>{
     const toggle=button(expanded?'收起 ▴':'展开 ▾',async()=>{const v=epoch;if(s.expanded.has(row.id)){s.expanded.delete(row.id);render(k);return;}toggle.disabled=true;try{if(k!=='memory'){doc=await full(k,row);if(v!==epoch)return;updateBody(content,doc.content);}else updateBody(content,row.content);s.expanded.add(row.id);content.classList.remove('collapsed');toggle.textContent='收起 ▴';}catch(e){if(v===epoch)errorNode(k).textContent=e.message;}finally{if(v===epoch)toggle.disabled=false;}});actions.append(toggle);
     if(expanded&&k!=='memory'&&(!doc||doc.revision!==row.revision)){const v=epoch;full(k,row).then(value=>{if(v===epoch&&content.isConnected)updateBody(content,value.content);}).catch(e=>{if(v===epoch)errorNode(k).textContent=e.message;});}
    }
-   if(k==='diary'&&!diarySelected){const open=button('打开日记 ↗',()=>{pushRoute(()=>{diarySelected=row.id;documents.set('diary:view:'+row.id,row);});render('diary');});open.className='diary-open text-button';actions.append(open);}
+   if(k==='diary'&&!diarySelected){
+    const openDiary=()=>{pushRoute(()=>{diarySelected=row.id;documents.set('diary:view:'+row.id,row);});render('diary');};
+    const open=button('打开日记 ↗',openDiary);open.className='diary-open text-button';actions.append(open);
+    card.addEventListener('click',event=>{if(!event.target.closest('button,a,input,textarea,select,summary,details'))openDiary();});
+   }
    if(k==='diary'&&diarySelected)actions.append(button('和知微聊这篇',async()=>{const v=epoch;try{const doc=await full(k,row);if(v!==epoch)return;const draft='我想和你聊这篇日记：'+(row.date||row.title)+'\n\n「'+doc.content.slice(0,2000)+'」\n\n';if(onReply&&!onReply(draft))errorNode(k).textContent='聊天里还有未发送内容或正在处理的消息，请先处理后再回复日记。';}catch(e){if(v===epoch)errorNode(k).textContent=e.message;}}));
    if(row.references?.length)card.append(el('p','record-basis','记录中的引用：'+row.references.join('、')));
    if(row.evidence?.length){const box=el('div','record-evidence');box.append(el('p','',row.evidenceVerified?'成果文件已落盘；文件存在不代表外部任务结果已核实。':'部分成果文件缺失或无法读取。'));for(const item of row.evidence){if(item.saved&&item.id){const a=el('a','record-artifact',item.source+' · '+item.bytes+' B');a.href='/api/records/artifact?id='+encodeURIComponent(item.id);a.download='';box.append(a);}else box.append(el('p','error',item.source+' · 未找到有效成果'));}card.append(box);}
@@ -194,21 +198,26 @@ window.ZiweiRecords=(()=>{
    语 2026-10-19：不要伪元素、不要边框、不要阴影，贴纸要实色。
    今日印记（.imp-card）不在此列——那里是知微自己的表情贴纸，保持原样。 */
 (function(){
-  const SET=['/stickers/petals.png','/stickers/flower-side.png','/stickers/ribbon-bow.png'];
+  // Replace these paths/mappings to change the sticker set; an entrance can override
+  // one image with data-sticker-src. Size/offset remain shared CSS variables.
+  const STICKERS=Object.fromEntries(['heart','ribbon','blossoms','leaves'].map(name=>[name,'/stickers/watercolor-'+name+'-v1.png']));
+  const LOG_STICKERS={work:'leaves',diary:'ribbon',private:'heart',photos:'blossoms'};
+  const MEMORY_STICKERS={user:'blossoms',work:'leaves'};
   function decorate(root){
-    const cards=root.querySelectorAll('#logs .log-entry:not([data-log-kind="impressions"]), #memory .memory-entry');
-    cards.forEach((card,i)=>{
+    const cards=root.querySelectorAll('#logs .log-entry:not([data-log-kind="impressions"]), #memory .memory-main-group, #memory .memory-entry:not(.memory-primary)');
+    cards.forEach(card=>{
       if(card.querySelector(':scope > .card-sticker'))return;
       const img=document.createElement('img');
       img.className='card-sticker'; img.alt=''; img.setAttribute('aria-hidden','true');
-      img.src=SET[i%SET.length];
+      const key=card.dataset.logKind?LOG_STICKERS[card.dataset.logKind]:MEMORY_STICKERS[card.dataset.memoryCategory];
+      img.src=card.dataset.stickerSrc||STICKERS[key||'heart'];
       card.appendChild(img);
     });
   }
   function boot(){
     decorate(document);
-    const mo=new MutationObserver(()=>decorate(document));
-    mo.observe(document.body,{childList:true,subtree:true});
+    // These overview entrances are stable index.html nodes. Only their content
+    // and hidden state change; chat/clock mutations never need redecoration.
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
