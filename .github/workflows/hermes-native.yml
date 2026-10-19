@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths: [hermes_native/**, .github/workflows/hermes-native.yml]
   pull_request:
-    branches: [main, develop/ziwei-hermes-unified-v1, feature/ziwei-hermes-native-v1, fix/ziwei-native-backup-profile-v1]
+    branches: [main, integration/ziwei-20261016, develop/ziwei-hermes-unified-v1, feature/ziwei-hermes-native-v1, fix/ziwei-native-backup-profile-v1]
     paths: [hermes_native/**, .github/workflows/hermes-native.yml]
   workflow_dispatch:
 permissions:
@@ -21,6 +21,8 @@ jobs:
       HERMES_WRITE_SAFE_ROOT: /data/hermes_native/workspace
     steps:
       - uses: actions/checkout@v4
+      - name: Install isolated test dependencies
+        run: python3 -m pip install --quiet cryptography aiohttp
       - name: Run isolated Python bootstrap safety tests
         run: python3 -m unittest discover -s hermes_native/tests -v
       - name: Build the thin configuration layer on the exact official stable image
