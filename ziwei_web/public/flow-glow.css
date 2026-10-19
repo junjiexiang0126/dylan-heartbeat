@@ -78,41 +78,24 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
 #logs .record-card>*,#logs .log-entry>*,#logs .log-today>*,#logs .imp-card>*,
 #memory .record-card>*,#memory .memory-entry>*{ position:relative; z-index:2 }
 
-/* —— 贴纸：统一换成右上角那一套（语 2026-10-19 明确：原来按种类配的全部删掉） —— */
-#logs .log-entry,#memory .memory-entry{ overflow:visible }
-#logs .log-entry::before,#memory .memory-entry::before{
-  content:""; position:absolute; top:-8px; right:-8px; left:auto; bottom:auto;
-  width:46px; height:46px; border-radius:0;
-  background:url('/stickers/petals.png') center/contain no-repeat;
-  opacity:.35; z-index:1; pointer-events:none;
+/* —— 右上角贴纸：真实元素，实色，无边框无阴影 ——
+   由 records.js 挂进每张卡片；卡片移除则贴纸一起消失。
+   今日印记的 .imp-card 不在装饰范围内，它用自己那套表情贴纸。 */
+.card-sticker{
+  position:absolute; top:-8px; right:-8px; left:auto; bottom:auto;
+  width:46px; height:46px; object-fit:contain;
+  z-index:2; pointer-events:none; opacity:1;
+  border:0; box-shadow:none; background:none; filter:none;
   transform:rotate(-6deg);
-  filter:none;   /* 去掉粉色投影：浅色纸面上它看着就是一圈粉边 */
-  transition:opacity .25s ease,transform .25s ease;
 }
-/* 压掉 records-material 里按种类配的旧图与旋转 */
-#logs .log-entry[data-log-kind]::before{
-  background-image:url('/stickers/petals.png'); transform:rotate(-6deg);
-}
-#logs .log-entry:nth-child(2n)::before,#memory .memory-entry:nth-child(2n)::before{
-  background-image:url('/stickers/flower-side.png'); transform:rotate(5deg);
-}
-#logs .log-entry:nth-child(3n)::before,#memory .memory-entry:nth-child(3n)::before{
-  background-image:url('/stickers/ribbon-bow.png'); width:52px; height:40px; transform:rotate(-3deg);
-}
-#logs .log-entry[data-log-kind]:nth-child(2n)::before{ background-image:url('/stickers/flower-side.png'); transform:rotate(5deg) }
-#logs .log-entry[data-log-kind]:nth-child(3n)::before{ background-image:url('/stickers/ribbon-bow.png'); width:52px; height:40px; transform:rotate(-3deg) }
-/* 标题给右上角留白，贴纸不压字 */
-#logs .log-entry strong,#memory .memory-entry strong{ padding-right:34px }
+#memory .card-sticker:nth-of-type(2n){transform:rotate(5deg)}
+#logs .log-entry,#memory .memory-entry{overflow:visible}
+#logs .log-entry strong,#memory .memory-entry strong{padding-right:34px}
+#logs.record-open .card-sticker{display:none}
 @media (hover:hover){
-  #logs .log-entry{ transition:transform .25s ease,box-shadow .25s ease }
-  #logs .log-entry:hover{ transform:translateY(-2px) }
-  #logs .log-entry:hover::before{ opacity:.48 }
+  #logs .log-entry,#memory .memory-entry{transition:transform .25s ease}
+  #logs .log-entry:hover,#memory .memory-entry:hover{transform:translateY(-2px)}
 }
-@media (hover:none){
-  #logs .log-entry:active::before{ opacity:.48 }
-}
-#logs.record-open .log-entry::before,#memory.record-open .memory-entry::before{ display:none }
-
 /* 阅读态：收起玻璃与流光，回到干净纸面 */
 #logs.record-open::after,#memory.record-open::after{ display:none }
 #logs.record-open .record-card,#memory.record-open .record-card,
