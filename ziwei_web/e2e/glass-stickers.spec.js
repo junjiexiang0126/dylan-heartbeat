@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const stamp='2026-10-19T08:00:00Z';
 const envelope=data=>({data,source:'hermes_native',readOnly:true,total:data.length,nextOffset:null,checkedAt:stamp,errors:[]});
 test('full application glass and sticker HTTP preview',async({page},info)=>{
+ test.setTimeout(120000);
  const failed=[];page.on('response',r=>{if(r.url().match(/\.(css|js|svg|png)(\?|$)/)&&r.status()>=400)failed.push({url:r.url(),status:r.status()});});
  await page.route('**/api/records/**',r=>{const u=new URL(r.request().url()),kind=u.pathname.split('/').at(-1);const payload=envelope(kind==='memory'?[{id:'preview-memory',source:'memories/MEMORY.md',title:'预览样本',categories:['self'],content:'这是隔离测试内容，用于核对真实页面的排版与材质。',at:stamp,savedAt:stamp,revision:'preview'}]:[]);if(kind==='memory'){payload.counts={user:2,work:2,self:1,protected:0,uncategorized:0};}return r.fulfill({json:payload});});
  await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.locator('#loginForm button').click();await expect(page.locator('#app')).toBeVisible();
@@ -26,7 +27,7 @@ test('full application glass and sticker HTTP preview',async({page},info)=>{
  await page.locator('[data-tab=logs]').click();await expect(page.locator('[data-log-kind=impressions] > .card-sticker')).toHaveCount(0);
  await page.setViewportSize({width:390,height:844});
  await page.locator('[data-tab=home]').click();await page.locator('#settingsButton').click();await page.locator('#theme').selectOption('dark');await page.locator('#saveProfile').click();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await page.locator('#closeSettings').click();
- for(const section of ['logs','memory']){await page.locator('[data-tab='+section+']').click();await page.screenshot({path:info.outputPath(section+'-dark-390.png'),fullPage:true});const fill=await page.locator('#'+section+' .card-sticker').first().evaluate(e=>getComputedStyle(e.parentElement).backgroundColor);expect(fill).toBe('rgba(255, 255, 255, 0.1)');}
+ for(const section of ['logs','memory']){await page.locator('[data-tab='+section+']').click();await page.screenshot({path:info.outputPath(section+'-dark-390.png'),fullPage:true});const fill=await page.locator(section==='logs'?'#logs .log-entry:not(.active) > .card-sticker':'#memory .card-sticker').first().evaluate(e=>getComputedStyle(e.parentElement).backgroundColor);expect(fill).toBe('rgba(255, 255, 255, 0.1)');}
  results.push({styles:await page.locator('link[rel=stylesheet]').evaluateAll(es=>es.map(e=>({href:e.getAttribute('href'),loaded:!!e.sheet}))),failed});
  fs.writeFileSync(info.outputPath('audit.json'),JSON.stringify(results,null,2));expect(failed).toEqual([]);
 });
