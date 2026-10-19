@@ -272,10 +272,33 @@ window.ZiweiChat=(()=>{
  $('#chatSend').onclick=e=>{e.preventDefault();submitMessage();};
  $('#chatRecover').onclick=()=>deliver();
  $('#chatRetry').onclick=()=>{if(token)void start(token);};
- $('#chatFiles').onchange=async e=>{
+ 
+/* 2026-10-19：上传前压缩图片。模型接口按体积收图，超过 8MB 的图会退化成一行元信息，
+   我因此看不到内容。这里在上传前把长边压到 1600px、JPEG 质量 0.85，
+   肉眼几乎无差，体积通常降到 1MB 以内。非图片、或已经够小的图原样上传。 */
+async function shrinkImage(file){
+  const isImg=/^image\//.test(file.type||'');
+  if(!isImg) return file;
+  if(file.size<=1.5*1024*1024) return file;
+  try{
+    const bitmap=await createImageBitmap(file);
+    const maxEdge=1600;
+    const scale=Math.min(1,maxEdge/Math.max(bitmap.width,bitmap.height));
+    const w=Math.max(1,Math.round(bitmap.width*scale)),h=Math.max(1,Math.round(bitmap.height*scale));
+    const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+    const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0,w,h);
+    if(bitmap.close)bitmap.close();
+    const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.85));
+    if(!blob||blob.size>=file.size) return file;
+    const name=(file.name||'image').replace(/\.[^.]+$/,'')+'.jpg';
+    return new File([blob],name,{type:'image/jpeg'});
+  }catch(e){return file;}
+}
+
+$('#chatFiles').onchange=async e=>{
   const epoch=version,selected=[...e.target.files];e.target.value='';if(selected.length+attachments.length>6){$('#chatError').textContent='每条消息最多 6 个附件。';return;}
   uploading++;uploadFailed=false;controls();$('#chatError').textContent='';
-  try{for(const file of selected){if(file.size>20*1024*1024)throw Error('附件超过 20 MB。');const a=await request('/api/chat/attachments','POST',null,{headers:{'X-Filename':encodeURIComponent(file.name),'Content-Type':file.type||'application/octet-stream'},body:file});if(epoch!==version)return;attachments.push(a);chips();}}
+  try{for(const file of selected){if(file.size>20*1024*1024)throw Error('附件超过 20 MB。');const shrunk=await shrinkImage(file);const a=await request('/api/chat/attachments','POST',null,{headers:{'X-Filename':encodeURIComponent(shrunk.name),'Content-Type':shrunk.type||'application/octet-stream'},body:shrunk});if(epoch!==version)return;attachments.push(a);chips();}}
   catch(e){uploadFailed=true;if(epoch===version)$('#chatError').textContent=e.message;}finally{uploading=Math.max(0,uploading-1);const queued=queuedSend;queuedSend=false;if(epoch===version){controls();if(!uploading&&queued){if(uploadFailed)$('#chatError').textContent=($('#chatError').textContent||'附件上传失败。')+' 已取消自动发送，请检查附件后再发送。';else submitMessage();}}}
  };
  const st=$('#chatSearchToggle');if(st)st.onclick=()=>{const t=document.querySelector('#chatToolbar');if(!t)return;t.hidden=!t.hidden;st.setAttribute('aria-expanded',String(!t.hidden));$('#chatHistoryTools').hidden=t.hidden;if(t.hidden){$('#chatSearch').value='';scheduleLoad();}else $('#chatSearch').focus();};
