@@ -12,12 +12,22 @@ const base=hermesEndpoint(process.env);
 const secret=process.env.ZIWEI_HERMES_API_KEY||'';
 const SESSION_BASE=process.env.ZIWEI_HERMES_WEB_SESSION_ID||'';
 /* 2026-10-19：允许开新的一段对话。持久化在进程内存里，重启回到基础会话号。 */
+/* 当前会话号持久化：重启、刷新、下次打开都还是这一段，直到再次切换。 */
+const SESSION_STATE_DIR=process.env.ZIWEI_WEB_DATA_DIR||path.join(__dirname,'.data');
+const SESSION_STATE_FILE=path.join(SESSION_STATE_DIR,'current-session.json');
 let sessionId=SESSION_BASE;
+try{
+  const raw=JSON.parse(fs.readFileSync(SESSION_STATE_FILE,'utf8'));
+  if(raw&&typeof raw.id==='string'&&/^[a-zA-Z0-9_-]{1,128}$/.test(raw.id)) sessionId=raw.id;
+}catch(e){}
+function persistSession(){
+  try{ fs.mkdirSync(SESSION_STATE_DIR,{recursive:true}); fs.writeFileSync(SESSION_STATE_FILE,JSON.stringify({id:sessionId,at:new Date().toISOString()})); }catch(e){}
+}
 function newSession(){
   const stamp=new Date().toISOString().replace(/[-:TZ.]/g,'').slice(0,14);
   const next=(SESSION_BASE||'ziwei-web')+'-'+stamp;
   if(!/^[a-zA-Z0-9_-]{1,128}$/.test(next)) throw Error('session_id_invalid');
-  sessionId=next; sessionReady=false; creationPromise=null;
+  sessionId=next; sessionReady=false; creationPromise=null; persistSession();
   return sessionId;
 }
 let sessionReady=false,creationPromise=null,streamBusy=false;
