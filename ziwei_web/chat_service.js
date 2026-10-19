@@ -8,7 +8,7 @@ const stateText=(value,max)=>typeof value==='string'?[...value.replace(/[\u0000-
 const TERMINAL=['completed','failed','cancelled','interrupted'];
 const {VoiceTranscriber}=require('./voice_transcriber');
 function createChatService(dir,{authorized=()=>true}={}){
- const client=new HermesClient(),store=new ChatStore(dir,hash(client.base+'|'+client.session+'|'+client.key)),files=new Attachments(dir,store),voice=new VoiceTranscriber();
+ const client=new HermesClient(),store=new ChatStore(dir,hash(client.base+'|ziwei-home|'+client.key))  /* 2026-10-20 本地库 scope 不再跟随会话号：切换对话时不该换库，否则 ChatStore 拒绝并崩溃 */,files=new Attachments(dir,store),voice=new VoiceTranscriber();
  const actions=new ActionLog(store.db);store.actions=actions;
  const history=new NativeHistory(client,store),speech=new VoiceSynthesizer(files);
  let presenceCache=null,working=false,closing=false,connected=false,lastError=null,lastCheck=0,checking=null;

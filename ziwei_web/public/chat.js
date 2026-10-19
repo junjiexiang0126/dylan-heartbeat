@@ -339,7 +339,7 @@ $('#chatFiles').onchange=async e=>{
         var r=await fetch('/api/chat/session',{method:'POST',credentials:'same-origin',headers:{'X-Ziwei-CSRF':tok}});
         if(!r.ok) throw new Error('switch_failed_'+r.status);
         document.body.insertAdjacentHTML('beforeend','<div id="zwSwitchTip" style="position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:rgba(255,252,250,.92);font:16px/1.8 -apple-system,PingFang SC,serif;color:#5a4b45">正在换一段新的…请稍等</div>');
-        setTimeout(function(){location.reload();},7000);
+        setTimeout(function(){location.reload();},12000);
       }catch(e){ alert('没换成：'+(e&&e.message?e.message:e)); b.disabled=false; }
     });
   }
