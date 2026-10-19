@@ -278,3 +278,6 @@ html,body{overscroll-behavior:none}
 }
 /* 顶部与底部系统区：内容让开，壁纸透进去 */
 .topbar{padding-top:calc(20px + env(safe-area-inset-top,0px))}
+
+/* ===== 输入控件统一 16px：iOS 聚焦时不再自动放大页面 ===== */
+input,textarea,select,.chat-toolbar input,.chat-toolbar select{font-size:16px!important}
