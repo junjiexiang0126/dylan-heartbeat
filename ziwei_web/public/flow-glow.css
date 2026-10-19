@@ -1,0 +1,87 @@
+/* 流光底 + 玻璃卡（日志页 / 记忆页）
+   2026-10-19 与语定稿：保留原有纸感底，只在其上叠一层极淡彩光；
+   卡片换成玻璃材质（半透明 + 背后模糊 + 上沿亮边）。
+   三套皮肤跟随已有的 data-background（rose / sky / sage），明暗程度一致，只换色相。
+   只在日志页与记忆页生效，不碰聊天、朋友圈、首页。 */
+
+/* —— 三套光色 —— */
+:root{ /* 暖玫瑰（默认） */
+  --glow-1:255,143,176; --glow-2:255,184,119; --glow-3:185,140,255; --glow-4:255,217,138;
+  --glow-strength:.52;
+}
+:root[data-background=sky]{
+  --glow-1:143,195,255; --glow-2:168,228,234; --glow-3:185,182,255; --glow-4:207,230,255;
+  --glow-strength:.50;
+}
+:root[data-background=sage]{
+  --glow-1:185,217,138; --glow-2:223,215,154; --glow-3:143,201,168; --glow-4:233,226,176;
+  --glow-strength:.50;
+}
+:root[data-theme=dark]{ --glow-strength:.34 }
+
+/* —— 叠在纸感底上的光：只在这两页出现 —— */
+body::after{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  opacity:0; transition:opacity .45s ease;
+  background:
+    radial-gradient(72% 56% at 6% 4%,  rgba(var(--glow-1),.95) 0%, rgba(var(--glow-1),0) 70%),
+    radial-gradient(66% 52% at 97% 16%, rgba(var(--glow-2),.92) 0%, rgba(var(--glow-2),0) 68%),
+    radial-gradient(78% 58% at 4% 94%, rgba(var(--glow-3),.90) 0%, rgba(var(--glow-3),0) 70%),
+    radial-gradient(58% 46% at 94% 88%, rgba(var(--glow-4),.88) 0%, rgba(var(--glow-4),0) 66%);
+}
+body:has(#logs:not([hidden]))::after,
+body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
+
+/* 光自己慢慢走，幅度很小；系统要求减少动态时完全静止 */
+@media (prefers-reduced-motion: no-preference){
+  body:has(#logs:not([hidden]))::after,
+  body:has(#memory:not([hidden]))::after{
+    animation: ziwei-glow-drift 34s ease-in-out infinite alternate;
+  }
+}
+@keyframes ziwei-glow-drift{
+  0%{ transform:translate3d(0,0,0) scale(1) }
+  50%{ transform:translate3d(2.2vw,-2vh,0) scale(1.06) }
+  100%{ transform:translate3d(-2vw,2.4vh,0) scale(.96) }
+}
+
+/* —— 玻璃卡：日志页 —— */
+#logs .log-entry{
+  background:rgba(255,255,255,.58);
+  border-color:rgba(255,255,255,.86);
+  border-top-color:#fff;
+  box-shadow:0 1px 0 rgba(255,255,255,.92) inset,0 10px 26px rgba(170,130,115,.12),0 2px 6px rgba(170,130,115,.06);
+  -webkit-backdrop-filter:blur(18px) saturate(160%);
+  backdrop-filter:blur(18px) saturate(160%);
+}
+#logs .log-entry.active{
+  background:rgba(255,255,255,.86);
+  border-color:#fff;
+}
+:root[data-theme=dark] #logs .log-entry{ background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.20); border-top-color:rgba(255,255,255,.46) }
+
+/* —— 玻璃卡：记忆页 —— */
+#memory .memory-entry{
+  background:rgba(255,255,255,.58);
+  border-color:rgba(255,255,255,.86);
+  box-shadow:0 1px 0 rgba(255,255,255,.92) inset,0 10px 26px rgba(170,130,115,.12),0 2px 6px rgba(170,130,115,.06);
+  -webkit-backdrop-filter:blur(18px) saturate(160%);
+  backdrop-filter:blur(18px) saturate(160%);
+}
+:root[data-theme=dark] #memory .memory-entry{ background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.20) }
+
+/* 蓝、绿两套皮肤下，阴影与描边偏各自色相，避免整体发粉 */
+:root[data-background=sky] #logs .log-entry,
+:root[data-background=sky] #memory .memory-entry{
+  box-shadow:0 1px 0 rgba(255,255,255,.92) inset,0 10px 26px rgba(110,140,170,.12),0 2px 6px rgba(110,140,170,.06);
+}
+:root[data-background=sage] #logs .log-entry,
+:root[data-background=sage] #memory .memory-entry{
+  box-shadow:0 1px 0 rgba(255,255,255,.92) inset,0 10px 26px rgba(140,160,110,.12),0 2px 6px rgba(140,160,110,.06);
+}
+
+/* 阅读态（展开一篇时）不要玻璃与光，保持纸面安静 */
+#logs.record-open::after,#memory.record-open::after{ display:none }
+#logs.record-open .log-entry,#memory.record-open .memory-entry{
+  background:transparent;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
+}
