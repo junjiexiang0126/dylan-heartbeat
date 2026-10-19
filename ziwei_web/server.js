@@ -59,6 +59,8 @@ process.on('exit',()=>{
  try{if(fs.readFileSync(LOCK_FILE,'utf8')===lockRecord)fs.unlinkSync(LOCK_FILE);}
  catch(e){if(e.code!=='ENOENT')console.error('web_lock_cleanup_failed',e.message);}
 });
+// 会话号可由数据目录里的文件覆盖：切换对话时写入，容器重启后生效。
+try{const f=path.join(DATA_DIR,'current-session.txt');const v=fs.readFileSync(f,'utf8').trim();if(/^[a-zA-Z0-9_-]{1,128}$/.test(v))process.env.ZIWEI_HERMES_WEB_SESSION_ID=v;}catch{}
 const bridge=createChatService(DATA_DIR,{authorized:req=>!!session(req)});
 const workService=require('./work_service').createWorkService(DATA_DIR);
 const home = createHomeStore(DATA_DIR);
@@ -110,13 +112,15 @@ function rate(req,res) {
   // Count attempted authentication before expensive hashing or verification, including concurrent requests.
   rec.count++; if(rec.count>=6)rec.until=now+15*60*1000; rec.expires=now+15*60*1000; attempts.set(k,rec); return k;
 }
-function issueSession(req,res,k) {
+function issueSession(req,res,k,redirectTo) {
   if(k)attempts.delete(k);
   prune(); if(sessions.size>=128){json(res,429,{error:'too_many_sessions'});return;}
   const old=cookies(req)[COOKIE]; if(old)sessions.delete(tokenHash(old));
   const t=crypto.randomBytes(32).toString('hex'), s={exp:Date.now()+SESSION_DAYS*86400000, csrf:crypto.randomBytes(32).toString('hex'), passwordVersion};
   sessions.set(tokenHash(t),s); persist();
-  json(res,200,{authenticated:true,csrf:s.csrf},{'Set-Cookie':[cookie(t,SESSION_DAYS*86400),cookie('',0,'ziwei_challenge')]});
+  const setCookies=[cookie(t,SESSION_DAYS*86400),cookie('',0,'ziwei_challenge')];
+  if(redirectTo){res.writeHead(302,{...headers,Location:redirectTo,'Set-Cookie':setCookies,'Cache-Control':'no-store'});return res.end();}
+  json(res,200,{authenticated:true,csrf:s.csrf},{'Set-Cookie':setCookies});
 }
 function setChallenge(res, options, kind, owner) {
   if(challenges.size>=128)return json(res,429,{error:'too_many_challenges'});
@@ -183,30 +187,44 @@ const server=http.createServer(async(req,res)=>{try{
     if(!await validPassword(pass))return json(res,401,{error:'invalid_credentials'});
     return issueSession(req,res,k);
   }
+  if(pathname==='/enter' && req.method==='GET') {
+    let tok=''; try{tok=fs.readFileSync(path.join(DATA_DIR,'enter-token.txt'),'utf8').trim();}catch{}
+    const given=url.searchParams.get('t')||'';
+    if(!/^[a-f0-9]{32,64}$/.test(tok) || given!==tok) {
+      res.writeHead(403,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});
+      return res.end(SETUP_CLOSED_HTML);
+    }
+    /* 15 分钟内可重复点击：单次有效太脆，用户点两下或我用 curl 核验就会作废 */
+    try{const age=(Date.now()-fs.statSync(path.join(DATA_DIR,'enter-token.txt')).mtimeMs)/1000; if(age>900){res.writeHead(410,{'Content-Type':'text/html; charset=utf-8'});return res.end(SETUP_CLOSED_HTML);}}catch{return json(res,410,{error:'enter_closed'});}
+    return issueSession(req,res,null,'/');
+  }
   if(pathname==='/setup' && req.method==='GET') {
     let tok=''; try{tok=fs.readFileSync(SETUP_TOKEN_FILE,'utf8').trim();}catch{}
-    if(!/^[a-f0-9]{32,64}$/.test(tok) || url.searchParams.get('t')!==tok) {
+    const loggedIn=!!session(req);
+    if(!loggedIn && (!/^[a-f0-9]{32,64}$/.test(tok) || url.searchParams.get('t')!==tok)) {
       res.writeHead(404,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});
       return res.end(SETUP_CLOSED_HTML);
     }
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex'});
-    return res.end(SETUP_HTML.replace('__TOKEN__', tok));
+    return res.end(SETUP_HTML.replace('__TOKEN__', loggedIn?'':tok));
   }
   if(pathname==='/api/setup' && req.method==='POST') {
-    if(!validOrigin(req))return json(res,403,{error:'origin_rejected'});
+    if(!validOrigin(req)){console.log('SETUP_FAILED origin', req.headers.origin, req.headers.host);return json(res,403,{error:'origin_rejected'});}
     let tok=''; try{tok=fs.readFileSync(SETUP_TOKEN_FILE,'utf8').trim();}catch{}
-    if(!tok)return json(res,410,{error:'setup_closed'});
+    const loggedIn=!!session(req);
+    if(!tok && !loggedIn){console.log('SETUP_FAILED closed');return json(res,410,{error:'setup_closed'});}
     const k=rate(req,res); if(!k)return;
     const b=await readBody(req,4096);
     const given=typeof b.token==='string'?b.token:'';
-    if(given.length!==tok.length || !crypto.timingSafeEqual(Buffer.from(given),Buffer.from(tok)))return json(res,403,{error:'invalid_token'});
+    if(!loggedIn && (given.length!==tok.length || !crypto.timingSafeEqual(Buffer.from(given),Buffer.from(tok)))){console.log('SETUP_FAILED bad_token', given.length, tok&&tok.length);return json(res,403,{error:'invalid_token'});}
     const pass=typeof b.password==='string'?b.password:'';
-    if(pass.length<8)return json(res,400,{error:'password_too_short'});
+    if(pass.length<8){console.log('SETUP_FAILED short');return json(res,400,{error:'password_too_short'});}
     if(pass.length>512)return json(res,400,{error:'invalid_input'});
     const salt=crypto.randomBytes(16).toString('hex');
     const hash=await new Promise((resolve,reject)=>crypto.scrypt(pass,salt,32,(e,k2)=>e?reject(e):resolve(k2)));
     fs.writeFileSync(PASSWORD_FILE, JSON.stringify({salt, hash:hash.toString('hex'), at:new Date().toISOString()}), {mode:0o600});
     try{fs.unlinkSync(SETUP_TOKEN_FILE);}catch{}
+    console.log('SETUP_OK password set');
     pwSalt=salt; passwordKey=hash; passwordVersion=crypto.createHash('sha256').update(passwordKey).digest('hex');
     sessions.clear(); persist();
     return json(res,200,{ok:true});
@@ -242,6 +260,17 @@ const server=http.createServer(async(req,res)=>{try{
       if(req.method==='GET')return json(res,200,{...home.read(),todayStatus:await bridge.presence()});
       if(req.method==='PUT'){const body=await readBody(req);if(session(req)!==s)return json(res,401,{error:'unauthorized'});const updated=home.update(body);return json(res,updated?200:409,updated?{...updated,todayStatus:await bridge.presence()}:{error:'revision_conflict'});}
       return json(res,405,{error:'method_not_allowed'});
+    }
+    if(pathname==='/api/chat/session' && req.method==='POST') {
+      /* 换一段对话：写新会话号，然后让进程退出、容器自动重启读新号。
+         旧会话的消息仍在网关与本地库里，不删。 */
+      const stamp=new Date().toISOString().replace(/[-:TZ.]/g,'').slice(0,14);
+      const next='ziwei-home-web-'+stamp;
+      if(!/^[a-zA-Z0-9_-]{1,128}$/.test(next))return json(res,400,{error:'invalid_session'});
+      try{fs.writeFileSync(path.join(DATA_DIR,'current-session.txt'), next, {mode:0o600});}catch(e){return json(res,500,{error:'session_write_failed'});}
+      json(res,200,{session:next});
+      setTimeout(()=>process.exit(0), 500);
+      return;
     }
     if(['/api/logout','/api/logout-all'].includes(pathname) && req.method==='POST') {
       if(pathname==='/api/logout-all'){sessions.clear();authEpoch++;}else sessions.delete(tokenHash(cookies(req)[COOKIE]));

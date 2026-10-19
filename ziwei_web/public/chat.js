@@ -325,3 +325,38 @@ $('#chatFiles').onchange=async e=>{
  function draft(text){if(!canDraft())return false;$('#chatInput').value=text;compose();return true;}
  return {start,stop,setProfiles,draft,canDraft,leave:()=>{if(!$('#chat').hidden){const t=$('#chatTimeline');readingPosition={top:t.scrollTop,follow:t.scrollHeight-t.scrollTop-t.clientHeight<80};}window.ZiweiChatCall?.end();if($('#chatImageViewer')?.open)$('#chatImageViewer').close();stopVoice();$('#chatInput').blur();}};
 })();
+
+/* 换一段新对话：写新会话号，服务重启后进入新的一段；旧记录不动 */
+(function(){
+  function bind(){
+    var b=document.getElementById('chatNewSession'); if(!b) return;
+    b.addEventListener('click',async function(){
+      if(!confirm('开一段新的对话？\n这段记录会留着，只是之后的消息写进新的一段。'))return;
+      b.disabled=true;
+      try{
+        var info=await fetch('/api/session',{credentials:'same-origin'}).then(function(r){return r.json();});
+        var tok=(info&&info.csrf)||'';
+        var r=await fetch('/api/chat/session',{method:'POST',credentials:'same-origin',headers:{'X-Ziwei-CSRF':tok}});
+        if(!r.ok) throw new Error('switch_failed_'+r.status);
+        try{localStorage.setItem('zw-open-chat','1');}catch(e){}
+        document.body.insertAdjacentHTML('beforeend','<div id="zwSwitchTip" style="position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:rgba(38,30,27,.94);font:19px/1.9 -apple-system,PingFang SC,serif;color:#fff5ef;letter-spacing:.04em">正在换一段新的…<br>大约十几秒，好了会自动回到聊天</div>');
+        setTimeout(function(){location.reload();},12000);
+      }catch(e){ alert('没换成：'+(e&&e.message?e.message:e)); b.disabled=false; }
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
+
+/* 切换对话回来后直接落到聊天页 */
+(function(){
+  function go(){
+    try{
+      if(localStorage.getItem('zw-open-chat')==='1'){
+        localStorage.removeItem('zw-open-chat');
+        var t=document.querySelector('[data-tab="chat"]');
+        if(t) t.click();
+      }
+    }catch(e){}
+  }
+  setTimeout(go,600);
+})();
