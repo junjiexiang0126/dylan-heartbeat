@@ -21,7 +21,7 @@
         images.forEach(img => img.classList.remove('photostack-source-hidden'));
         continue;
       }
-      const urls = images.map(img => img.currentSrc || img.src);
+      const urls = images.map(img => img.src);
       if (current && current.images.length === urls.length && current.images.every((url, i) => url === urls[i])) continue;
       if (current) { current.stack.destroy(); current.stage.remove(); instances.delete(bubble); }
       const stage = document.createElement('div');
@@ -41,7 +41,7 @@
       stage.addEventListener('keydown', event => {
         if (event.key === 'ArrowLeft') { event.preventDefault(); stack.prev(); }
         if (event.key === 'ArrowRight') { event.preventDefault(); stack.next(); }
-        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); images[stack.index]?.click(); }
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.ZiweiChatExtra?.showImage(images[stack.index]); }
       });
       instances.set(bubble, { stack, stage, images: urls });
     }
