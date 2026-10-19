@@ -78,13 +78,31 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
 #logs .record-card>*,#logs .log-entry>*,#logs .log-today>*,#logs .imp-card>*,
 #memory .record-card>*,#memory .memory-entry>*{ position:relative; z-index:3 }
 
-/* —— 贴纸：只统一几何与交互，图片仍由 records-material 按种类提供 —— */
-#logs .log-entry{ overflow:visible }
-#logs .log-entry::before{
-  top:-8px; right:-8px; left:auto; bottom:auto;
+/* —— 贴纸：统一换成右上角那一套（语 2026-10-19 明确：原来按种类配的全部删掉） —— */
+#logs .log-entry,#memory .memory-entry{ overflow:visible }
+#logs .log-entry::before,#memory .memory-entry::before{
+  content:""; top:-8px; right:-8px; left:auto; bottom:auto;
+  width:46px; height:46px; border-radius:0;
+  background:url('/stickers/petals.png') center/contain no-repeat;
   opacity:.35; z-index:2; pointer-events:none;
+  transform:rotate(-6deg);
+  filter:drop-shadow(0 2px 5px rgba(180,120,140,.18));
   transition:opacity .25s ease,transform .25s ease;
 }
+/* 压掉 records-material 里按种类配的旧图与旋转 */
+#logs .log-entry[data-log-kind]::before{
+  background-image:url('/stickers/petals.png'); transform:rotate(-6deg);
+}
+#logs .log-entry:nth-child(2n)::before,#memory .memory-entry:nth-child(2n)::before{
+  background-image:url('/stickers/flower-side.png'); transform:rotate(5deg);
+}
+#logs .log-entry:nth-child(3n)::before,#memory .memory-entry:nth-child(3n)::before{
+  background-image:url('/stickers/ribbon-bow.png'); width:52px; height:40px; transform:rotate(-3deg);
+}
+#logs .log-entry[data-log-kind]:nth-child(2n)::before{ background-image:url('/stickers/flower-side.png'); transform:rotate(5deg) }
+#logs .log-entry[data-log-kind]:nth-child(3n)::before{ background-image:url('/stickers/ribbon-bow.png'); width:52px; height:40px; transform:rotate(-3deg) }
+/* 标题给右上角留白，贴纸不压字 */
+#logs .log-entry strong,#memory .memory-entry strong{ padding-right:34px }
 @media (hover:hover){
   #logs .log-entry{ transition:transform .25s ease,box-shadow .25s ease }
   #logs .log-entry:hover{ transform:translateY(-2px) }
@@ -93,7 +111,7 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
 @media (hover:none){
   #logs .log-entry:active::before{ opacity:.48 }
 }
-#logs.record-open .log-entry::before{ display:none }
+#logs.record-open .log-entry::before,#memory.record-open .memory-entry::before{ display:none }
 
 /* 阅读态：收起玻璃与流光，回到干净纸面 */
 #logs.record-open::after,#memory.record-open::after{ display:none }
