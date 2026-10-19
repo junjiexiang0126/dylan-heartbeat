@@ -202,9 +202,8 @@ const server=http.createServer(async(req,res)=>{try{
     if(pathname.startsWith('/api/work/'))return workService.handle(req,res,pathname,readBody,json);
     if(pathname==='/api/moments'||pathname.startsWith('/api/moments/'))return moments.proxy(req,res,pathname,url);
     if(pathname==='/api/chat/session' && req.method==='POST'){
-      const s=session(req); if(!s) return json(res,401,{error:'unauthorized'});
-      const t=req.headers['x-csrf-token'];
-      if(!t || t!==s.csrf) return json(res,403,{error:'csrf_required'});
+      /* 登录态与 CSRF 已由上层统一校验（x-ziwei-csrf），这里不再重复，避免两套头名打架 */
+      if(!session(req)) return json(res,401,{error:'unauthorized'});
       try{ return json(res,200,{session:bridge.newSession()}); }catch(e){ return json(res,503,{error:'session_switch_failed'}); }
     }
     return bridge.proxy(req,res,pathname,url);

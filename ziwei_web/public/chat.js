@@ -337,7 +337,7 @@ $('#chatFiles').onchange=async e=>{
         /* 先取一次会话信息拿到当轮 CSRF，避免页面已登录时全局变量为空 */
         var info=await fetch('/api/session',{credentials:'same-origin'}).then(function(x){return x.json();});
         var tok=(info&&info.csrf)||window.__zwCsrf||'';
-        var r=await fetch('/api/chat/session',{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':tok}});
+        var r=await fetch('/api/chat/session',{method:'POST',credentials:'same-origin',headers:{'X-Ziwei-CSRF':tok}});
         if(!r.ok){ throw new Error('switch_failed_'+r.status); }
         location.reload();
       }catch(e){ alert('切换没成功：'+(e&&e.message?e.message:e)+''); b.disabled=false; }
