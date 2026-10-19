@@ -39,7 +39,7 @@
 
   /* 流光（仅在日志/记忆页出现） */
   --glow-1:255,143,176; --glow-2:255,184,119; --glow-3:185,140,255; --glow-4:255,217,138;
-  --glow-strength:.62;
+  --glow-strength:.37;
 }
 :root[data-theme=dark]{
   --zw-glass-tint-scale:.1875;
@@ -48,16 +48,16 @@
   --zw-glass-shadow:0 1px 0 rgb(255 255 255 / .20) inset,0 12px 30px rgb(0 0 0 / .34);
   --zw-label-bg:rgb(255 255 255 / .14);
   --zw-label-ink:#f0d7de;
-  --glow-strength:.34;
+  --glow-strength:.20;
 }
 :root[data-background=sky]{
   --glow-1:143,195,255; --glow-2:168,228,234; --glow-3:185,182,255; --glow-4:207,230,255;
-  --glow-strength:.60;
+  --glow-strength:.36;
   --zw-glass-shadow:0 1px 0 rgb(255 255 255 / .42) inset,0 10px 26px rgb(110 140 170 / .16),0 3px 8px rgb(110 140 170 / .07);
 }
 :root[data-background=sage]{
   --glow-1:185,217,138; --glow-2:223,215,154; --glow-3:143,201,168; --glow-4:233,226,176;
-  --glow-strength:.60;
+  --glow-strength:.36;
   --zw-glass-shadow:0 1px 0 rgb(255 255 255 / .42) inset,0 10px 26px rgb(140 160 110 / .16),0 3px 8px rgb(140 160 110 / .07);
 }
 
@@ -66,13 +66,10 @@ body::after{
   content:""; position:fixed; inset:0; z-index:1; pointer-events:none;
   opacity:0; transition:opacity .45s ease;
   background:
-    radial-gradient(72% 56% at 6% 4%,  rgba(var(--glow-1),.95) 0%, rgba(var(--glow-1),0) 70%),
-    radial-gradient(66% 52% at 97% 16%, rgba(var(--glow-2),.92) 0%, rgba(var(--glow-2),0) 68%),
-    radial-gradient(78% 58% at 4% 94%, rgba(var(--glow-3),.90) 0%, rgba(var(--glow-3),0) 70%),
-    radial-gradient(52% 40% at 94% 88%, rgba(var(--glow-4),.88) 0%, rgba(var(--glow-4),0) 66%);
+    radial-gradient(85% 60% at 8% 6%,  rgba(var(--glow-1),.55) 0%, rgba(var(--glow-1),0) 72%),
+    radial-gradient(80% 55% at 92% 92%, rgba(var(--glow-3),.50) 0%, rgba(var(--glow-3),0) 70%);
 }
-body:has(#logs:not([hidden]))::after,
-body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
+body::after{ opacity:var(--glow-strength) } /* 底光全站统一，不再只在这两页 */
 @media (prefers-reduced-motion: no-preference){
   body:has(#logs:not([hidden]))::after,
   body:has(#memory:not([hidden]))::after{ animation:zw-glow-drift 34s ease-in-out infinite alternate }

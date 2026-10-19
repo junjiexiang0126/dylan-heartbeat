@@ -270,3 +270,6 @@ input,textarea,select,.chat-toolbar input,.chat-toolbar select{font-size:16px!im
 
 /* 页面固定：不可缩放（配合 theme-init.js 的事件拦截，Safari 才真正生效） */
 html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+
+/* 日志 / 记忆页与其它四页对齐：容器透明，壁纸与底光同源 */
+#logs,#memory,#logs .panel,#memory .panel,#logs .shell,#memory .shell{background:transparent}
