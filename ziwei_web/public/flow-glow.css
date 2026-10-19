@@ -86,7 +86,7 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
   background:url('/stickers/petals.png') center/contain no-repeat;
   opacity:.35; z-index:1; pointer-events:none;
   transform:rotate(-6deg);
-  filter:drop-shadow(0 2px 5px rgba(180,120,140,.18));
+  filter:none;   /* 去掉粉色投影：浅色纸面上它看着就是一圈粉边 */
   transition:opacity .25s ease,transform .25s ease;
 }
 /* 压掉 records-material 里按种类配的旧图与旋转 */
