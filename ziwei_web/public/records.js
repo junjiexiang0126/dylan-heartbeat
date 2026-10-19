@@ -194,14 +194,16 @@ window.ZiweiRecords=(()=>{
    语 2026-10-19：不要伪元素、不要边框、不要阴影，贴纸要实色。
    今日印记（.imp-card）不在此列——那里是知微自己的表情贴纸，保持原样。 */
 (function(){
-  const SET=['/stickers/sticker-sakura.svg','/stickers/sticker-rose.svg','/stickers/sticker-bow.svg'];
+  // Replace these paths to change the sticker set; an entrance can override
+  // one image with data-sticker-src. Size/offset remain shared CSS variables.
+  const SET=['/stickers/small-flower.png','/stickers/petals.png','/stickers/ribbon-bow.png'];
   function decorate(root){
     const cards=root.querySelectorAll('#logs .log-entry:not([data-log-kind="impressions"]), #memory .memory-main-group, #memory .memory-entry:not(.memory-primary)');
     cards.forEach((card,i)=>{
       if(card.querySelector(':scope > .card-sticker'))return;
       const img=document.createElement('img');
       img.className='card-sticker'; img.alt=''; img.setAttribute('aria-hidden','true');
-      img.src=SET[i%SET.length];
+      img.src=card.dataset.stickerSrc||SET[i%SET.length];
       card.appendChild(img);
     });
   }
