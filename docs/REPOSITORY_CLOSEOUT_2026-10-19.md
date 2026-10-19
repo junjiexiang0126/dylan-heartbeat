@@ -26,7 +26,7 @@
 - 从旧整合分支保留 diary 测试的可移植 import 修复；不改变日记行为。
 - 保留当前 Playwright 的 `serviceWorkers: block`、失败 trace 与截图，不用旧分支文件覆盖。
 - 从旧印记分支选取错误显示修复：先渲染空列表，再显示读取失败，避免 render 清掉错误；保留当前日期筛选与重新加载行为。隔离 DOM 执行中，原版离线后错误隐藏；修复后可见，成功重试后清除。
-- 保留当前 runtime launcher；旧分支对工具搜索 API 的兼容修改需要官方固定镜像验证，不能只凭语法正确发布。
+- 固定镜像 CI 实际复现 runtime_launch.py 把工具搜索折叠后的列表误当完整工具目录，断言 ziwei_status 缺失。选取旧续接分支中的 raw catalog 检查：必须在真实目录存在，并且直接可见或有完整工具搜索桥接。没有删除工具存在性检查；继续由固定镜像验证兼容。
 
 工具的部署及 owner 使用说明见 `DEV_NEXT_INTEGRATION_2026-10-19.md`。
 
@@ -38,7 +38,7 @@
 | bot/app-acceptance-20261017 | 仅 CI 文件差异。保留；不为消除红灯而用旧 CI 替换当前工作流。 |
 | chore/migration-kit-20261019 | 7 个 deploy 文件未合入。Caddy 使用 ziwei-web/ziwei-hermes，而 Compose 服务键为 web/hermes，未显式定义这些网络别名。备份遗漏 profile/scripts、audio_cache 等持久内容，且多文件复制不是整套应用的一致性快照。restore 可 --force 覆盖并自动启动，未先确认旧实例停写。保持待修状态，不发布为完整迁移方案。 |
 | diagnostic/webkit-glass-probe-20261011 | 包含诊断 workflow、探针和旧样式。保留为诊断历史，不覆盖当前手机端样式。 |
-| feat/dev-next-resume | 本轮选取工具、测试和 diary import 修复后修复真实 CLI 问题；预算补丁、隔离浏览器路由已经存在；runtime launcher 修改暂留原分支待固定镜像验证。没有整分支合并。 |
+| feat/dev-next-resume | 本轮选取工具、测试和 diary import 修复后修复真实 CLI 问题；预算补丁、隔离浏览器路由已经存在；runtime launcher 的 raw catalog 检查在固定镜像复现原故障后也选取验证。没有整分支合并。 |
 | feature/interaction-workbench | 与 fix/chat-envelope-media 具有相同的一组分叉变更路径，涉及旧 chat service/store、tool_actions 测试和样式。当前有后续聊天/Work 实现，不能整文件覆盖；保留待做契约级比对。 |
 | feature/work-native-acceptance-20261017 | 16 个分支变更路径中 14 个已与基线一致，剩余 web_bridge.py、Dockerfile 有后续版本差异。不得重复引入旧 Work 核心实现；保留提交历史。 |
 | feature/work-phase1-ui | 早期 Work scaffold，当前已包含 #40 的完整 Work。保留旧稿，不能以 scaffold 覆盖现有功能，也不据此声称每个旧交互都已等价验证。 |
