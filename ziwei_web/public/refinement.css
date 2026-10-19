@@ -257,7 +257,24 @@ html[data-space-wallpaper="1"]{
   background-size:cover;
   background-position:center center;
   background-repeat:no-repeat;
-  background-attachment:fixed;
+  /* 不用 /* 去掉：iOS 上失效 */ —— iOS 上会失效且掉帧。
+     根画布本身不滚动（滚动发生在面板内部），所以这张图天然固定。 */
 }
 /* 顶部栏与各面板背景统一透明，让壁纸连续 */
 .topbar,.shell,.panel,#app,.chat-heading,.section-heading{background:transparent}
+
+/* ===== iOS 沉浸式：防回弹露底 + 动态视口高度 ===== */
+html,body{overscroll-behavior:none}
+.space-wallpaper{
+  height:100vh;
+  height:100dvh;   /* 地址栏/工具栏伸缩时不留断层 */
+  width:100vw;
+}
+.space-wallpaper img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center center;
+}
+/* 顶部与底部系统区：内容让开，壁纸透进去 */
+.topbar{padding-top:calc(20px + env(safe-area-inset-top,0px))}
