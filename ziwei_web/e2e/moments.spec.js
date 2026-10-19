@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 const {screenshotPath}=require('./helpers/screenshot-path');
 const password='isolated-e2e-password-123456';
 async function login(page){await page.goto('/');await page.locator('#password').fill(password);await page.locator('#loginForm button').click();await expect(page.locator('#app')).toBeVisible();await page.locator('[data-tab=moments]').click();await expect(page.locator('#moments')).toBeVisible();}
@@ -7,7 +7,7 @@ async function publish(page,text){await page.locator('#momentPublish').click();a
 test('publish, like, comment, refresh, immutable payload and delete work against real isolated storage',async({page,context})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.setViewportSize({width:390,height:844});await login(page);const text='今天的风很舒服 '+Date.now();await publish(page,text);const post=page.locator('.moment-post').filter({hasText:text});await post.locator('.moment-like').click();await expect(post.locator('.moment-likers')).toContainText('你');await post.locator('.moment-comment-button').click();await page.locator('#momentCommentText').fill('想把这一刻也告诉你');await page.locator('#momentCommentSend').click();await expect(post.locator('.moment-comment')).toContainText('想把这一刻也告诉你');
  await page.reload();await page.locator('[data-tab=moments]').click();await expect(post.locator('.moment-comment')).toBeVisible();
- const id=await post.getAttribute('data-id'),session=await page.evaluate(()=>fetch('/api/session').then(r=>r.json()));const rejected=await context.request.put('/api/moments/'+id,{headers:{Origin:'http://localhost:3187','X-Ziwei-CSRF':session.csrf},data:{text:'偷偷改掉'}});expect(rejected.status()).toBe(405);
+ const id=await post.getAttribute('data-id'),session=await page.evaluate(()=>fetch('/api/session').then(r=>r.json()));const rejected=await context.request.put('/api/moments/'+id,{headers:{Origin:'https://localhost:3187','X-Ziwei-CSRF':session.csrf},data:{text:'偷偷改掉'}});expect(rejected.status()).toBe(405);
  page.on('dialog',d=>d.accept());await post.locator('.moment-delete').click();await expect(post).toHaveCount(0);await page.reload();await page.locator('[data-tab=moments]').click();await expect(post).toHaveCount(0);expect(errors).toEqual([]);
 });
 test('image-only post uploads private bytes, opens fullscreen and image access ends after deletion',async({page,context})=>{
@@ -17,8 +17,8 @@ test('missing native endpoint is explicit and never creates a pretend reply',asy
  await login(page);await page.locator('#momentsSyncRetry').click();await expect(page.locator('#momentsSyncState')).toContainText('朋友圈接口还未接入');await publish(page,'接口尚未接通也应保留 '+Date.now());await expect(page.locator('#momentsSyncState')).toContainText('朋友圈接口还未接入');
 });
 test('authorization and CSRF apply to timeline, uploads, likes, comments and deletion',async({page,context,playwright})=>{
- await login(page);const anon=await playwright.request.newContext({baseURL:'http://localhost:3187'});expect((await anon.get('/api/moments')).status()).toBe(401);expect((await anon.post('/api/moments',{data:{id:'fake'}})).status()).toBe(401);expect((await anon.get('/api/moments/images/00000000-0000-4000-8000-000000000000')).status()).toBe(401);await anon.dispose();
- for(const endpoint of ['/api/moments','/api/moments/images','/api/moments/00000000-0000-4000-8000-000000000000/like','/api/moments/00000000-0000-4000-8000-000000000000/comments'])expect((await context.request.post(endpoint,{headers:{Origin:'http://localhost:3187'},data:{}})).status()).toBe(403);
+ await login(page);const anon=await playwright.request.newContext({baseURL:'https://localhost:3187',ignoreHTTPSErrors:true});expect((await anon.get('/api/moments')).status()).toBe(401);expect((await anon.post('/api/moments',{data:{id:'fake'}})).status()).toBe(401);expect((await anon.get('/api/moments/images/00000000-0000-4000-8000-000000000000')).status()).toBe(401);await anon.dispose();
+ for(const endpoint of ['/api/moments','/api/moments/images','/api/moments/00000000-0000-4000-8000-000000000000/like','/api/moments/00000000-0000-4000-8000-000000000000/comments'])expect((await context.request.post(endpoint,{headers:{Origin:'https://localhost:3187'},data:{}})).status()).toBe(403);
 });
 test('native avatar/text/comments render safely and fit phone viewports',async({page},testInfo)=>{
  const id='2f4ae225-4f99-4b48-a454-c897bdeab199';await page.route('**/api/moments?*',r=>r.fulfill({json:{data:[{id,seq:1,author:'ziwei',text:'把今天留一小格。\n今天整理了书架，也想把窗边的光留给你。',at:'2026-10-15T10:00:00Z',images:[],likes:['user','ziwei'],comments:[{id:'comment-native',author:'user',text:'<img src=x onerror=alert(1)>',replyTo:id,at:'2026-10-15T10:01:00Z'},{id:'reply-native',author:'ziwei',text:'那就一起留着。',replyTo:'comment-native',at:'2026-10-15T10:02:00Z'}],interactions:[]}],sync:{available:true,lastSync:'2026-10-15T10:03:00Z',error:null},hasMore:false,before:1,approvals:[]}}));await login(page);await expect(page.locator('.moment-author')).toContainText('知微');await expect(page.locator('.moment-comment')).toHaveCount(2);await expect(page.locator('.moment-comment img')).toHaveCount(0);

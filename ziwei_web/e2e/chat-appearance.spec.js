@@ -1,7 +1,7 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 async function open(page){await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.getByRole('button',{name:'进入知微之家'}).click();await expect(page.locator('#app')).toBeVisible();await page.locator('[data-tab=chat]').click();}
-const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB9kAAAAASUVORK5CYII=','base64');
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNYk1b3HwAF4gKQxKktkgAAAABJRU5ErkJggg==','base64');
 test('call and search align with settings and stay exclusive to chat',async({page})=>{
  await open(page);
  for(const size of [{width:320,height:568},{width:390,height:844},{width:440,height:956}]){

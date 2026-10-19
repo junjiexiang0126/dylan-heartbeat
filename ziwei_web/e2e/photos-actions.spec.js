@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test'),{screenshotPath}=require('./helpers/screenshot-path');
+const {test,expect}=require('./helpers/isolated-app'),{screenshotPath}=require('./helpers/screenshot-path');
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64');
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Bangkok'}).format(new Date());
 async function login(page){await page.setViewportSize({width:390,height:844});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.locator('#loginForm button').click();await expect(page.locator('#app')).toBeVisible();}

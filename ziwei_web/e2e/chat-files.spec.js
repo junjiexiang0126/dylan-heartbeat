@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test'),fs=require('node:fs');
+const {test,expect}=require('./helpers/isolated-app'),fs=require('node:fs');
 const fileId='a42ce262-b8cb-4c0b-837e-ad33f4c7ee35',audioId='a42ce262-b8cb-4c0b-837e-ad33f4c7ee36',bytes=Buffer.from('真实文件验收 ZW-FILE-729\n第二行：中文。\n');
 async function open(page){await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.getByRole('button',{name:'进入知微之家'}).click();await expect(page.locator('#app')).toBeVisible();await page.locator('[data-tab=chat]').click();}
 function reply(extra={}){return {id:'reply-file-fixture',role:'assistant',source:'live',status:'completed',created_at:'2026-10-15T05:12:00Z',content:'给你发了张小纸条\nMEDIA:/data/hermes_native/workspace/outbox/给小语-20261015.txt\n路径备份：/data/hermes_native/workspace/outbox/给小语-20261015.txt',attachments:[],...extra};}

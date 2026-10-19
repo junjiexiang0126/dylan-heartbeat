@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 async function open(page){await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.locator('#loginForm button').click();await expect(page.locator('#app')).toBeVisible();}
 const record={id:'token-diary',title:'样式变量验收',date:'2026-10-15',at:'2026-10-15T15:00:00Z',savedAt:'2026-10-15T15:00:00Z',source:'protocol-fixture',document:true,preview:'真实原文由后端提供；此处是隔离的样式测试。'};
 function diary(page){return page.route('**/api/records/diary?*',r=>r.fulfill({json:{data:[record],source:'hermes_native',total:1,nextOffset:null,errors:[],checkedAt:'2026-10-15T15:00:00Z'}}));}

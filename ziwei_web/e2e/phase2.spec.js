@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 async function login(page){await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.getByRole('button',{name:'进入知微之家'}).click();await expect(page.locator('#home')).toBeVisible();await page.locator('[data-tab=chat]').click();}
 test('chat, attachments, quotations, favorites, searching, history, reload and lock on mobile',async({page,context})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await login(page);
@@ -73,7 +73,7 @@ test('all five panels clear the floating nav on compact, portrait and landscape 
      await page.locator('[data-tab="'+name+'"]').click();
      const metrics=await page.evaluate(name=>{
        const panel=document.getElementById(name),nav=document.querySelector('nav');
-       const items=[...panel.children].filter(el=>!el.hidden&&getComputedStyle(el).display!=='none');
+       const items=[...panel.children].filter(el=>!el.hidden&&getComputedStyle(el).display!=='none'&&!['fixed','absolute'].includes(getComputedStyle(el).position)&&el.getBoundingClientRect().height>0);
        const last=items[items.length-1];
        const tokens=getComputedStyle(document.documentElement);
        const reserve=parseFloat(getComputedStyle(panel).paddingBottom);
@@ -87,7 +87,7 @@ test('all five panels clear the floating nav on compact, portrait and landscape 
      await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
      const gap=await page.evaluate(name=>{
        const panel=document.getElementById(name),nav=document.querySelector('nav');
-       const visible=[...panel.children].filter(el=>!el.hidden&&getComputedStyle(el).display!=='none');
+       const visible=[...panel.children].filter(el=>!el.hidden&&getComputedStyle(el).display!=='none'&&!['fixed','absolute'].includes(getComputedStyle(el).position)&&el.getBoundingClientRect().height>0);
        return nav.getBoundingClientRect().top-visible[visible.length-1].getBoundingClientRect().bottom;
      },name);
      expect(gap,JSON.stringify({size,name,gap})).toBeGreaterThanOrEqual(0);

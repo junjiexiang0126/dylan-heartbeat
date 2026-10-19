@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 let cleanupIds=[];
 test.beforeEach(()=>{cleanupIds=[];});
 test.afterEach(async({page},info)=>{
@@ -7,7 +7,7 @@ test.afterEach(async({page},info)=>{
 });
 async function open(page){await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.getByRole('button',{name:'进入知微之家'}).click();await expect(page.locator('#app')).toBeVisible();await page.locator('[data-tab=chat]').click();}
 const row=(id,role='assistant',attachments=[])=>({id,role,content:'消息内容',attachments,created_at:'2026-10-15T00:00:00Z',status:'completed',source:'live'});
-const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB9kAAAAASUVORK5CYII=','base64');
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNYk1b3HwAF4gKQxKktkgAAAABJRU5ErkJggg==','base64');
 test('confirmed anniversary persists; real presence expires independently of network health',async({page})=>{
  let fresh=true;await page.route('**/api/chat/status',r=>r.fulfill({json:{configured:true,connected:true,presence:{state:'在思考',source:'ziwei',updatedAt:new Date(Date.now()-(fresh?0:3600000)).toISOString(),stale:!fresh}}}));
  await open(page);await expect(page.locator('#chatPresence')).toHaveText('在思考');await expect(page.locator('#chatConnection')).toHaveText('已连接');

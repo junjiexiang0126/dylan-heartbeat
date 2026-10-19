@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 async function open(page){await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.getByRole('button',{name:'进入知微之家'}).click();await expect(page.locator('#app')).toBeVisible();await page.locator('[data-tab=chat]').click();}
 test('chat font changes immediately, persists across reload, and resets without changing theme',async({page})=>{
  await page.route('**/api/chat/messages?*',r=>r.fulfill({json:{data:[{id:'font-fixture',role:'assistant',content:'聊天字号预览',attachments:[],created_at:'2026-10-15T00:00:00Z',status:'completed',source:'live'}],before:1,hasMore:false}}));

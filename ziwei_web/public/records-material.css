@@ -5,8 +5,8 @@
 
 #logs, #memory{
   /* —— 卡片材质 —— */
-  --card-fill-top: rgba(255, 252, 246, .78);
-  --card-fill-bottom: rgba(255, 243, 240, .60);
+  --card-fill-top: var(--glass);
+  --card-fill-bottom: var(--glass);
   --card-ring-a: rgba(226, 158, 172, .85);
   --card-ring-b: rgba(255, 228, 216, .40);
   --card-ring-c: rgba(206, 132, 154, .55);
@@ -184,3 +184,8 @@
 
 /* 右侧条数/时间：固定宽度内换行，绝不滑到贴纸底下 */
 #logs .log-entry .log-entry-meta{ max-width: 108px; white-space: normal; line-height: 1.45; text-align: right }
+
+/* Keep the established customization controls effective beneath the material. */
+#logs{--card-radius:var(--log-entry-radius);--card-title-size:var(--log-entry-title-size);--card-pad-x:var(--log-entry-padding)}
+#memory{--card-radius:var(--memory-entry-radius);--card-title-size:var(--memory-entry-title-size);--card-pad-x:var(--memory-entry-padding)}
+#memory .memory-primary strong{font-size:var(--memory-main-size)}

@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 async function login(page){await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.locator('#loginForm button').click();await expect(page.locator('#app')).toBeVisible();}
 const row=(id,role='assistant',extra={})=>({id,seq:Number(id.replace(/\D/g,''))||1,role,source:'live',kind:role==='user'?'user':'final',status:'completed',content:'合成分段 '+id,attachments:[],created_at:'2026-10-18T10:00:00Z',...extra});
 test('memorial font is served and loaded while impressions and expression assets remain reachable',async({page,request},info)=>{

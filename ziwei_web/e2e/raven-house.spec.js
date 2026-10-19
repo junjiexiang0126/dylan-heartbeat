@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test'),{screenshotPath}=require('./helpers/screenshot-path');
+const {test,expect}=require('./helpers/isolated-app'),{screenshotPath}=require('./helpers/screenshot-path');
 async function setup(page,{native=false,real=false}={}){
  let value={source:'ziwei',state:'在工作',updatedAt:new Date().toISOString(),stale:false,...(native?{note:'今天先把小屋整理好，再来陪你。',mood:'安静，专注'}:{})};const writes=[];
  page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/')&&r.method()!=='GET'&&!r.url().endsWith('/api/login'))writes.push(r.url());});

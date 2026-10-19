@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test'),{screenshotPath}=require('./helpers/screenshot-path');
+const {test,expect}=require('./helpers/isolated-app'),{screenshotPath}=require('./helpers/screenshot-path');
 test.describe.configure({timeout:60000});
 async function fixture(page,{stale=false}={}){let value={source:'ziwei',state:'在工作',updatedAt:new Date(Date.now()-(stale?31*60000:0)).toISOString(),stale};const writes=[];page.on('request',r=>{if(r.method()!=='GET'&&new URL(r.url()).pathname.startsWith('/api/')&&!new URL(r.url()).pathname.includes('login'))writes.push(r.url());});await page.route('**/api/chat/status',r=>r.fulfill({json:{enabled:true,connected:true,presence:value}}));
  await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.locator('#loginForm button').click();await page.locator('#ravenCanvas').scrollIntoViewIfNeeded();await expect(page.locator('#ravenCanvas')).toHaveAttribute('data-ready','true',{timeout:30000});await expect(page.locator('#ravenStage')).toHaveAttribute('data-mode',stale?'Stale':'Work');return {writes,async publish(state){value={source:'ziwei',state,updatedAt:new Date().toISOString(),stale:false};await page.evaluate(v=>window.ZiweiChatExtra.presence(v),value);}};

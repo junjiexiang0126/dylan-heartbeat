@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 const fixture={data:[{id:'user1',role:'user',text:'请制作四人中文课堂的活动计划。',at:'2026-10-17T01:00:00+07:00'},{id:'ziwei1',role:'ziwei',text:'我把活动安排交给白鸦，完成后由我核对。',stage:'delegated',at:'2026-10-17T01:00:01+07:00'},{id:'glm1',role:'glm',text:'四人轮流读汉字。\n\n每位学生完成一道二十内加减题。',stage:'draft',at:'2026-10-17T01:00:02+07:00'}],tasks:[],tools:[{id:'word',kind:'word',name:'Word 文档',enabled:true,authorized:false,revision:0,config:{title:'课堂计划'}}],usage:[]};
 async function open(page,state=fixture){await page.setViewportSize({width:390,height:844});await page.route('**/api/work/messages',r=>r.fulfill({json:state}));await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.locator('#loginForm button').click();await expect(page.locator('#app')).toBeVisible();await page.locator('[data-tab=work]').click();await expect(page.locator('#work .message')).toHaveCount(3);}
 test('three-person mobile chat reuses formal bubble geometry, actions and wallpaper',async({page},testInfo)=>{

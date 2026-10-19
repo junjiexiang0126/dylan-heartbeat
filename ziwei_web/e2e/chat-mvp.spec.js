@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 const row=(content='历史消息',role='user',i=1)=>({id:'fixture-'+i,seq:i,role,content,created_at:'2026-10-14T00:00:00Z',status:'completed',source:'live',attachments:[]});
 async function login(page){
  await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');

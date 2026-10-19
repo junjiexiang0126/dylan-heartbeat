@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 async function open(page){await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.getByRole('button',{name:'进入知微之家'}).click();await expect(page.locator('#home')).toBeVisible();await page.locator('[data-tab=chat]').click();}
 const row=(i)=>({id:'fixture-'+i,role:i%2?'assistant':'user',content:'历史消息 '+i,attachments:[],created_at:'2026-10-14T00:00:00Z',status:'completed',source:'live'});
 test('empty chat and populated history retain usable space on mobile',async({page})=>{

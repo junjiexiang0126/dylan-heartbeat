@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 const {screenshotPath}=require('./helpers/screenshot-path');
 const password='isolated-e2e-password-123456';
 async function login(page){await page.goto('/');await page.locator('#password').fill(password);await page.locator('#loginForm button').click();await expect(page.locator('#app')).toBeVisible();}

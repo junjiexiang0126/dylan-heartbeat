@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 const password='isolated-e2e-password-123456';
 async function login(page){await page.goto('/');await page.locator('#password').fill(password);await page.getByRole('button',{name:'进入知微之家'}).click();await expect(page.locator('#home')).toBeVisible();}
 test('five tabs, protected startup, profiles, avatars, themes and revocation on phone sizes',async({page,context})=>{
@@ -29,7 +29,7 @@ test('real WebAuthn signature verification, passkey login, replay rejection and 
   await expect(page.locator('#registerPasskey')).toBeEnabled();await page.locator('#registerPasskey').click();await expect(page.locator('#passkeyMessage')).toContainText('设备解锁已开启');
   await page.locator('#logout').click();await expect(page.locator('#login')).toBeVisible();await page.locator('#unlockButton').click();await expect(page.locator('#home')).toBeVisible();
   const s=await page.evaluate(()=>fetch('/api/session').then(r=>r.json()));
-  const replay=await context.request.post('/api/passkey/register/verify',{headers:{Origin:'http://localhost:3187','X-Ziwei-CSRF':s.csrf},data:registration});expect(replay.status()).toBe(400);
+  const replay=await context.request.post('/api/passkey/register/verify',{headers:{Origin:'https://localhost:3187','X-Ziwei-CSRF':s.csrf},data:registration});expect(replay.status()).toBe(400);
   await page.locator('#settingsButton').click();await expect(page.locator('#passkeyMessage')).toContainText('已保存 1 个');await page.locator('#verifyPassword').fill(password);await page.locator('#removePasskeys').click();await expect(page.locator('#passkeyMessage')).toContainText('已移除');
   await page.locator('#logout').click();await page.locator('#unlockButton').click();await expect(page.locator('#loginError')).toContainText('验证失败');await expect(page.locator('#app')).toBeHidden();
 });

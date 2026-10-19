@@ -1,5 +1,5 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./helpers/isolated-app');
 const {screenshotPath}=require('./helpers/screenshot-path');
 const now='2026-10-15T15:00:00Z';
 const rows=[['user','你的资料','只属于你的记忆'],['self','知微的身份','只属于知微的自我记忆'],['protected','重要约定','后端设定不可更改的原文'],['work','开发记录','代码与项目的原文'],['uncategorized','尚未标注','不丢弃未分类原文']].map(([category,title,content],i)=>({id:'entry-'+i,title,content,categories:[category],protected:category==='protected',classificationBasis:category==='uncategorized'?'后台未标明分类':'后台分类标记',source:category==='user'?'memories/USER.md':'memories/MEMORY.md',at:now,savedAt:now}));

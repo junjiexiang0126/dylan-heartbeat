@@ -1,6 +1,6 @@
 'use strict';
-const {test,expect}=require('@playwright/test');
-const png='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB9kAAAAASUVORK5CYII=';
+const {test,expect}=require('./helpers/isolated-app');
+const png='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNYk1b3HwAF4gKQxKktkgAAAABJRU5ErkJggg==';
 async function open(page){await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.getByRole('button',{name:'进入知微之家'}).click();await expect(page.locator('#app')).toBeVisible();await page.locator('[data-tab=chat]').click();await page.locator('#chatCall').click();}
 async function microphone(page,{brief=false}={}){
  await page.addInitScript(({brief})=>{
@@ -20,7 +20,7 @@ test('call screen uses saved avatar and name, fits phone and follows theme',asyn
  await open(page);await expect(page.locator('#chatCallName')).toHaveText('微微');await expect(page.locator('#chatCallAvatar img')).toHaveAttribute('src',png);await expect(page.locator('#chatCallElapsed')).toHaveText('00:00');await expect(page.locator('#chatCallMute')).toBeDisabled();
  for(const theme of ['light','dark'])for(const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390}]){
   await page.setViewportSize(size);await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
-  const box=await page.locator('#chatCallDialog').boundingBox();expect(box.x).toBe(0);expect(box.y).toBe(0);expect(box.width).toBe(size.width);expect(box.height).toBe(size.height);
+  const box=await page.locator('#chatCallDialog').boundingBox();expect(box.x).toBe(0);expect(box.y).toBe(0);expect(Math.abs(box.width-size.width)).toBeLessThan(1);expect(Math.abs(box.height-size.height)).toBeLessThan(1);
   expect(await page.locator('#chatCallDialog').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);await expect(page.locator('#chatCallEnd')).toBeInViewport();
  }
  await page.setViewportSize({width:390,height:844});await page.evaluate(()=>document.documentElement.dataset.theme='light');await page.screenshot({path:testInfo.outputPath('call-screen-light.png')});

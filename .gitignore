@@ -23,3 +23,6 @@ __pycache__/
 ziwei_web/.data/
 ziwei_web/test-results/
 ziwei_web/playwright-report/
+
+# Raw Docker inspect snapshots contain complete environment values / secrets.
+*.inspect.json
