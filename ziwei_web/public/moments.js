@@ -10,8 +10,8 @@
  const name=who=>profiles[who]?.nickname||(who==='user'?'你':'知微');
  function time(at){return new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'}).format(new Date(at));}
  function button(label,cls,fn){const b=el('button',cls,label);b.type='button';b.onclick=fn;return b;}
- function status(sync){const box=$('#momentsSyncState'),skips=sync?.skipped;box.dataset.error=sync?.error||'';box.title=sync?.error?'同步诊断：'+sync.error:'';box.textContent=sync?.error?(messages[sync.error]||'与知微同步暂未完成（'+String(sync.error).replace(/[^a-z0-9_]/g,'').slice(0,80)+'），请重试或交给维护者核对。'):sync?.lastSync?'已同步 · '+time(sync.lastSync)+(skips?.total?' · '+skips.total+' 条异常历史记录已作废':''):'正在连接知微的朋友圈';$('#momentsSyncRetry').hidden=!sync?.error;
-  const details=$('#momentsSkipped'),list=$('#momentsSkippedList');details.hidden=!skips?.total;$('#momentsSkippedSummary').textContent='查看已作废记录（'+(skips?.total||0)+'）';list.replaceChildren();for(const item of skips?.records||[]){const row=el('li');row.append(el('strong','','本批第 '+item.record_index+' 条 · '+item.id),el('p','',messages[item.reason]||item.reason),el('small','','已作废，不再重试'+(item.target_id?' · 父编号 '+item.target_id:'')));list.append(row);}
+ function status(sync){const box=$('#momentsSyncState'),skips=sync?.skipped;box.dataset.error=sync?.error||'';box.title=sync?.error?'同步诊断：'+sync.error:'';box.textContent=sync?.error?(messages[sync.error]||'与知微同步暂未完成（'+String(sync.error).replace(/[^a-z0-9_]/g,'').slice(0,80)+'），请重试或交给维护者核对。'):sync?.lastSync?'已同步 · '+time(sync.lastSync):'正在连接知微的朋友圈';$('#momentsSyncRetry').hidden=!sync?.error;
+  const details=$('#momentsSkipped'),list=$('#momentsSkippedList');details.hidden=true;$('#momentsSkippedSummary').textContent='查看已作废记录（'+(skips?.total||0)+'）';list.replaceChildren();for(const item of skips?.records||[]){const row=el('li');row.append(el('strong','','本批第 '+item.record_index+' 条 · '+item.id),el('p','',messages[item.reason]||item.reason),el('small','','已作废，不再重试'+(item.target_id?' · 父编号 '+item.target_id:'')));list.append(row);}
  }
 
  function render(){
