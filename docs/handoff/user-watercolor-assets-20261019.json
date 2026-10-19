@@ -1,0 +1,50 @@
+[
+  {
+    "path": "ziwei_web/public/stickers/watercolor-blossoms-v1.png",
+    "bytes": 1333149,
+    "sha256": "8ee0d625133567f8c0b87fba493da24bc7acff16c54a8d5c06a3846a74bde621",
+    "width": 1254,
+    "height": 1254,
+    "mode": "RGBA",
+    "alphaRange": [
+      0,
+      255
+    ]
+  },
+  {
+    "path": "ziwei_web/public/stickers/watercolor-heart-v1.png",
+    "bytes": 1599980,
+    "sha256": "6796ba36c5e76b79606a44eef42e6131e891559efc36d51feb83cb14b1aebf34",
+    "width": 1254,
+    "height": 1254,
+    "mode": "RGBA",
+    "alphaRange": [
+      0,
+      255
+    ]
+  },
+  {
+    "path": "ziwei_web/public/stickers/watercolor-leaves-v1.png",
+    "bytes": 1206887,
+    "sha256": "e24966371383b29d5002f3cf88d6c9ad5fb3d51b8a47d8e578f043fbef91c193",
+    "width": 1254,
+    "height": 1254,
+    "mode": "RGBA",
+    "alphaRange": [
+      0,
+      255
+    ]
+  },
+  {
+    "path": "ziwei_web/public/stickers/watercolor-ribbon-v1.png",
+    "bytes": 2048001,
+    "sha256": "a10b2dd3353f2563bd77372510dacd585f01900f869a46c079dca89191e5418a",
+    "width": 1536,
+    "height": 1024,
+    "mode": "RGBA",
+    "alphaRange": [
+      0,
+      254
+    ]
+  }
+]

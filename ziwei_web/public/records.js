@@ -194,16 +194,19 @@ window.ZiweiRecords=(()=>{
    语 2026-10-19：不要伪元素、不要边框、不要阴影，贴纸要实色。
    今日印记（.imp-card）不在此列——那里是知微自己的表情贴纸，保持原样。 */
 (function(){
-  // Replace these paths to change the sticker set; an entrance can override
+  // Replace these paths/mappings to change the sticker set; an entrance can override
   // one image with data-sticker-src. Size/offset remain shared CSS variables.
-  const SET=['/stickers/small-flower.png','/stickers/petals.png','/stickers/diary.png'];
+  const STICKERS=Object.fromEntries(['heart','ribbon','blossoms','leaves'].map(name=>[name,'/stickers/watercolor-'+name+'-v1.png']));
+  const LOG_STICKERS={work:'leaves',diary:'ribbon',private:'heart',photos:'blossoms'};
+  const MEMORY_STICKERS={user:'blossoms',work:'leaves'};
   function decorate(root){
     const cards=root.querySelectorAll('#logs .log-entry:not([data-log-kind="impressions"]), #memory .memory-main-group, #memory .memory-entry:not(.memory-primary)');
-    cards.forEach((card,i)=>{
+    cards.forEach(card=>{
       if(card.querySelector(':scope > .card-sticker'))return;
       const img=document.createElement('img');
       img.className='card-sticker'; img.alt=''; img.setAttribute('aria-hidden','true');
-      img.src=card.dataset.stickerSrc||SET[i%SET.length];
+      const key=card.dataset.logKind?LOG_STICKERS[card.dataset.logKind]:MEMORY_STICKERS[card.dataset.memoryCategory];
+      img.src=card.dataset.stickerSrc||STICKERS[key||'heart'];
       card.appendChild(img);
     });
   }
