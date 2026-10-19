@@ -325,3 +325,23 @@ $('#chatFiles').onchange=async e=>{
  function draft(text){if(!canDraft())return false;$('#chatInput').value=text;compose();return true;}
  return {start,stop,setProfiles,draft,canDraft,leave:()=>{if(!$('#chat').hidden){const t=$('#chatTimeline');readingPosition={top:t.scrollTop,follow:t.scrollHeight-t.scrollTop-t.clientHeight<80};}window.ZiweiChatCall?.end();if($('#chatImageViewer')?.open)$('#chatImageViewer').close();stopVoice();$('#chatInput').blur();}};
 })();
+
+/* 换一段新对话：写新会话号，服务重启后进入新的一段；旧记录不动 */
+(function(){
+  function bind(){
+    var b=document.getElementById('chatNewSession'); if(!b) return;
+    b.addEventListener('click',async function(){
+      if(!confirm('开一段新的对话？\n这段记录会留着，只是之后的消息写进新的一段。'))return;
+      b.disabled=true;
+      try{
+        var info=await fetch('/api/session',{credentials:'same-origin'}).then(function(r){return r.json();});
+        var tok=(info&&info.csrf)||'';
+        var r=await fetch('/api/chat/session',{method:'POST',credentials:'same-origin',headers:{'X-Ziwei-CSRF':tok}});
+        if(!r.ok) throw new Error('switch_failed_'+r.status);
+        document.body.insertAdjacentHTML('beforeend','<div id="zwSwitchTip" style="position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:rgba(255,252,250,.92);font:16px/1.8 -apple-system,PingFang SC,serif;color:#5a4b45">正在换一段新的…请稍等</div>');
+        setTimeout(function(){location.reload();},7000);
+      }catch(e){ alert('没换成：'+(e&&e.message?e.message:e)); b.disabled=false; }
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();

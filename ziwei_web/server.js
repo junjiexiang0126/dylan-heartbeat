@@ -53,6 +53,8 @@ process.on('exit',()=>{
  try{if(fs.readFileSync(LOCK_FILE,'utf8')===lockRecord)fs.unlinkSync(LOCK_FILE);}
  catch(e){if(e.code!=='ENOENT')console.error('web_lock_cleanup_failed',e.message);}
 });
+// 会话号可由数据目录里的文件覆盖：切换对话时写入，容器重启后生效。
+try{const f=path.join(DATA_DIR,'current-session.txt');const v=fs.readFileSync(f,'utf8').trim();if(/^[a-zA-Z0-9_-]{1,128}$/.test(v))process.env.ZIWEI_HERMES_WEB_SESSION_ID=v;}catch{}
 const bridge=createChatService(DATA_DIR,{authorized:req=>!!session(req)});
 const workService=require('./work_service').createWorkService(DATA_DIR);
 const home = createHomeStore(DATA_DIR);
@@ -167,6 +169,17 @@ const server=http.createServer(async(req,res)=>{try{
       if(req.method==='GET')return json(res,200,{...home.read(),todayStatus:await bridge.presence()});
       if(req.method==='PUT'){const body=await readBody(req);if(session(req)!==s)return json(res,401,{error:'unauthorized'});const updated=home.update(body);return json(res,updated?200:409,updated?{...updated,todayStatus:await bridge.presence()}:{error:'revision_conflict'});}
       return json(res,405,{error:'method_not_allowed'});
+    }
+    if(pathname==='/api/chat/session' && req.method==='POST') {
+      /* 换一段对话：写新会话号，然后让进程退出、容器自动重启读新号。
+         旧会话的消息仍在网关与本地库里，不删。 */
+      const stamp=new Date().toISOString().replace(/[-:TZ.]/g,'').slice(0,14);
+      const next='ziwei-home-web-'+stamp;
+      if(!/^[a-zA-Z0-9_-]{1,128}$/.test(next))return json(res,400,{error:'invalid_session'});
+      try{fs.writeFileSync(path.join(DATA_DIR,'current-session.txt'), next, {mode:0o600});}catch(e){return json(res,500,{error:'session_write_failed'});}
+      json(res,200,{session:next});
+      setTimeout(()=>process.exit(0), 500);
+      return;
     }
     if(['/api/logout','/api/logout-all'].includes(pathname) && req.method==='POST') {
       if(pathname==='/api/logout-all'){sessions.clear();authEpoch++;}else sessions.delete(tokenHash(cookies(req)[COOKIE]));
