@@ -137,7 +137,11 @@ window.ZiweiRecords=(()=>{
     const toggle=button(expanded?'收起 ▴':'展开 ▾',async()=>{const v=epoch;if(s.expanded.has(row.id)){s.expanded.delete(row.id);render(k);return;}toggle.disabled=true;try{if(k!=='memory'){doc=await full(k,row);if(v!==epoch)return;updateBody(content,doc.content);}else updateBody(content,row.content);s.expanded.add(row.id);content.classList.remove('collapsed');toggle.textContent='收起 ▴';}catch(e){if(v===epoch)errorNode(k).textContent=e.message;}finally{if(v===epoch)toggle.disabled=false;}});actions.append(toggle);
     if(expanded&&k!=='memory'&&(!doc||doc.revision!==row.revision)){const v=epoch;full(k,row).then(value=>{if(v===epoch&&content.isConnected)updateBody(content,value.content);}).catch(e=>{if(v===epoch)errorNode(k).textContent=e.message;});}
    }
-   if(k==='diary'&&!diarySelected){const open=button('打开日记 ↗',()=>{pushRoute(()=>{diarySelected=row.id;documents.set('diary:view:'+row.id,row);});render('diary');});open.className='diary-open text-button';actions.append(open);}
+   if(k==='diary'&&!diarySelected){
+    const openDiary=()=>{pushRoute(()=>{diarySelected=row.id;documents.set('diary:view:'+row.id,row);});render('diary');};
+    const open=button('打开日记 ↗',openDiary);open.className='diary-open text-button';actions.append(open);
+    card.addEventListener('click',event=>{if(!event.target.closest('button,a,input,textarea,select,summary,details'))openDiary();});
+   }
    if(k==='diary'&&diarySelected)actions.append(button('和知微聊这篇',async()=>{const v=epoch;try{const doc=await full(k,row);if(v!==epoch)return;const draft='我想和你聊这篇日记：'+(row.date||row.title)+'\n\n「'+doc.content.slice(0,2000)+'」\n\n';if(onReply&&!onReply(draft))errorNode(k).textContent='聊天里还有未发送内容或正在处理的消息，请先处理后再回复日记。';}catch(e){if(v===epoch)errorNode(k).textContent=e.message;}}));
    if(row.references?.length)card.append(el('p','record-basis','记录中的引用：'+row.references.join('、')));
    if(row.evidence?.length){const box=el('div','record-evidence');box.append(el('p','',row.evidenceVerified?'成果文件已落盘；文件存在不代表外部任务结果已核实。':'部分成果文件缺失或无法读取。'));for(const item of row.evidence){if(item.saved&&item.id){const a=el('a','record-artifact',item.source+' · '+item.bytes+' B');a.href='/api/records/artifact?id='+encodeURIComponent(item.id);a.download='';box.append(a);}else box.append(el('p','error',item.source+' · 未找到有效成果'));}card.append(box);}

@@ -9,8 +9,11 @@
 /* ========== 一、共用变量 ========== */
 :root{
   /* 玻璃 */
-  --zw-glass-bg:rgb(255 255 255 / .12);          /* 高透底；背景由原主题负责 */
-  --zw-glass-active-bg:rgb(255 255 255 / .18);
+  --zw-glass-tint-scale:.375;
+  --zw-glass-active-boost:.06;
+  --zw-glass-tint:calc(var(--glass-opacity, .32) * var(--zw-glass-tint-scale));
+  --zw-glass-bg:rgb(255 255 255 / var(--zw-glass-tint));          /* 高透底；背景由原主题负责 */
+  --zw-glass-active-bg:rgb(255 255 255 / clamp(0, calc(var(--zw-glass-tint) + var(--zw-glass-active-boost)), 1));
   --zw-glass-blur:blur(14px) saturate(150%);     /* 背后模糊（两页同值） */
   --zw-glass-border:rgb(255 255 255 / .42);      /* 卡片描边颜色 */
   --zw-glass-border-w:1px;
@@ -39,8 +42,8 @@
   --glow-strength:.62;
 }
 :root[data-theme=dark]{
-  --zw-glass-bg:rgb(255 255 255 / .06);
-  --zw-glass-active-bg:rgb(255 255 255 / .10);
+  --zw-glass-tint-scale:.1875;
+  --zw-glass-active-boost:.04;
   --zw-glass-border:rgb(255 255 255 / .20);
   --zw-glass-shadow:0 1px 0 rgb(255 255 255 / .20) inset,0 12px 30px rgb(0 0 0 / .34);
   --zw-label-bg:rgb(255 255 255 / .14);
@@ -199,3 +202,34 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
 
 /* Keep selected cards transparent too; the active highlight uses the same material. */
 #logs .log-entry.active:not([data-log-kind="impressions"]){background:var(--zw-glass-active-bg)}
+
+/* Keep established per-page tokens and the glass settings effective. The
+   default token values match the approved preview; inline overrides still win. */
+#logs{
+  --log-entry-radius:var(--zw-glass-radius);
+  --log-entry-title-size:var(--zw-card-title-size);
+  --log-entry-padding:var(--zw-card-pad-block) var(--zw-card-pad-inline);
+}
+#memory{
+  --memory-entry-radius:var(--zw-glass-radius);
+  --memory-entry-title-size:var(--zw-card-title-size);
+  --memory-main-size:var(--zw-card-title-size);
+}
+#logs .log-entry:not([data-log-kind="impressions"]){
+  border-radius:var(--log-entry-radius);padding:var(--log-entry-padding);
+}
+#logs .log-entry strong{font-size:var(--log-entry-title-size)}
+#logs .log-entry-label{color:var(--log-entry-accent)}
+#memory .memory-main-group,
+#memory .memory-entry:not(.memory-primary),
+#memory .memory-entry.memory-primary{border-radius:var(--memory-entry-radius)}
+#memory .memory-entry strong{font-size:var(--memory-entry-title-size)}
+#memory .memory-primary strong{font-size:var(--memory-main-size)}
+/* Reading pages retain their original wallpaper/transparency behavior. */
+#logs.record-open .diary-card{background:var(--record-card-fill)}
+html[data-reduce-glass=true]{
+  --zw-glass-bg:var(--bg);--zw-glass-active-bg:var(--bg);--zw-glass-blur:none;
+}
+@media(prefers-reduced-transparency:reduce){
+  :root{--zw-glass-bg:var(--bg);--zw-glass-active-bg:var(--bg);--zw-glass-blur:none}
+}

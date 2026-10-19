@@ -17,7 +17,7 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium webkit
-      - run: npx playwright test e2e/glass-stickers.spec.js
+      - run: npx playwright test e2e/glass-stickers.spec.js e2e/log-entrances.spec.js e2e/memory-entrances.spec.js e2e/record-sketches.spec.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:

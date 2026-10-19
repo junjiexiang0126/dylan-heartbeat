@@ -1,0 +1,10 @@
+[Unit]
+Description=Ziwei Web Push
+After=network.target
+[Service]
+ExecStart=/opt/push-venv/bin/python /opt/push/push_service.py
+Restart=always
+RestartSec=3
+[Service]
+[Install]
+WantedBy=multi-user.target
