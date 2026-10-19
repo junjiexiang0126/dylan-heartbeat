@@ -192,7 +192,8 @@ const server=http.createServer(async(req,res)=>{try{
       res.writeHead(403,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'});
       return res.end(SETUP_CLOSED_HTML);
     }
-    try{fs.unlinkSync(path.join(DATA_DIR,'enter-token.txt'));}catch{}
+    /* 15 分钟内可重复点击：单次有效太脆，用户点两下或我用 curl 核验就会作废 */
+    try{const age=(Date.now()-fs.statSync(path.join(DATA_DIR,'enter-token.txt')).mtimeMs)/1000; if(age>900){res.writeHead(410,{'Content-Type':'text/html; charset=utf-8'});return res.end(SETUP_CLOSED_HTML);}}catch{return json(res,410,{error:'enter_closed'});}
     return issueSession(req,res,null);
   }
   if(pathname==='/setup' && req.method==='GET') {
