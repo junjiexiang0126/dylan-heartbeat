@@ -63,7 +63,7 @@
 
 /* ========== 二、流光层（只在两页出现） ========== */
 body::after{
-  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  content:""; position:fixed; inset:0; z-index:1; pointer-events:none;
   opacity:0; transition:opacity .45s ease;
   background:
     radial-gradient(72% 56% at 6% 4%,  rgba(var(--glow-1),.95) 0%, rgba(var(--glow-1),0) 70%),

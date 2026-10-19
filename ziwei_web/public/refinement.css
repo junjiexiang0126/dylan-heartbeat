@@ -77,17 +77,20 @@ html[data-reduce-glass=true] .glass::before{backdrop-filter:none!important;-webk
 
 .shell{z-index:1}
 .space-wallpaper{position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--bg)}
+/* 2026-10-19 根背景重构：全站唯一壁纸层。固定铺满、内容在其上滚动。 */
+#chatWallpaper{display:none!important}
+#app,.shell{position:relative;z-index:2}
 .space-wallpaper img{width:100%;height:100%;object-fit:cover;display:block;filter:none}
 body.has-space-wallpaper .ambient{display:none}
-body.chat-has-wallpaper .space-wallpaper{display:none}
+/* 聊天/Work 不再用独立壁纸覆盖全站根壁纸（旧缓存保留，不参与合成） */
 
 /* Paper, quiet rules and an editorial hierarchy, following the supplied references. */
 :root:not([data-theme=dark]),:root[data-theme=dark]{--bg:var(--paper-background);--ink:var(--paper-ink);--muted:var(--paper-muted)}
 :root:not([data-background=sage]):not([data-background=sky]){--accent:var(--paper-rose);--accent-soft:var(--paper-blush)}
 :root:not([data-theme=dark]){--glass:rgb(255 252 248 / var(--glass-opacity));--input:var(--paper-cream)}
-body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background-image:var(--paper-texture);background-size:var(--paper-texture-size);opacity:var(--paper-texture-opacity)}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background-image:none;opacity:0} /* 纸纹层停用 */
 body.has-space-wallpaper::before,body.chat-has-wallpaper::before{display:none}
-.ambient{background:radial-gradient(ellipse at 80% 15%,var(--accent-soft),transparent 65%);opacity:var(--home-ambient-opacity)}
+.ambient{display:none} /* 第二套环境光停用，底光统一由 flow-glow 管理 */
 .glass::before{box-shadow:var(--paper-shadow);border-color:var(--paper-rule)}
 .topbar .brand-icon{font-weight:var(--ui-weight-medium)}
 .topbar .brand{font-size:var(--ui-font-17)}
