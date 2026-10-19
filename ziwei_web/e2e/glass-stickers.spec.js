@@ -21,6 +21,13 @@ test('full application glass and sticker HTTP preview',async({page},info)=>{
   for(const section of ['logs','memory']){
    await page.locator('[data-tab='+section+']').click();await expect(page.locator('#'+section)).toBeVisible();
    await expect.poll(()=>page.locator('#'+section+' .card-sticker').evaluateAll(es=>es.every(e=>e.complete&&e.naturalWidth>0))).toBe(true);
+   if(section==='logs'){
+    const compare=await page.locator('#logs > .log-entry-grid').evaluate(grid=>{
+     const material=el=>{const s=getComputedStyle(el);return [s.backgroundColor,s.backgroundImage,s.borderTop,s.borderRadius,s.padding,s.boxShadow,s.backdropFilter||s.webkitBackdropFilter];};
+     return {today:material(grid.querySelector('[data-log-kind="impressions"]')),reference:material(grid.querySelector('.log-entry:not(.active):not([data-log-kind="impressions"])'))};
+    });
+    expect(compare.today).toEqual(compare.reference);
+   }
    const metrics=await page.locator('#'+section+' .card-sticker').evaluateAll(es=>es.map(e=>{const b=e.getBoundingClientRect(),p=e.parentElement.getBoundingClientRect(),s=getComputedStyle(e),c=getComputedStyle(e.parentElement),old=getComputedStyle(e.parentElement,'::before');return {src:e.getAttribute('src'),position:s.position,top:b.top-p.top,right:b.right-p.right,opacity:s.opacity,background:c.backgroundImage,fill:c.backgroundColor,blur:c.backdropFilter||c.webkitBackdropFilter,border:c.borderRadius,oldSticker:old.backgroundImage,oldDisplay:old.display,active:e.parentElement.classList.contains('active'),stickerBorder:s.borderWidth,stickerShadow:s.boxShadow,stickerFilter:s.filter};}));
    results.push({width,section,metrics});
    expect(metrics.length).toBeGreaterThan(0);for(const m of metrics){expect(m.position).toBe('absolute');expect(m.stickerBorder).toBe('0px');expect(m.stickerShadow).toBe('none');expect(m.stickerFilter).toBe('none');expect(m.top).toBeLessThan(0);expect(m.right).toBeGreaterThan(0);expect(m.background).toBe('none');expect(m.fill).toBe(m.active?'rgba(255, 255, 255, 0.18)':'rgba(255, 255, 255, 0.12)');expect(m.blur).toBe('blur(14px) saturate(1.5)');if(section==='logs')expect(m.oldDisplay).toBe('none');}
