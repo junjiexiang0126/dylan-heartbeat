@@ -82,7 +82,24 @@
  // existing private chat voice implementation separate rather than fake a send.
  $('workVoice').hidden=true;
  const app=document.getElementById('app');
- let frame;function layout(){cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{if(root.hidden||app.hidden)return;const viewport=window.visualViewport,bottom=viewport?viewport.offsetTop+viewport.height:innerHeight;const nav=document.querySelector('nav').getBoundingClientRect(),top=root.getBoundingClientRect().top;const gap=parseFloat(getComputedStyle(root).getPropertyValue('--work-gap'))||8;/* 2026-10-19：不再由脚本写死高度。以前用 visualViewport 算出高度写进 inline style，一旦顶部安全区/工具栏变化，算出的值会偏小甚至为 0，面板就塌进安全区、输入区消失。改为与聊天页一致：高度交给 CSS（height:auto;min-height:0），脚本只负责滚动到底。 */root.style.removeProperty('height');if(typeof window.__workScrollBottom==='function')window.__workScrollBottom();});}
+ let frame;function layout(){
+  cancelAnimationFrame(frame);
+  frame=requestAnimationFrame(()=>{
+    if(root.hidden||app.hidden)return;
+    const viewport=window.visualViewport;
+    const visibleBottom=viewport?viewport.offsetTop+viewport.height:window.innerHeight;
+    const nav=document.querySelector('nav');
+    const navTop=nav&&!nav.hidden?nav.getBoundingClientRect().top:visibleBottom;
+    const panelTop=root.getBoundingClientRect().top;
+    // The fixed navigation and the Work composer must share one measured boundary.
+    // When the keyboard opens, the visual viewport is the upper boundary instead.
+    const bottom=Math.min(navTop,visibleBottom-12);
+    const available=Math.max(120,Math.floor(bottom-panelTop-10));
+    root.style.setProperty('--work-available-height',available+'px');
+    root.style.removeProperty('height');
+    if(typeof window.__workScrollBottom==='function')window.__workScrollBottom();
+  });
+}
  window.addEventListener('resize',layout);window.visualViewport?.addEventListener('resize',layout);window.visualViewport?.addEventListener('scroll',layout);
  function compose(){const edit=document.activeElement===input;$('workForm').classList.toggle('is-editing',edit);$('workForm').style.setProperty('--actions-row',String((quote?2:1)+(edit?1:0)));input.style.height=edit?Math.min(112,Math.max(64,input.scrollHeight))+'px':'36px';layout();}input.addEventListener('focus',compose);input.addEventListener('blur',compose);
  const sync=()=>{const visible=!app.hidden&&!root.hidden;if(!visible){clearInterval(timer);timer=null;if(app.hidden){epoch++;data=null;profiles={};attachments=[];quote=null;payload=null;input.value='';conversation.replaceChildren();chips();}return;}
