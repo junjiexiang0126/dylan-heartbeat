@@ -1,6 +1,6 @@
 /* Semantic values live in tokens.css. Wallpaper stays crisp; surfaces carry glass. */
 html{background:var(--bg)}
-body{background:var(--bg);color:var(--ink)}
+body{background:transparent;color:var(--ink)}
 .ambient{opacity:var(--home-ambient-opacity)}
 .glass{box-shadow:var(--surface-shadow);border-color:var(--surface-border)}
 .glass::before{border-radius:inherit}
@@ -76,7 +76,7 @@ html[data-reduce-glass=true] .glass::before{backdrop-filter:none!important;-webk
 .thought-toggle{font-size:var(--ui-font-12);padding-block:var(--ui-space-4)}
 
 .shell{z-index:1}
-.space-wallpaper{position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--bg)}
+.space-wallpaper{position:fixed;inset:0;z-index:0;pointer-events:none;background:transparent}
 /* 2026-10-19 根背景重构：全站唯一壁纸层。固定铺满、内容在其上滚动。 */
 #chatWallpaper{display:none!important}
 #app,.shell{position:relative;z-index:2}
@@ -211,3 +211,8 @@ nav.glass button svg{filter:none}
 .log-entry.glass::before{background:var(--entrance-fill)}
 html[data-reduce-glass=true]{--paper-fill:var(--bg);--record-card-fill:var(--bg);--record-tool-fill:var(--bg)}
 @media(prefers-reduced-transparency:reduce){:root{--glass-opacity:1!important;--paper-fill:var(--bg);--record-card-fill:var(--bg);--record-tool-fill:var(--bg)}}
+
+/* 只有在没有任何空间壁纸时，才用纯色兜底；一旦选了壁纸，全站只剩那一张图。
+   这样既满足「唯一根壁纸」，也不会在首次打开时白屏。 */
+body:not(.has-space-wallpaper){background:var(--bg)}
+body.has-space-wallpaper,body.has-space-wallpaper html{background:transparent}
