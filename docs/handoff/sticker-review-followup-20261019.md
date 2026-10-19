@@ -22,3 +22,10 @@
 沿用上一轮真实隔离应用 HTTP 服务与本地 HTTPS 代理、完整 index.html、14 张实际 CSS、真实 JS/图片；数据为合成 fixture。专项脚本增加背景强度保护，并验证新的普通/选中玻璃底与 14px 模糊、PNG 200 与 MIME、图片解码、右上溢出、刷新去重、进入/返回与夜间主题。
 
 Chromium / Playwright WebKit 仍不代表物理 iPhone。视觉效果仍需用户确认，iPhone Safari / PWA 的触摸、壁纸与滚动显示尚待真机验收。本轮不得合并或部署。
+
+## 本轮实际验收证据
+
+- 应用代码提交：`ada0a8c40f13ff4fd37d47754193da880b91658d`。
+- [专项 CI 39233454563](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/39233454563) 成功，Chromium / WebKit 两项目通过；四档宽度两页共 16 张白昼截图，另有 4 张夜间截图和两份 audit.json。
+- artifact `12178545716`，包含本轮完整真实页面预览；背景保护、PNG 访问/解码、新玻璃底、14px 模糊、定位、刷新去重和阅读/返回断言通过。
+- 未将这些自动化结果当作用户视觉认可或 iPhone 真机验收；线上未变。
