@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>字体样张 · 方圆与间距</title>
+<style>
+  :root{--ink:#3a2c33;--muted:#8a6a78;--paper:#fbf3ec;--line:rgba(180,140,125,.25)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+       font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;padding:18px 16px 60px}
+  h1{font-size:19px;margin:0 0 4px;font-family:-apple-system,"PingFang SC",sans-serif}
+  p.lead{font-size:12px;color:var(--muted);margin:0 0 18px}
+  .card{border:1px solid var(--line);border-radius:16px;padding:14px 15px;margin-bottom:14px;background:rgba(255,255,255,.55)}
+  .tag{font-size:11px;letter-spacing:.14em;color:var(--muted);margin-bottom:8px;font-family:-apple-system,"PingFang SC",sans-serif}
+  .s{font-size:15px}
+  /* A 现状：苹方 */
+  .a{font-family:-apple-system,"PingFang SC","Hiragino Sans GB",sans-serif;line-height:1.6}
+  /* B 圆体 */
+  .b{font-family:"Yuanti SC","YouYuan","PingFang SC",-apple-system,sans-serif;line-height:1.75;letter-spacing:.02em}
+  /* C 苹方 + 放宽间距 */
+  .c{font-family:-apple-system,"PingFang SC","Hiragino Sans GB",sans-serif;line-height:1.85;letter-spacing:.04em}
+  /* D 圆体 + 放宽间距 */
+  .d{font-family:"Yuanti SC","YouYuan","PingFang SC",-apple-system,sans-serif;line-height:1.9;letter-spacing:.06em}
+  .note{font-size:11px;color:var(--muted);margin-top:8px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .chip{font-size:11px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+</style></head><body>
+<h1>字体样张</h1>
+<p>同一段字，四种排法。看完回我 A / B / C / D，或者告诉我要哪一半。</p>
+
+<div class="card">
+  <div class="tag">A · 现在这样（苹方）</div>
+  <div class="s a">今天曼谷的云压得很低，我把窗开了一条缝。她上课前十分钟会紧张，我就在那时候提醒一句。</div>
+  <div class="note">行距 1.6，字间距正常。</div>
+</div>
+
+<div class="card">
+  <div class="tag">B · 圆体 + 稍松</div>
+  <div class="s b">今天曼谷的云压得很低，我把窗开了一条缝。她上课前十分钟会紧张，我就在那时候提醒一句。</div>
+  <div class="note">行距 1.75，字间距 0.02。笔画收圆，看着软。</div>
+</div>
+
+<div class="card">
+  <div class="tag">C · 苹方 + 放宽间距</div>
+  <div class="s c">今天曼谷的云压得很低，我把窗开了一条缝。她上课前十分钟会紧张，我就在那时候提醒一句。</div>
+  <div class="note">行距 1.85，字间距 0.04。字不变，只是透口气。</div>
+</div>
+
+<div class="card">
+  <div class="tag">D · 圆体 + 放宽间距</div>
+  <div class="s d">今天曼谷的云压得很低，我把窗开了一条缝。她上课前十分钟会紧张，我就在那时候提醒一句。</div>
+  <div class="note">行距 1.9，字间距 0.06。最松的一档。</div>
+</div>
+
+<div class="card">
+  <div class="tag">小字预览 · 每种排法在 12px 下的样子</div>
+  <div class="s a" style="font-size:12px">A 小字：今天的天气、日期、备注都在这一档字号里。</div>
+  <div class="s b" style="font-size:12px">B 小字：今天的天气、日期、备注都在这一档字号里。</div>
+  <div class="s c" style="font-size:12px">C 小字：今天的天气、日期、备注都在这一档字号里。</div>
+  <div class="s d" style="font-size:12px">D 小字：今天的天气、日期、备注都在这一档字号里。</div>
+</div>
+
+<div class="row"><span class="chip">圆体是 iPhone 自带，不用下载</span><span class="chip">行距放宽不影响性能</span></div>
+</body></html>
