@@ -34,3 +34,9 @@ body.work-view #work.work-panel{height:calc(100dvh - var(--nav-h) - var(--nav-of
    但不再让脚本往里写 inline height。上一条 "height:auto" 的尝试会让内容堆叠、
    输入框上浮，已撤回。 */
 .work-panel > *{min-height:0}
+
+/* The shared topbar is hidden in Work. Its replacement owns the top inset;
+   the existing panel height already subtracts this same safe-area value. */
+body.work-view #work.work-panel{margin-top:env(safe-area-inset-top,0px)}
+#work > .work-heading{flex-shrink:0}
+
