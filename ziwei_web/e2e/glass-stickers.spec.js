@@ -24,9 +24,9 @@ test('full application glass and sticker HTTP preview',async({page},info)=>{
    if(section==='logs'){
     const compare=await page.locator('#logs > .log-entry-grid').evaluate(grid=>{
      const material=el=>{const s=getComputedStyle(el);return [s.backgroundColor,s.backgroundImage,s.borderTop,s.borderRadius,s.padding,s.boxShadow,s.backdropFilter||s.webkitBackdropFilter];};
-     return {today:material(grid.querySelector('[data-log-kind="impressions"]')),work:material(grid.querySelector('[data-log-kind="work"]'))};
+     return {today:material(grid.querySelector('[data-log-kind="impressions"]')),reference:material(grid.querySelector('.log-entry:not(.active):not([data-log-kind="impressions"])'))};
     });
-    expect(compare.today).toEqual(compare.work);
+    expect(compare.today).toEqual(compare.reference);
    }
    const metrics=await page.locator('#'+section+' .card-sticker').evaluateAll(es=>es.map(e=>{const b=e.getBoundingClientRect(),p=e.parentElement.getBoundingClientRect(),s=getComputedStyle(e),c=getComputedStyle(e.parentElement),old=getComputedStyle(e.parentElement,'::before');return {src:e.getAttribute('src'),position:s.position,top:b.top-p.top,right:b.right-p.right,opacity:s.opacity,background:c.backgroundImage,fill:c.backgroundColor,blur:c.backdropFilter||c.webkitBackdropFilter,border:c.borderRadius,oldSticker:old.backgroundImage,oldDisplay:old.display,active:e.parentElement.classList.contains('active'),stickerBorder:s.borderWidth,stickerShadow:s.boxShadow,stickerFilter:s.filter};}));
    results.push({width,section,metrics});
