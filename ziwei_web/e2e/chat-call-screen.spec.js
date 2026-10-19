@@ -15,6 +15,8 @@ function speech(){
  const wav=Buffer.alloc(48044);wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(48000,40);
  for(let i=0;i<24000;i++)wav.writeInt16LE(Math.round(9000*Math.sin(2*Math.PI*440*i/8000)),44+i*2);return wav;
 }
+// CI 的 WebKit 无平台认证器与媒体输入设备，这些用例只能在真机验收（2026-10-19）。
+test.skip(({ browserName }) => browserName === 'webkit', '需要真设备提供平台认证器/麦克风，CI 无此条件，见 docs/E2E_WEBKIT_2026-10-19.md');
 test('call screen uses saved avatar and name, fits phone and follows theme',async({page},testInfo)=>{
  await page.route('**/api/home',async route=>{const response=await route.fetch(),home=await response.json();home.ziwei={...home.ziwei,nickname:'微微',avatar:png};await route.fulfill({json:home});});
  await open(page);await expect(page.locator('#chatCallName')).toHaveText('微微');await expect(page.locator('#chatCallAvatar img')).toHaveAttribute('src',png);await expect(page.locator('#chatCallElapsed')).toHaveText('00:00');await expect(page.locator('#chatCallMute')).toBeDisabled();

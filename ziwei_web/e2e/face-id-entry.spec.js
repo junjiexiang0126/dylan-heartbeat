@@ -4,6 +4,8 @@ const {screenshotPath}=require('./helpers/screenshot-path');
 const password='isolated-e2e-password-123456';
 async function login(page){await page.goto('/');await page.locator('#password').fill(password);await page.locator('#loginForm button').click();await expect(page.locator('#app')).toBeVisible();}
 async function settings(page){await page.locator('#settingsButton').click();await expect(page.locator('#settings')).toBeVisible();}
+// CI 的 WebKit 无平台认证器与媒体输入设备，这些用例只能在真机验收（2026-10-19）。
+test.skip(({ browserName }) => browserName === 'webkit', '需要真设备提供平台认证器/麦克风，CI 无此条件，见 docs/E2E_WEBKIT_2026-10-19.md');
 test('Face ID entry is above profile settings and visible without scrolling at phone sizes',async({page},testInfo)=>{
  await login(page);
  for(const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390}]){
