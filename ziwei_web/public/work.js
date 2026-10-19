@@ -89,3 +89,30 @@
   layout();if(!timer){void api('/api/home').then(x=>{profiles=x;paint();}).catch(()=>{});void refresh();timer=setInterval(()=>{if(!document.hidden)void refresh();},2000);}};
  new MutationObserver(sync).observe(app,{attributes:true,attributeFilter:['hidden']});new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['hidden']});sync();
 })();
+
+/* ==== 临时诊断面板（2026-10-19，排查 Work 布局；确认后删除）==== */
+(function(){
+  function boot(){
+    var box=document.createElement('div');
+    box.id='zw-dbg';
+    box.style.cssText='position:fixed;left:6px;top:6px;z-index:99999;background:rgba(0,0,0,.72);color:#fff;font:11px/1.5 -apple-system,monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre;max-width:96vw';
+    document.body.appendChild(box);
+    function tick(){
+      var w=document.getElementById('work');
+      if(!w||w.hidden){box.style.display='none';return;}
+      box.style.display='';
+      var r=w.getBoundingClientRect();
+      var nav=document.querySelector('nav');
+      var nr=nav?nav.getBoundingClientRect():{top:0};
+      var vv=window.visualViewport;
+      var cs=getComputedStyle(w);
+      box.textContent='win '+window.innerHeight+'  vv '+(vv?Math.round(vv.height):'-')+'/'+(vv?Math.round(vv.offsetTop):'-')
+        +'\nwork top '+Math.round(r.top)+' h '+Math.round(r.height)+' css '+cs.height
+        +'\ninline "'+(w.style.height||'-')+'"'
+        +'\nnav top '+Math.round(nr.top)+'  safeT '+cs.paddingTop
+        +'\nscrollY '+Math.round(window.scrollY);
+    }
+    setInterval(tick,600);tick();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
