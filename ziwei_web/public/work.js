@@ -95,7 +95,7 @@
   function boot(){
     var box=document.createElement('div');
     box.id='zw-dbg';
-    box.style.cssText='position:fixed;left:6px;top:6px;z-index:99999;background:rgba(0,0,0,.72);color:#fff;font:11px/1.5 -apple-system,monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre;max-width:96vw';
+    box.style.cssText='position:fixed;left:6px;bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:99999;background:rgba(0,0,0,.72);color:#fff;font:11px/1.5 -apple-system,monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre;max-width:96vw';
     document.body.appendChild(box);
     function tick(){
       var w=document.getElementById('work');
