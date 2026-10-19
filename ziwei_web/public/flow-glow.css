@@ -76,7 +76,7 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
 
 /* 文字压在装饰与贴纸之上 */
 #logs .record-card>*,#logs .log-entry>*,#logs .log-today>*,#logs .imp-card>*,
-#memory .record-card>*,#memory .memory-entry>*{ position:relative; z-index:3 }
+#memory .record-card>*,#memory .memory-entry>*{ position:relative; z-index:2 }
 
 /* —— 贴纸：统一换成右上角那一套（语 2026-10-19 明确：原来按种类配的全部删掉） —— */
 #logs .log-entry,#memory .memory-entry{ overflow:visible }
@@ -84,7 +84,7 @@ body:has(#memory:not([hidden]))::after{ opacity:var(--glow-strength) }
   content:""; top:-8px; right:-8px; left:auto; bottom:auto;
   width:46px; height:46px; border-radius:0;
   background:url('/stickers/petals.png') center/contain no-repeat;
-  opacity:.35; z-index:2; pointer-events:none;
+  opacity:.35; z-index:1; pointer-events:none;
   transform:rotate(-6deg);
   filter:drop-shadow(0 2px 5px rgba(180,120,140,.18));
   transition:opacity .25s ease,transform .25s ease;
