@@ -52,6 +52,7 @@ class MiniMaxTTS {
    while(queue.length){deadline.throwIfAborted();await onAudio({pcm:queue.shift(),sampleRate:16000,channels:1});}
   }
   parser.end();if(!done||carry.length)throw Error('voice_tts_incomplete');
+  while(queue.length){deadline.throwIfAborted();await onAudio({pcm:queue.shift(),sampleRate:16000,channels:1});}
   for(const pcm of frames.flush()){deadline.throwIfAborted();await onAudio({pcm,sampleRate:16000,channels:1});}
  }
 }
