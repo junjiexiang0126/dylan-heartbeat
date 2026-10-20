@@ -25,27 +25,33 @@ class RealtimeVoiceBridge {
   try{text=await this.invoke('asr',signal=>this.adapters.asr.transcribe(audio,{signal}));}
   catch(e){if(e.name==='AbortError'||this.session.closed)return {status:'cancelled'};throw e;}
   if(!text?.trim()||!this.session.finishSpeech(token,true))return {status:'ignored'};
-  const chunks=[];let answer='';
+  const chunks=[];let answer='';let pending='';let speaking=Promise.resolve();
   try{
    await this.invoke('llm',signal=>this.adapters.hermes.reply(text,{signal,onDelta:delta=>{
-    if(!signal.aborted&&token===this.session.generation&&typeof delta==='string')answer+=delta;
+    if(!signal.aborted&&token===this.session.generation&&typeof delta==='string') {
+     answer+=delta;pending+=delta;
+     const matches=pending.match(/^[\\s\\S]*?[。！？!?；;\
+]/);
+     if(matches){const sentence=matches[0];pending=pending.slice(sentence.length);
+      speaking=speaking.then(()=>this.speakSentence(sentence,token,chunks));}
+    }
    }}));
    if(token!==this.session.generation||this.session.closed)return {status:'interrupted'};
-   // Sentence-level incremental TTS; providers may stream PCM frames via onAudio.
-   const parts=answer.match(/[^。！？!?；;\n]+[。！？!?；;\n]?/g)||[];
-   for(const part of parts){
-    if(token!==this.session.generation||this.session.closed)return {status:'interrupted'};
-    if(!part.trim())continue;
-    await this.invoke('tts',signal=>this.adapters.tts.speak(part,{signal,onAudio:frame=>{
-     if(!signal.aborted&&token===this.session.generation){
-      this.session.assistantAudio(token);this.onAudio(frame);
-     }
-    }}));
-    chunks.push(part);
-   }
+   if(pending.trim())speaking=speaking.then(()=>this.speakSentence(pending,token,chunks));
+   await speaking;
+   if(token!==this.session.generation||this.session.closed)return {status:'interrupted'};
    this.session.assistantDone(token);
    return {status:'completed',text,answer:chunks.join('')};
   }catch(e){if(e.name==='AbortError'||token!==this.session.generation)return {status:'interrupted'};throw e;}
+ }
+ async speakSentence(text,token,chunks){
+  if(token!==this.session.generation||this.session.closed||!text.trim())return;
+  await this.invoke('tts',signal=>this.adapters.tts.speak(text,{signal,onAudio:frame=>{
+   if(!signal.aborted&&token===this.session.generation){
+    this.session.assistantAudio(token);this.onAudio(frame);
+   }
+  }}));
+  if(token===this.session.generation)chunks.push(text);
  }
  hangup(){this.session.hangup();for(const key of [...this.controllers.keys()])this.cancel(key);}
 }
