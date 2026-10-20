@@ -16,6 +16,13 @@ test('auth, csrf, restart persistence and protected bridge',async t=>{
  assert.equal(good.status,200);const cookie=good.headers.get('set-cookie').split(';')[0];assert.match(good.headers.get('set-cookie'),/HttpOnly/);
  const info=await request('/api/session',{headers:{Cookie:cookie}}).then(r=>r.json());assert.equal(info.authenticated,true);assert.equal(info.chatReady,false);
  assert.equal((await request('/api/logout',{method:'POST',headers:{Cookie:cookie,Origin:origin}})).status,403);
+ assert.equal((await request('/api/voice/livekit-token',{method:'POST'})).status,401);
+ assert.equal((await request('/api/voice/livekit-token',{method:'POST',headers:{Cookie:cookie,Origin:origin}})).status,403);
+ assert.equal((await request('/api/voice/config',{headers:{Cookie:cookie}}).then(r=>r.json())).enabled,false);
+ const voice=await request('/api/voice/livekit-token',{method:'POST',headers:{Cookie:cookie,Origin:origin,'X-Ziwei-CSRF':info.csrf},body:'{}'});
+ assert.equal(voice.status,503);assert.equal((await voice.json()).error,'realtime_voice_not_configured');
+ for(const asset of ['/vendor/livekit-client.js','/livekit-call-transport.js','/realtime-call.js'])assert.equal((await request(asset)).status,200);
+
  assert.equal((await request('/api/chat/send',{method:'POST',headers:{Cookie:cookie,Origin:origin,'X-Ziwei-CSRF':info.csrf}})).status,503);
  child.kill();await new Promise(r=>child.once('exit',r));child=spawn(process.execPath,['server.js'],{cwd:path.join(__dirname,'..'),env,stdio:'ignore'});await wait();
  assert.equal((await request('/api/session',{headers:{Cookie:cookie}}).then(r=>r.json())).authenticated,true);

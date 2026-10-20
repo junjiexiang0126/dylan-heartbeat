@@ -2,8 +2,7 @@
 const http = require('node:http'), crypto = require('node:crypto'), fs = require('node:fs'), path = require('node:path');
 const webauthn = require('@simplewebauthn/server');
 const {createChatService} = require('./chat_service');
-const {createVoiceTokenHandler} = require('./realtime_voice/token_route');
-const voiceTokenHandler=createVoiceTokenHandler();
+const {RealtimeVoiceService,livekitURL} = require('./realtime_voice/service');
 const {createMomentsService} = require('./moments_service');
 const {checkedDirectory}=require('./data_directory');
 const { createHomeStore, atomicWrite, load } = require('./home_store');
@@ -26,8 +25,11 @@ try {
 const SESSION_DAYS = 30, MAX_BODY = 400000, COOKIE = 'ziwei_sid';
 const publicDir = path.join(__dirname, 'public');
 const files = {'/raven-view.js':'raven-view.js','/raven.css':'raven.css','/raven-preview.html':'raven-preview.html','/raven-preview.js':'raven-preview.js','/models/raven.glb':'models/raven.glb','/models/raven-poster.png':'models/raven-poster.png','/models/raven-manifest.json':'models/raven-manifest.json','/photos.js':'photos.js','/chat-photo.js':'chat-photo.js','/chat-photo.css':'chat-photo.css','/vendor/photostack/photo-stack.js':'vendor/photostack/photo-stack.js','/vendor/photostack/photo-stack.css':'vendor/photostack/photo-stack.css','/photos.css':'photos.css','/voice-ui.js':'voice-ui.js','/paper.svg':'paper.svg','/theme-init.js':'theme-init.js','/chat-render.js':'chat-render.js','/file-viewer.js':'file-viewer.js','/refinement.css':'refinement.css','/bubble-skin.css':'bubble-skin.css','/skin-wing.svg':'skin-wing.svg','/skin-raven.svg':'skin-raven.svg','/skin-paw.svg':'skin-paw.svg','/skin-heart.svg':'skin-heart.svg','/skin-star.svg':'skin-star.svg','/tokens.css':'tokens.css','/records.js':'records.js','/records.css':'records.css','/save-file.js':'save-file.js','/impressions.js':'impressions.js','/impressions.css':'impressions.css','/records-material.css':'records-material.css','/flow-glow.css':'flow-glow.css','/EBGaramond.woff2':'EBGaramond.woff2','/home.css':'home.css','/stickers/watercolor-heart-v1.png':'stickers/watercolor-heart-v1.png','/stickers/watercolor-ribbon-v1.png':'stickers/watercolor-ribbon-v1.png','/stickers/watercolor-blossoms-v1.png':'stickers/watercolor-blossoms-v1.png','/stickers/watercolor-leaves-v1.png':'stickers/watercolor-leaves-v1.png','/stickers/books.png':'stickers/books.png','/stickers/button-flower.png':'stickers/button-flower.png','/stickers/button-plain.png':'stickers/button-plain.png','/stickers/card-frame.png':'stickers/card-frame.png','/stickers/corner-ribbon-left.png':'stickers/corner-ribbon-left.png','/stickers/corner-ribbon-right.png':'stickers/corner-ribbon-right.png','/stickers/diary.png':'stickers/diary.png','/stickers/flower-bud.png':'stickers/flower-bud.png','/stickers/flower-front.png':'stickers/flower-front.png','/stickers/flower-side.png':'stickers/flower-side.png','/stickers/lock.png':'stickers/lock.png','/stickers/paw.png':'stickers/paw.png','/stickers/petals.png':'stickers/petals.png','/stickers/sticker-sakura.svg':'stickers/sticker-sakura.svg','/stickers/sticker-rose.svg':'stickers/sticker-rose.svg','/stickers/sticker-bow.svg':'stickers/sticker-bow.svg','/stickers/photo-frame.png':'stickers/photo-frame.png','/stickers/ribbon-bow.png':'stickers/ribbon-bow.png','/stickers/ribbon-flow.png':'stickers/ribbon-flow.png','/stickers/small-flower.png':'stickers/small-flower.png','/stickers/expressions/exp6-01.png':'stickers/expressions/exp6-01.png','/stickers/expressions/exp6-02.png':'stickers/expressions/exp6-02.png','/stickers/expressions/exp6-03.png':'stickers/expressions/exp6-03.png','/stickers/expressions/exp6-04.png':'stickers/expressions/exp6-04.png','/stickers/expressions/exp6-05.png':'stickers/expressions/exp6-05.png','/stickers/expressions/exp6-06.png':'stickers/expressions/exp6-06.png','/':'index.html','/index.html':'index.html','/app.js':'app.js','/chat.js':'chat.js','/affection.js':'affection.js','/affection.css':'affection.css','/chat-extra.js':'chat-extra.js','/raven.js':'raven.js','/chat-call.js':'chat-call.js','/workbench.js':'workbench.js','/work.js':'work.js','/work.css':'work.css','/moments.js':'moments.js','/moments.css':'moments.css','/style.css':'style.css','/chat.css':'chat.css','/manifest.webmanifest':'manifest.webmanifest','/sw.js':'sw.js','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/font-preview.html':'font-preview.html','/icon-512.png':'icon-512.png'};
+Object.assign(files,{'/livekit-call-transport.js':'livekit-call-transport.js','/realtime-call.js':'realtime-call.js','/vendor/livekit-client.js':'vendor/livekit-client.js'});
 const types = {'.woff2':'font/woff2','.glb':'model/gltf-binary','.json':'application/json; charset=utf-8','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json','.mp3':'audio/mpeg'};
 const headers = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"};
+const voiceOrigin=livekitURL(process.env);
+if(process.env.ZIWEI_REALTIME_VOICE_ENABLED==='true'&&voiceOrigin)headers['Content-Security-Policy']=headers['Content-Security-Policy'].replace("connect-src 'self'","connect-src 'self' "+voiceOrigin+' '+voiceOrigin.replace(/^ws/,'http'));
 if (SECURE) headers['Strict-Transport-Security'] = 'max-age=31536000';
 if (PASSWORD && PASSWORD.length < 16) throw Error('ZIWEI_WEB_PASSWORD must be at least 16 characters');
 fs.mkdirSync(DATA_DIR, {recursive:true, mode:0o700});
@@ -64,6 +66,7 @@ process.on('exit',()=>{
 // 会话号可由数据目录里的文件覆盖：切换对话时写入，容器重启后生效。
 try{const f=path.join(DATA_DIR,'current-session.txt');const v=fs.readFileSync(f,'utf8').trim();if(/^[a-zA-Z0-9_-]{1,128}$/.test(v))process.env.ZIWEI_HERMES_WEB_SESSION_ID=v;}catch{}
 const bridge=createChatService(DATA_DIR,{authorized:req=>!!session(req)});
+const realtimeVoice=new RealtimeVoiceService({dataDir:DATA_DIR});
 const workService=require('./work_service').createWorkService(DATA_DIR);
 const home = createHomeStore(DATA_DIR);
 const moments = createMomentsService(DATA_DIR);
@@ -258,7 +261,18 @@ const server=http.createServer(async(req,res)=>{try{
   if(pathname.startsWith('/api/')) {
     const s=session(req); if(!s)return json(res,401,{error:'unauthorized'});
     if(!['GET','HEAD'].includes(req.method) && (!validOrigin(req) || !csrfOk(req,s)))return json(res,403,{error:'csrf_rejected'});
-    if(pathname==='/api/voice/livekit-token')return voiceTokenHandler(req,res,json);
+    if(pathname.startsWith('/api/voice/')){
+      const owner=tokenHash(cookies(req)[COOKIE]);
+      try{
+        if(pathname==='/api/voice/config'&&req.method==='GET')return json(res,200,{enabled:!!realtimeVoice.ready()});
+        if(req.method!=='POST')return json(res,405,{error:'method_not_allowed'});
+        const body=await readBody(req,2048);if(session(req)!==s)return json(res,401,{error:'unauthorized'});
+        if(pathname==='/api/voice/livekit-token')return json(res,200,await realtimeVoice.start(owner,()=>session(req)===s));
+        if(pathname==='/api/voice/control')return json(res,200,realtimeVoice.control(body.callId,owner,body));
+        if(pathname==='/api/voice/end'){await realtimeVoice.end(body.callId,owner);return json(res,200,{ok:true});}
+        return json(res,404,{error:'not_found'});
+      }catch(e){const code=['realtime_voice_not_configured','voice_busy','voice_admission_limit','voice_call_not_found','voice_invalid_control'].includes(e.message)?e.message:'voice_start_failed';return json(res,code==='voice_busy'?409:code==='voice_admission_limit'?429:code==='voice_call_not_found'?404:503,{error:code});}
+    }
     if(pathname==='/api/home') {
       if(req.method==='GET')return json(res,200,{...home.read(),todayStatus:await bridge.presence()});
       if(req.method==='PUT'){const body=await readBody(req);if(session(req)!==s)return json(res,401,{error:'unauthorized'});const updated=home.update(body);return json(res,updated?200:409,updated?{...updated,todayStatus:await bridge.presence()}:{error:'revision_conflict'});}

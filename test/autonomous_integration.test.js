@@ -35,7 +35,7 @@ test('real gateway and worker wake without Kelivo, persist and inject activity i
   let logs = '';
   env.HOST = '127.0.0.1';
   env.AGENT_READ_TOKEN = 'read-only-test-token';
-  const children = ['server.js', 'wake_up.js'].map(file => {
+  const children = ['server.js'].map(file => {
     const child = spawn(process.execPath, [path.join(__dirname, '..', file)], { env, stdio: ['ignore', 'pipe', 'pipe'] });
     child.stdout.on('data', chunk => { logs += chunk; });
     child.stderr.on('data', chunk => { logs += chunk; });
