@@ -24,14 +24,14 @@ class RealtimeVoiceBridge {
   let text;
   try{text=await this.invoke('asr',signal=>this.adapters.asr.transcribe(audio,{signal}));}
   catch(e){if(e.name==='AbortError'||this.session.closed)return {status:'cancelled'};throw e;}
-  if(!text?.trim()||!this.session.finishSpeech(token,true))return {status:'ignored'};
+  if(token!==this.session.generation||!text?.trim()||!this.session.finishSpeech(token,true))return {status:'ignored'};
   const chunks=[];let answer='';let pending='';let speaking=Promise.resolve();
   try{
    await this.invoke('llm',signal=>this.adapters.hermes.reply(text,{signal,onDelta:delta=>{
     if(!signal.aborted&&token===this.session.generation&&typeof delta==='string') {
      answer+=delta;pending+=delta;
-     const matches=pending.match(/^[\\s\\S]*?[。！？!?；;\
-]/);
+     const boundary=pending.search(/[。！？!?；;\n]/);
+     const matches=boundary<0?null:[pending.slice(0,boundary+1)];
      if(matches){const sentence=matches[0];pending=pending.slice(sentence.length);
       speaking=speaking.then(()=>this.speakSentence(sentence,token,chunks));}
     }
