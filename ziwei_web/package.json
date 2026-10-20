@@ -11,13 +11,18 @@
     "test": "node --test test/*.test.js test/*.test.mjs",
     "test:e2e": "playwright test",
     "build:raven": "node scripts/build_raven_model.mjs && node scripts/build_raven_view.mjs",
-    "test:work": "node --test tests/work*.test.cjs"
+    "test:work": "node --test tests/work*.test.cjs",
+    "build:voice": "node scripts/build_livekit_client.js",
+    "test:voice": "node --test test/realtime_voice*.test.js"
   },
   "dependencies": {
+    "@livekit/rtc-node": "1.1.0",
     "@simplewebauthn/server": "14.0.3",
     "docx": "9.5.1",
     "exceljs": "4.4.0",
     "jszip": "3.10.2",
+    "livekit-client": "2.23.0",
+    "livekit-server-sdk": "2.19.1",
     "pdfkit": "0.17.2",
     "pptxgenjs": "4.0.1"
   },

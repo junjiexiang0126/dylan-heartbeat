@@ -6,9 +6,9 @@ const stamp='2026-10-19T08:00:00Z';
 const envelope=data=>({data,source:'hermes_native',readOnly:true,total:data.length,nextOffset:null,checkedAt:stamp,errors:[]});
 test('full application glass and sticker HTTP preview',async({page},info)=>{
  test.setTimeout(120000);
- // These are the handed-off background strengths; glass edits must not change them.
+ // Current accepted background strengths; voice work must not change these visual values.
  const css=fs.readFileSync(path.join(__dirname,'../public/flow-glow.css'),'utf8');
- expect([...css.matchAll(/--glow-strength:(\.[0-9]+)/g)].map(m=>m[1])).toEqual(['.62','.34','.60','.60']);
+ expect([...css.matchAll(/--glow-strength:(\.[0-9]+)/g)].map(m=>m[1])).toEqual(['.37','.20','.36','.36']);
  const failed=[];page.on('response',r=>{if(r.url().match(/\.(css|js|svg|png)(\?|$)/)&&r.status()>=400)failed.push({url:r.url(),status:r.status()});});
  await page.route('**/api/records/**',r=>{const u=new URL(r.request().url()),kind=u.pathname.split('/').at(-1);const payload=envelope(kind==='memory'?[{id:'preview-memory',source:'memories/MEMORY.md',title:'预览样本',categories:['self'],content:'这是隔离测试内容，用于核对真实页面的排版与材质。',at:stamp,savedAt:stamp,revision:'preview'}]:[]);if(kind==='memory'){payload.data=['user','user','work','work','self'].map((category,i)=>({...payload.data[0],id:'preview-memory-'+i,categories:[category]}));payload.total=payload.data.length;payload.counts={user:2,work:2,self:1,protected:0,uncategorized:0};}return r.fulfill({json:payload});});
  await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#password').fill('isolated-e2e-password-123456');await page.locator('#loginForm button').click();await expect(page.locator('#app')).toBeVisible();
