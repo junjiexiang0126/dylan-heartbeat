@@ -6,7 +6,6 @@
   "scripts": {
     "start": "node server.js",
     "start:railway": "node railway_start.js",
-    "wake": "node wake_up.js",
     "test": "node --test test/*.test.js"
   },
   "keywords": [
