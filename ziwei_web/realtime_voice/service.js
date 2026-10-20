@@ -4,7 +4,7 @@ const {HermesClient}=require('../hermes_client');
 const {LiveKitParticipant}=require('./livekit_participant');
 const {HermesVoiceAdapter}=require('./hermes_adapter');
 const {VoiceRoomWorker}=require('./room_worker');
-const {ZhipuASR,MiniMaxTTS,VoiceQuota}=require('./providers');
+const {ZhipuASR,MiniMaxTTS,ElevenLabsTTS,VoiceQuota}=require('./providers');
 const {atomicWrite,load}=require('../home_store');
 const path=require('node:path');
 function livekitURL(env){
@@ -19,7 +19,9 @@ class RealtimeVoiceService {
   this.admissions=this.rateFile?load(this.rateFile,[]):[];
   this.timer=setInterval(()=>{for(const c of this.calls.values())if(this.now()-c.touched>35000||!c.authorized())void this.end(c.id,c.owner).catch(()=>{});},1000);this.timer.unref();
  }
- ready(){return !this.blocked&&this.env.ZIWEI_REALTIME_VOICE_ENABLED==='true'&&!!this.url&&!!this.env.LIVEKIT_API_KEY&&this.env.LIVEKIT_API_SECRET?.length>=16&&!!this.env.ZHIPU_API_KEY&&!!this.env.MINIMAX_API_KEY&&!!this.env.MINIMAX_VOICE_ID&&this.client.configured();}
+ ready(){return !this.blocked&&this.env.ZIWEI_REALTIME_VOICE_ENABLED==='true'&&!!this.url&&!!this.env.LIVEKIT_API_KEY&&this.env.LIVEKIT_API_SECRET?.length>=16&&!!this.env.ZHIPU_API_KEY&&this.ttsConfigured()&&this.client.configured();}
+ ttsConfigured(){return (!!this.env.ELEVENLABS_API_KEY&&!!this.env.ELEVENLABS_VOICE_ID)||(!!this.env.MINIMAX_API_KEY&&!!this.env.MINIMAX_VOICE_ID);}
+ makeTTS(quota){return this.env.ELEVENLABS_API_KEY&&this.env.ELEVENLABS_VOICE_ID?new ElevenLabsTTS({apiKey:this.env.ELEVENLABS_API_KEY,voiceId:this.env.ELEVENLABS_VOICE_ID,quota}):new MiniMaxTTS({apiKey:this.env.MINIMAX_API_KEY,voiceId:this.env.MINIMAX_VOICE_ID,quota,endpoint:this.env.MINIMAX_TTS_ENDPOINT||undefined});}
  async start(owner,authorized=()=>true){
   if(!this.ready())throw Error('realtime_voice_not_configured');if(this.calls.size)throw Error('voice_busy');
   this.admissions=this.admissions.filter(t=>Number.isFinite(t)&&t>this.now()-3600000);if(this.admissions.length>=12)throw Error('voice_admission_limit');
@@ -42,7 +44,7 @@ class RealtimeVoiceService {
      if(kind==='reconnecting'){c.worker?.setMuted(true);c.worker?.interrupt();}
      if(kind==='reconnected'){/* browser heartbeat restores the actual mute state */}
     }});
-    c.worker=new VoiceRoomWorker({participant:c.participant,pcmFrames:true,onEvent,asr:new ZhipuASR({apiKey:this.env.ZHIPU_API_KEY,quota}),tts:new MiniMaxTTS({apiKey:this.env.MINIMAX_API_KEY,voiceId:this.env.MINIMAX_VOICE_ID,quota,endpoint:this.env.MINIMAX_TTS_ENDPOINT||undefined}),hermes:new HermesVoiceAdapter({client:this.client,onEvent})});
+    c.worker=new VoiceRoomWorker({participant:c.participant,pcmFrames:true,onEvent,asr:new ZhipuASR({apiKey:this.env.ZHIPU_API_KEY,quota}),tts:this.makeTTS(quota),hermes:new HermesVoiceAdapter({client:this.client,onEvent})});
    }
    let timeout;const joining=Promise.resolve().then(()=>c.worker.start());
    try{await Promise.race([joining,new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('voice_join_timeout')),this.joinTimeoutMs);})]);}

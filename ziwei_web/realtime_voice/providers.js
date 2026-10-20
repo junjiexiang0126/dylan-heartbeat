@@ -56,4 +56,27 @@ class MiniMaxTTS {
   for(const pcm of frames.flush()){deadline.throwIfAborted();await onAudio({pcm,sampleRate:16000,channels:1});}
  }
 }
-module.exports={ZhipuASR,MiniMaxTTS,VoiceQuota};
+class ElevenLabsTTS {
+ constructor({apiKey,voiceId,quota=new VoiceQuota(),fetchImpl=fetch,model='eleven_turbo_v2_5'}={}){
+  if(!apiKey||!voiceId)throw Error('voice_tts_not_configured');
+  this.key=apiKey;this.voiceId=voiceId;this.quota=quota;this.fetch=fetchImpl;this.model=model;
+ }
+ async speak(text,{signal,onAudio}={}){
+  if(!this.key||!this.voiceId)throw Error('voice_tts_not_configured');signal?.throwIfAborted();
+  if(!text.trim())return;if(text.length>1000)throw Error('voice_tts_text_limit');this.quota.tts(text);
+  const deadline=AbortSignal.any([signal||new AbortController().signal,AbortSignal.timeout(45000)]);
+  const r=await this.fetch('https://api.elevenlabs.io/v1/text-to-speech/'+encodeURIComponent(this.voiceId)+'/stream?output_format=pcm_16000',{method:'POST',redirect:'error',signal:deadline,headers:{'xi-api-key':this.key,'Content-Type':'application/json','Accept':'audio/pcm'},body:JSON.stringify({text,model_id:this.model})});
+  if(!r.ok){await r.body?.cancel();throw Error('voice_provider_http_'+r.status);}
+  const frames=new PcmFrames();let bytes=0,carry=Buffer.alloc(0);const queue=[];
+  for await(const chunk of r.body){
+   bytes+=chunk.length;if(bytes>8*1024*1024)throw Error('voice_tts_response_limit');
+   const raw=Buffer.concat([carry,chunk]);const usable=raw.subarray(0,raw.length-raw.length%2);carry=raw.subarray(raw.length-raw.length%2);
+   const pcm=decodePCM(usable);
+   for(let i=0;i<pcm.length;i+=32000)queue.push(...frames.push(pcm.subarray(i,i+32000)));
+   while(queue.length){deadline.throwIfAborted();await onAudio({pcm:queue.shift(),sampleRate:16000,channels:1});}
+  }
+  if(carry.length)throw Error('voice_tts_incomplete');
+  for(const pcm of frames.flush()){deadline.throwIfAborted();await onAudio({pcm,sampleRate:16000,channels:1});}
+ }
+}
+module.exports={ZhipuASR,MiniMaxTTS,ElevenLabsTTS,VoiceQuota};

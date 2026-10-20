@@ -112,6 +112,6 @@ window.ZiweiChatCall=(()=>{
  $('#chatCallStart').onclick=begin;$('#chatCallEnd').onclick=()=>end();dialog.addEventListener('cancel',()=>end(false));dialog.addEventListener('close',()=>{if(active)end(false);});
  $('#chatCallMute').onclick=()=>{if(window.ZiweiRealtimeCall?.active){muted=!muted;void window.ZiweiRealtimeCall.mute(muted).catch(()=>end(false));$('#chatCallMute').setAttribute('aria-pressed',String(muted));$('#chatCallMuteLabel').textContent=muted?'取消静音':'静音';return;}if(!active||!stream)return;muted=!muted;stream.getAudioTracks().forEach(t=>{t.enabled=!muted;});microphoneUI();if(phase==='listening'){stopRecording();listen(epoch);}};
  $('#chatCallRetry').onclick=()=>{if(window.ZiweiRealtimeCall?.active){void window.ZiweiRealtimeCall.resume().catch(()=>{});return;}void context?.resume().catch(()=>{});audio.load();void audio.play().catch(()=>{state('仍无法播放，可以挂断后在聊天记录中重试。','paused');$('#chatCallRetry').hidden=false;});};
- document.addEventListener('visibilitychange',()=>{if(document.hidden)end();});window.addEventListener('pagehide',()=>end());
+
  return {configure(deps){api=deps.request;stopVoice=deps.stopVoice;refresh=deps.load;sendVoice=deps.sendVoice;ready=deps.ready;},setProfile,end};
 })();
