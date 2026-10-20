@@ -41,3 +41,6 @@ test('malformed frames and format are rejected',()=>{
  assert.throws(()=>f.push(new Int16Array(100)),/invalid_pcm_frame/);
  f.close();
 });
+test('silent preroll does not count toward minimum voiced duration',()=>{
+ let n=0;const f=new PcmSpeechFramer({onSpeech:()=>n++});for(let i=0;i<10;i++)f.push(new Int16Array(320));for(let i=0;i<8;i++)f.push(new Int16Array(320).fill(9000));for(let i=0;i<33;i++)f.push(new Int16Array(320));assert.equal(n,0);
+});

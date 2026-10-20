@@ -16,7 +16,7 @@ class PcmSpeechFramer {
   this.onSpeechStart=onSpeechStart;this.onSpeech=onSpeech;this.closed=false;this.muted=false;
   this.reset();
  }
- reset(){this.frames=[];this.silence=0;this.active=false;this.preRoll=[];}
+ reset(){this.frames=[];this.silence=0;this.voicedFrames=0;this.active=false;this.preRoll=[];}
  setMuted(value){this.muted=Boolean(value);if(this.muted)this.reset();}
  push(frame){
   if(this.closed||this.muted)return false;
@@ -27,17 +27,17 @@ class PcmSpeechFramer {
   if(!this.active){
    this.preRoll.push(copy);if(this.preRoll.length>5)this.preRoll.shift();
    if(!speech)return false;
-   this.onSpeechStart();this.active=true;this.frames=this.preRoll.splice(0);this.silence=0;
+   this.voicedFrames=1;this.onSpeechStart();this.active=true;this.frames=this.preRoll.splice(0);this.silence=0;
    return true;
   }
-  this.frames.push(copy);
+  this.frames.push(copy);if(speech)this.voicedFrames++;
   this.silence=speech?0:this.silence+1;
   if(this.silence>=this.endFrames||this.frames.length>=this.maxFrames)this.flush();
   return true;
  }
  flush(){
   if(!this.active)return false;
-  const frames=this.frames,voiced=frames.length-this.silence;
+  const frames=this.frames,voiced=this.voicedFrames;
   this.reset();
   if(voiced<this.minFrames)return false;
   const pcm=new Int16Array(frames.reduce((n,f)=>n+f.length,0));

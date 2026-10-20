@@ -32,7 +32,7 @@ class RealtimeVoiceBridge {
   if(token!==this.session.generation||!text?.trim()||!this.session.finishSpeech(token,true))return {status:'ignored'};
   this.session.emit('user.transcript',{text});
   const chunks=[];let answer='';let pending='';let speaking=Promise.resolve();let speechError;
-  const enqueue=sentence=>{speaking=speaking.then(()=>{if(!speechError)return this.speakSentence(sentence,token,chunks);}).catch(e=>{speechError=e;this.cancel('llm');});};
+  const enqueue=sentence=>{const chars=[...sentence];for(let i=0;i<chars.length;i+=240){const part=chars.slice(i,i+240).join('');speaking=speaking.then(()=>{if(!speechError)return this.speakSentence(part,token,chunks);}).catch(e=>{speechError=e;this.cancel('llm');});}};
   try{
    await this.invoke('llm',signal=>this.adapters.hermes.reply(text,{signal,onDelta:delta=>{
     if(!signal.aborted&&token===this.session.generation&&typeof delta==='string') {

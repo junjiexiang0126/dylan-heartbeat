@@ -35,3 +35,11 @@ test('publish failure closes worker without an unhandled rejection',async()=>{
  let receive;const worker=new VoiceRoomWorker({participant:{join:async()=>{},onAudio:fn=>{receive=fn;return()=>{};},publishAudio:async()=>{throw Error('offline');},clearPlayback:async()=>{},leave:async()=>{}},asr:{transcribe:async()=> '你好'},hermes:{reply:async(_,{onDelta})=>onDelta('你好。')},tts:{speak:async(_,{onAudio})=>await onAudio({})}});
  await worker.start();receive(Buffer.from('x'));for(let i=0;i<20&&!worker.closed;i++)await new Promise(r=>setImmediate(r));assert.equal(worker.closed,true);
 });
+test('real HermesClient wire contract preserves native Web session and stores no new persona',async()=>{
+ const {fakeHermes}=require('./helpers/fake_hermes'),{HermesClient}=require('../hermes_client');
+ const fixture=fakeHermes({delay:40,interim:false});await new Promise(r=>fixture.server.listen(0,'127.0.0.1',r));
+ try{const client=new HermesClient({NODE_ENV:'test',ZIWEI_BRIDGE_ENABLED:'true',ZIWEI_BRIDGE_ALLOW_HTTP_FOR_TESTS:'true',ZIWEI_HERMES_URL:'http://127.0.0.1:'+fixture.server.address().port,ZIWEI_HERMES_API_KEY:'protocol-fixture-key',ZIWEI_HERMES_WEB_SESSION_ID:'existing-web-session'});
+  let output='';await new HermesVoiceAdapter({client}).reply('真实协议测试',{signal:new AbortController().signal,onDelta:d=>output+=d});
+  assert.equal(output,'协议测试回复');assert.equal(fixture.executions,1);const run=[...fixture.runs.values()][0];assert.deepEqual(JSON.parse(run.body),{input:'真实协议测试',session_id:'existing-web-session'});assert.ok(fixture.seen.every(r=>r.sessionKey==='agent:main:web:existing-web-session'));
+ }finally{fixture.server.closeAllConnections();await new Promise(r=>fixture.server.close(r));}
+});
