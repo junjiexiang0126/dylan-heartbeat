@@ -2,8 +2,8 @@
 // Isolated, dependency-free call lifecycle. No microphone, network or API calls occur here.
 // Transport adapters may call these methods after verifying the authenticated call session.
 class RealtimeCallSession {
-  constructor({onEvent=()=>{}, onCancel=()=>{}, maxTurns=60}={}) {
-    this.onEvent=onEvent; this.onCancel=onCancel; this.maxTurns=maxTurns;
+  constructor({onEvent=()=>{}, onCancel=()=>{}}={}) {
+    this.onEvent=onEvent; this.onCancel=onCancel;
     this.phase='idle'; this.muted=false; this.closed=false; this.turn=0; this.generation=0;
   }
   emit(type, detail={}) { this.onEvent({type, phase:this.phase, muted:this.muted, generation:this.generation, ...detail}); }
@@ -26,7 +26,6 @@ class RealtimeCallSession {
       this.generation++; this.onCancel('tts'); this.onCancel('llm');
       this.phase='listening'; this.emit('assistant.interrupted');
     }
-    if(this.turn>=this.maxTurns) { this.emit('call.turn_limit'); return null; }
     this.phase='user-speaking'; this.emit('user.speech.started');
     return this.generation;
   }
