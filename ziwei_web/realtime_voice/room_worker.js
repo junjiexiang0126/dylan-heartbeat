@@ -2,10 +2,10 @@
 const {RealtimeVoiceBridge}=require('./bridge');
 const {PcmSpeechFramer}=require('./pcm_framer');
 class VoiceRoomWorker {
- constructor({participant,asr,hermes,tts,onEvent=()=>{},maxTurns=20,pcmFrames=false}={}){
+ constructor({participant,asr,hermes,tts,onEvent=()=>{},pcmFrames=false}={}){
   if(!participant||!['join','onAudio','publishAudio','clearPlayback','leave'].every(k=>typeof participant[k]==='function'))throw Error('voice_participant_required');
   this.participant=participant;this.onEvent=onEvent;this.started=false;this.closed=false;this.inflight=new Set();
-  this.bridge=new RealtimeVoiceBridge({asr,hermes,tts,maxTurns,onEvent:e=>{onEvent(e);},onAudio:frame=>this.publish(frame)});
+  this.bridge=new RealtimeVoiceBridge({asr,hermes,tts,onEvent:e=>{onEvent(e);},onAudio:frame=>this.publish(frame)});
   this.framer=pcmFrames?new PcmSpeechFramer({onSpeechStart:()=>this.interrupt(),onSpeech:audio=>this.queueUtterance(audio)}):null;
  }
  interrupt(){this.pending=null;this.bridge.interrupt();void this.clearPlayback().catch(()=>this.fail('voice_playback_failed'));}
