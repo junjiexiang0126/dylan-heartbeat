@@ -20,7 +20,7 @@ class RealtimeVoiceBridge {
  async utterance(audio){
   const token=this.session.beginSpeech();
   if(token===null)return {status:'ignored'};
-  if(!audio||!audio.byteLength){this.session.finishSpeech(token,false);return {status:'silence'};}
+  if(!audio||(audio.pcm instanceof Int16Array ? audio.pcm.length===0 : !audio.byteLength)){this.session.finishSpeech(token,false);return {status:'silence'};}
   let text;
   try{text=await this.invoke('asr',signal=>this.adapters.asr.transcribe(audio,{signal}));}
   catch(e){if(e.name==='AbortError'||this.session.closed)return {status:'cancelled'};throw e;}
