@@ -34,7 +34,7 @@ window.ZiweiRealtimeCall=(()=>{
    await current.connect();if(transport!==current)return;
    micAnalyser=analyserFor(current.room.localParticipant.getTrackPublication(window.LivekitClient.Track.Source.Microphone)?.track?.mediaStreamTrack);paint();
    $('chatCallStart').hidden=true;$('chatCallMute').disabled=false;$('chatCallMicStatus').textContent='麦克风已开启';
-   timer=setInterval(()=>{const seconds=Math.floor((Date.now()-started)/1000);$('chatCallElapsed').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');if(seconds>=900)end();},500);
+   timer=setInterval(()=>{const seconds=Math.floor((Date.now()-started)/1000);$('chatCallElapsed').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');},500);
   }catch(e){end();throw e;}
  }
  function end(){const old=transport;transport=null;clearInterval(timer);timer=null;cancelAnimationFrame(animation);animation=null;void context?.close().catch(()=>{});context=null;micAnalyser=remoteAnalyser=null;$('chatCallPortrait').style.setProperty('--voice-level','0');[...$('chatCallWave').children].forEach(bar=>bar.style.height='4px');if(remote){remote.pause();remote.remove();remote=null;}void old?.disconnect();const callback=onEnd;onEnd=null;callback?.();}
