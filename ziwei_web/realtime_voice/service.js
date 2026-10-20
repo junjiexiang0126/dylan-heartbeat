@@ -44,7 +44,11 @@ class RealtimeVoiceService {
     }});
     c.worker=new VoiceRoomWorker({participant:c.participant,pcmFrames:true,onEvent,asr:new ZhipuASR({apiKey:this.env.ZHIPU_API_KEY,quota}),tts:new MiniMaxTTS({apiKey:this.env.MINIMAX_API_KEY,voiceId:this.env.MINIMAX_VOICE_ID,quota,endpoint:this.env.MINIMAX_TTS_ENDPOINT||undefined}),hermes:new HermesVoiceAdapter({client:this.client,onEvent})});
    }
-   let timeout;try{await Promise.race([c.worker.start(),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('voice_join_timeout')),15000);})]);}finally{clearTimeout(timeout);}
+   let timeout;const joining=Promise.resolve().then(()=>c.worker.start());
+   try{await Promise.race([joining,new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('voice_join_timeout')),15000);})]);}
+   catch(e){if(e.message==='voice_join_timeout'){
+    c.closed=true;void joining.then(()=>c.worker?.close()).catch(()=>{});
+   }throw e;}finally{clearTimeout(timeout);}
    if(c.closed||!authorized())throw Error('voice_start_cancelled');
    return {url:this.url,token,room,identity:user,agentIdentity:'ziwei-'+id,callId:id,expiresIn:300};
   }catch(e){await this.end(id,owner);throw e;}
