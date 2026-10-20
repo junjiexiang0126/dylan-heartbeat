@@ -33,7 +33,7 @@ window.ZiweiChatExtra=(()=>{
  $('#chatImageClose').onclick=()=>$('#chatImageViewer').close();$('#chatImageViewer').addEventListener('close',()=>{$('#chatImageFull').removeAttribute('src');$('#chatImageSave').removeAttribute('href');$('#chatImageName').textContent='';viewer=[];});
 // 「保存原图」也不再同页跳转；点浮层空白处可以关掉（原来只有 × 一个出口）
 $('#chatImageSave').onclick=e=>{e.preventDefault();const art=viewer[index]||{src:$('#chatImageFull').src,alt:'image.png'};window.ZiweiSave&&window.ZiweiSave.saveOrShare(art.src,art.alt);};
-$('#chatImageViewer').addEventListener('click',e=>{if(e.target===$('#chatImageViewer'))$('#chatImageViewer').close();});
+$('#chatImageViewer').addEventListener('click',e=>{if(e.target===$('#chatImageViewer')||e.target===$('#chatImageCanvas'))$('#chatImageViewer').close();});
  $('#chatImagePrevious').onclick=()=>{if(index>0){index--;paintImage();}};$('#chatImageNext').onclick=()=>{if(index<viewer.length-1){index++;paintImage();}};
  $('#chatImageZoomIn').onclick=()=>zoom(scale+.5);$('#chatImageZoomOut').onclick=()=>zoom(scale-.5);
  const canvas=$('#chatImageCanvas'),distance=e=>Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
