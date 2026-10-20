@@ -77,7 +77,8 @@ WebRTC. It is **not** evidence of paid ASR/TTS or a real Hermes model response.
 CI: `.github/workflows/realtime-voice.yml` creates no production service.
 This Work sandbox rejects LiveKit's netlink network-interface syscall, so the local
 LiveKit daemon cannot start here. Native SDK loading and native resampling can run.
-Do not count the unexecuted room test as passed.
+The isolated GitHub Actions run 39432621231 subsequently passed the actual
+LiveKit audio roundtrip on commit 44ef6e0. This is transport evidence only.
 
 Before live acceptance: run the transport CI; then configure keys in an isolated
 staging environment, verify both directions, voice ID, pronunciation/latency, iPhone

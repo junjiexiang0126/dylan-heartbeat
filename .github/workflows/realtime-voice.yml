@@ -38,6 +38,8 @@ jobs:
             sleep 1
           done
       - run: node scripts/realtime_voice_loopback.js
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test e2e/realtime-voice.spec.js e2e/chat-call-screen.spec.js --project=chromium
       - name: Local LiveKit diagnostics
         if: failure()
         run: cat /tmp/livekit-test.log || true

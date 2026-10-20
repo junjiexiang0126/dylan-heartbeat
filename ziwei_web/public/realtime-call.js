@@ -21,6 +21,7 @@ window.ZiweiRealtimeCall=(()=>{
     remote.play().catch(()=>{state('点击继续播放，开启知微的声音。','paused');$('chatCallRetry').hidden=false;});
    },
    onEvent:e=>{
+    if(transport!==current)return;
     if(e.type==='user.transcript'){$('chatCallSpeaker').textContent='你：'+e.text;answer='';}
     if(e.type==='assistant.delta'){answer+=e.delta;$('chatCallSpeaker').textContent='知微：'+answer.slice(-240);}
     if(e.type==='assistant.speaking')state('知微正在说话…','speaking');
