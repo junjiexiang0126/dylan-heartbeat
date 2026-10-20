@@ -43,7 +43,7 @@
   groups.set(bubble,current);
   const meaningful=[...bubble.children].some(n=>n.matches('.message-quote,.file-card,.file-delivery,.voice-message,.chat-process-details')||(n.matches('.message-content')&&n.textContent.trim())||(!n.matches('.message-content')&&n.textContent.trim()));
   bubble.classList.toggle('zw-photo-empty-bubble',!meaningful);
-  images.forEach(img=>{img.onclick=null;img.onkeydown=null;stage.append(img);bindImage(img,current);});
+  images.forEach(img=>{img.classList.add('zw-photo-original');img.onclick=null;img.onkeydown=null;stage.append(img);bindImage(img,current);});
   if(images.length===1){current.dispose=()=>{stage.remove();stream.remove();};return;}
   images.forEach(img=>img.hidden=true);
   const host=document.createElement('div');host.className='zw-photo-stack';stage.append(host);
@@ -62,8 +62,20 @@
    const done=()=>{closing=null;if(!stage.isConnected)return;images.forEach(img=>{img.hidden=true;stage.append(img);});stream.hidden=true;stage.classList.remove('zw-photo-expanded');current.expanded=false;busy=false;};
    if(matchMedia('(prefers-reduced-motion: reduce)').matches)done();else closing=setTimeout(done,300);
   };
-  current.stack=new PhotoStack(host,images.map(img=>img.src),{width:185,height:247,onTap:expand});
-  current.dispose=()=>{if(closing)clearTimeout(closing);current.stack?.destroy?.();stage.remove();stream.remove();};
+  let stackTapTimer=null,stackTapAt=0;
+  const stackTap=(selected)=>{
+   const now=Date.now();
+   if(stackTapTimer&&now-stackTapAt<350){
+    clearTimeout(stackTapTimer);stackTapTimer=null;stackTapAt=0;
+    window.ZiweiChatExtra?.showImage(images[selected]||images[0]);
+    return;
+   }
+   if(stackTapTimer)clearTimeout(stackTapTimer);
+   stackTapAt=now;
+   stackTapTimer=setTimeout(()=>{stackTapTimer=null;stackTapAt=0;expand();},300);
+  };
+  current.stack=new PhotoStack(host,images.map(img=>img.src),{width:185,height:247,onTap:stackTap});
+  current.dispose=()=>{if(closing)clearTimeout(closing);if(stackTapTimer)clearTimeout(stackTapTimer);current.stack?.destroy?.();stage.remove();stream.remove();};
  }
  function reconcile(){
   scheduled=false;
