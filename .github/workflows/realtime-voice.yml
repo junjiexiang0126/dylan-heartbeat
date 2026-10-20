@@ -1,0 +1,43 @@
+name: Realtime voice isolated verification
+on:
+  pull_request:
+    paths:
+      - 'ziwei_web/realtime_voice/**'
+      - 'ziwei_web/public/*call*.js'
+      - 'ziwei_web/test/realtime_voice*'
+      - 'ziwei_web/scripts/realtime_voice*'
+      - 'ziwei_web/package*.json'
+      - '.github/workflows/realtime-voice.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audio-loopback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ziwei_web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: ziwei_web/package-lock.json
+      - run: npm ci
+      - run: npm run test:voice
+      - run: npm run build:voice && git diff --exit-code -- public/vendor/livekit-client.js
+      - name: Start loopback-only LiveKit with public fixture credentials
+        run: |
+          curl -fsSL https://github.com/livekit/livekit/releases/download/v1.13.10/livekit_1.13.10_linux_amd64.tar.gz -o /tmp/livekit.tar.gz
+          tar xzf /tmp/livekit.tar.gz -C /tmp livekit-server
+          /tmp/livekit-server --dev --bind 127.0.0.1 --node-ip 127.0.0.1 --keys 'devkey: local-test-secret-not-production' > /tmp/livekit-test.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7880 >/dev/null; then break; fi
+            sleep 1
+          done
+      - run: node scripts/realtime_voice_loopback.js
+      - name: Local LiveKit diagnostics
+        if: failure()
+        run: cat /tmp/livekit-test.log || true

@@ -4,7 +4,7 @@
 // The adapter is responsible for resampling to sampleRate and suppressing echo.
 class PcmSpeechFramer {
  constructor({sampleRate=16000,frameMs=20,startThreshold=0.025,stopThreshold=0.014,
-  minSpeechMs=240,endSilenceMs=650,maxSpeechMs=15000,onSpeech=()=>{}}={}){
+  minSpeechMs=240,endSilenceMs=650,maxSpeechMs=15000,onSpeechStart=()=>{},onSpeech=()=>{}}={}){
   if(!Number.isInteger(sampleRate)||sampleRate<8000||sampleRate>48000||
    !Number.isInteger(frameMs)||frameMs<10||frameMs>100||
    sampleRate*frameMs%1000!==0)throw Error('invalid_pcm_format');
@@ -13,7 +13,7 @@ class PcmSpeechFramer {
   this.minFrames=Math.ceil(minSpeechMs/frameMs);
   this.endFrames=Math.ceil(endSilenceMs/frameMs);
   this.maxFrames=Math.ceil(maxSpeechMs/frameMs);
-  this.onSpeech=onSpeech;this.closed=false;this.muted=false;
+  this.onSpeechStart=onSpeechStart;this.onSpeech=onSpeech;this.closed=false;this.muted=false;
   this.reset();
  }
  reset(){this.frames=[];this.silence=0;this.active=false;this.preRoll=[];}
@@ -27,7 +27,7 @@ class PcmSpeechFramer {
   if(!this.active){
    this.preRoll.push(copy);if(this.preRoll.length>5)this.preRoll.shift();
    if(!speech)return false;
-   this.active=true;this.frames=this.preRoll.splice(0);this.silence=0;
+   this.onSpeechStart();this.active=true;this.frames=this.preRoll.splice(0);this.silence=0;
    return true;
   }
   this.frames.push(copy);

@@ -1,51 +1,34 @@
 'use strict';
 const {RealtimeVoiceBridge}=require('./bridge');
 const {PcmSpeechFramer}=require('./pcm_framer');
-
-// Room worker lifecycle: transport-independent boundary for a future official
-// LiveKit server-side participant. The injected participant must implement:
-// join(), onAudio(handler), publishAudio(frame), clearPlayback(), leave().
-// It must emit *framed* speech, not arbitrary PCM packets, to onAudio().
 class VoiceRoomWorker {
- constructor({participant,asr,hermes,tts,onEvent=()=>{},maxTurns=60,pcmFrames=false}={}){
-  if(!participant||!['join','onAudio','publishAudio','clearPlayback','leave'].every(k=>typeof participant[k]==='function'))
-   throw Error('voice_participant_required');
-  this.participant=participant;this.started=false;this.closed=false;this.inflight=new Set();
-  this.framer=pcmFrames?new PcmSpeechFramer({onSpeech:audio=>this.queueUtterance(audio)}):null;
-  this.bridge=new RealtimeVoiceBridge({asr,hermes,tts,maxTurns,
-   onEvent:e=>{if(e.type==='assistant.interrupted')void this.clearPlayback();onEvent(e);},
-   onAudio:frame=>{if(!this.closed)void this.publish(frame);}
-  });
+ constructor({participant,asr,hermes,tts,onEvent=()=>{},maxTurns=20,pcmFrames=false}={}){
+  if(!participant||!['join','onAudio','publishAudio','clearPlayback','leave'].every(k=>typeof participant[k]==='function'))throw Error('voice_participant_required');
+  this.participant=participant;this.onEvent=onEvent;this.started=false;this.closed=false;this.inflight=new Set();
+  this.bridge=new RealtimeVoiceBridge({asr,hermes,tts,maxTurns,onEvent:e=>{onEvent(e);},onAudio:frame=>this.publish(frame)});
+  this.framer=pcmFrames?new PcmSpeechFramer({onSpeechStart:()=>this.interrupt(),onSpeech:audio=>this.queueUtterance(audio)}):null;
  }
+ interrupt(){this.pending=null;this.bridge.interrupt();void this.clearPlayback().catch(()=>this.fail('voice_playback_failed'));}
  async start(){
-  if(this.closed||this.started)throw Error('voice_worker_already_started');
-  this.started=true;
-  try{
-   await this.participant.join();
-   if(this.closed)return;
-   this.bridge.start();
-   this.unsubscribe=this.participant.onAudio(audio=>{
-    if(this.closed)return;
-    if(this.framer){this.framer.push(audio);return;}
-    this.queueUtterance(audio);
-   });
-  }catch(e){await this.close();throw e;}
+  if(this.closed||this.started)throw Error('voice_worker_already_started');this.started=true;
+  try{await this.participant.join();if(this.closed)return;this.bridge.start();this.unsubscribe=this.participant.onAudio(audio=>{
+   if(this.closed)return;try{if(this.framer)this.framer.push(audio);else this.queueUtterance(audio);}catch{void this.fail('voice_input_failed');}
+  });}catch(e){await this.close();throw e;}
  }
  queueUtterance(audio){
-  if(this.closed)return;
-  const task=Promise.resolve().then(()=>this.bridge.utterance(audio));
-  this.inflight.add(task);task.catch(()=>{}).finally(()=>this.inflight.delete(task));
+  if(this.closed||this.bridge.session.muted)return;
+  this.pending=audio;if(this.running){this.bridge.interrupt();return;}
+  this.running=true;
+  const task=(async()=>{while(this.pending&&!this.closed){const next=this.pending;this.pending=null;await this.bridge.utterance(next);await this.participant.drain?.();}})();
+  this.inflight.add(task);task.catch(()=>this.fail('voice_turn_failed')).finally(()=>{this.inflight.delete(task);this.running=false;}).catch(()=>{});
  }
- setMuted(value){this.framer?.setMuted(value);return this.bridge.mute(value);}
- async publish(frame){
-  try{await this.participant.publishAudio(frame);}
-  catch(e){if(!this.closed)await this.close();throw e;}
- }
+ setMuted(value){if(value)this.pending=null;this.framer?.setMuted(value);return this.bridge.mute(value);}
+ async publish(frame){if(!this.closed)await this.participant.publishAudio(frame);}
  async clearPlayback(){if(!this.closed)await this.participant.clearPlayback();}
+ async fail(code){if(this.closed)return;this.onEvent({type:'call.error',code});await this.close();}
  async close(){
-  if(this.closed)return;
-  this.closed=true;this.framer?.close();this.bridge.hangup();
-  try{this.unsubscribe?.();}finally{await this.participant.leave();}
+  if(this.closing)return this.closing;this.closed=true;this.pending=null;this.framer?.close();this.bridge.hangup();this.unsubscribe?.();
+  this.closing=this.participant.leave();return this.closing;
  }
 }
 module.exports={VoiceRoomWorker};

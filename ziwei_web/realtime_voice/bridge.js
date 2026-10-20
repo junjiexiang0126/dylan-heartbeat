@@ -10,6 +10,11 @@ class RealtimeVoiceBridge {
   this.session=new RealtimeCallSession({maxTurns,onEvent,onCancel:type=>this.cancel(type)});
  }
  start(){return this.session.start();}
+ interrupt(){
+  if(this.session.closed)return;
+  this.session.generation++;for(const key of [...this.controllers.keys()])this.cancel(key);
+  this.session.phase="listening";this.session.emit("assistant.interrupted");
+ }
  mute(value){return this.session.setMuted(value);}
  cancel(type){const controller=this.controllers.get(type);if(controller){controller.abort();this.controllers.delete(type);}}
  async invoke(type,callback){
@@ -25,31 +30,34 @@ class RealtimeVoiceBridge {
   try{text=await this.invoke('asr',signal=>this.adapters.asr.transcribe(audio,{signal}));}
   catch(e){if(e.name==='AbortError'||this.session.closed)return {status:'cancelled'};throw e;}
   if(token!==this.session.generation||!text?.trim()||!this.session.finishSpeech(token,true))return {status:'ignored'};
-  const chunks=[];let answer='';let pending='';let speaking=Promise.resolve();
+  this.session.emit('user.transcript',{text});
+  const chunks=[];let answer='';let pending='';let speaking=Promise.resolve();let speechError;
+  const enqueue=sentence=>{speaking=speaking.then(()=>{if(!speechError)return this.speakSentence(sentence,token,chunks);}).catch(e=>{speechError=e;this.cancel('llm');});};
   try{
    await this.invoke('llm',signal=>this.adapters.hermes.reply(text,{signal,onDelta:delta=>{
     if(!signal.aborted&&token===this.session.generation&&typeof delta==='string') {
-     answer+=delta;pending+=delta;
+     this.session.emit('assistant.delta',{delta});answer+=delta;pending+=delta;if(answer.length>8000)throw Error('voice_reply_limit');
      let boundary;
      while((boundary=pending.search(/[。！？!?；;\n]/))>=0){
       const sentence=pending.slice(0,boundary+1);pending=pending.slice(boundary+1);
-      speaking=speaking.then(()=>this.speakSentence(sentence,token,chunks));
+      enqueue(sentence);
      }
     }
+    while(pending.length>=240){enqueue(pending.slice(0,240));pending=pending.slice(240);}
    }}));
-   if(token!==this.session.generation||this.session.closed)return {status:'interrupted'};
-   if(pending.trim())speaking=speaking.then(()=>this.speakSentence(pending,token,chunks));
-   await speaking;
-   if(token!==this.session.generation||this.session.closed)return {status:'interrupted'};
+   if(token!==this.session.generation||this.session.closed){await speaking;return {status:'interrupted'};}
+   if(pending.trim())enqueue(pending);
+   await speaking;if(speechError)throw speechError;
+   if(token!==this.session.generation||this.session.closed){await speaking;return {status:'interrupted'};}
    this.session.assistantDone(token);
    return {status:'completed',text,answer:chunks.join('')};
-  }catch(e){if(e.name==='AbortError'||token!==this.session.generation)return {status:'interrupted'};throw e;}
+  }catch(e){this.cancel('tts');await speaking;if(token!==this.session.generation||this.session.closed)return {status:'interrupted'};if(speechError)throw speechError;if(e.name==='AbortError')return {status:'interrupted'};throw e;}
  }
  async speakSentence(text,token,chunks){
   if(token!==this.session.generation||this.session.closed||!text.trim())return;
-  await this.invoke('tts',signal=>this.adapters.tts.speak(text,{signal,onAudio:frame=>{
+  await this.invoke('tts',signal=>this.adapters.tts.speak(text,{signal,onAudio:async frame=>{
    if(!signal.aborted&&token===this.session.generation){
-    this.session.assistantAudio(token);this.onAudio(frame);
+    this.session.assistantAudio(token);await this.onAudio(frame);
    }
   }}));
   if(token===this.session.generation)chunks.push(text);
