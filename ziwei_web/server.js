@@ -2,6 +2,8 @@
 const http = require('node:http'), crypto = require('node:crypto'), fs = require('node:fs'), path = require('node:path');
 const webauthn = require('@simplewebauthn/server');
 const {createChatService} = require('./chat_service');
+const {createVoiceTokenHandler} = require('./realtime_voice/token_route');
+const voiceTokenHandler=createVoiceTokenHandler();
 const {createMomentsService} = require('./moments_service');
 const {checkedDirectory}=require('./data_directory');
 const { createHomeStore, atomicWrite, load } = require('./home_store');
@@ -256,6 +258,7 @@ const server=http.createServer(async(req,res)=>{try{
   if(pathname.startsWith('/api/')) {
     const s=session(req); if(!s)return json(res,401,{error:'unauthorized'});
     if(!['GET','HEAD'].includes(req.method) && (!validOrigin(req) || !csrfOk(req,s)))return json(res,403,{error:'csrf_rejected'});
+    if(pathname==='/api/voice/livekit-token')return voiceTokenHandler(req,res,json);
     if(pathname==='/api/home') {
       if(req.method==='GET')return json(res,200,{...home.read(),todayStatus:await bridge.presence()});
       if(req.method==='PUT'){const body=await readBody(req);if(session(req)!==s)return json(res,401,{error:'unauthorized'});const updated=home.update(body);return json(res,updated?200:409,updated?{...updated,todayStatus:await bridge.presence()}:{error:'revision_conflict'});}
