@@ -29,10 +29,11 @@ test('MiniMax errors, truncated responses and invalid hex fail closed',async()=>
   const t=new MiniMaxTTS({apiKey:'test',voiceId:'test',fetchImpl:async()=>sse(events)});await assert.rejects(t.speak('测试',{onAudio:async()=>{}}),/voice_tts_/);
  }
 });
-test('usage quotas reject additional submissions before fetch',async()=>{
- const quota=new VoiceQuota({maxASRSeconds:.02,maxTTSCharacters:2});let n=0;
+test('usage counters do not block additional submissions',async()=>{
+ const quota=new VoiceQuota();let n=0;
  const a=new ZhipuASR({apiKey:'test',quota,fetchImpl:async()=>{n++;return Response.json({text:'好'});}});
- await a.transcribe(audio);await assert.rejects(a.transcribe(audio),/usage_limit/);assert.equal(n,1);quota.tts('你好');assert.throws(()=>quota.tts('呀'),/usage_limit/);
+ await a.transcribe(audio);await a.transcribe(audio);assert.equal(n,2);
+ quota.tts('你好');quota.tts('呀');assert.equal(quota.turns,2);assert.equal(quota.characters,3);
 });
 test('PCM tail is bounded, flush padded, invalid data rejected',()=>{
  const f=new PcmFrames();assert.equal(f.push(new Int16Array(319)).length,0);assert.equal(f.push(new Int16Array(2)).length,1);assert.equal(f.tail.length,1);assert.equal(f.flush().length,1);assert.equal(f.tail.length,0);
