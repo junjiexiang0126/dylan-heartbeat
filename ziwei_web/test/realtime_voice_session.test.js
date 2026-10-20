@@ -12,7 +12,7 @@ test('mute cancels pending ASR and blocks new speech while preserving assistant 
  const cancelled=[],s=new RealtimeCallSession({onCancel:x=>cancelled.push(x)});
  s.start(); const token=s.beginSpeech();s.setMuted(true);
  assert.equal(s.finishSpeech(token,true),false);assert.equal(s.beginSpeech(),null);
- assert.deepEqual(cancelled,['asr']);assert.equal(s.phase,'user-speaking');
+ assert.deepEqual(cancelled,['asr']);assert.equal(s.phase,'listening');
  s.setMuted(false);assert.equal(s.beginSpeech(),s.generation);
 });
 test('interruption invalidates old assistant chunks',()=>{
@@ -28,4 +28,11 @@ test('hangup invalidates all work and is idempotent',()=>{
  s.start();const token=s.beginSpeech();s.hangup();
  assert.equal(s.finishSpeech(token,true),false);assert.equal(s.start(),false);
  assert.equal(s.hangup(),false);assert.deepEqual(cancelled,['asr','tts','llm']);
+});
+
+test('muting while assistant speaks keeps playback valid',()=>{
+ const s=new RealtimeCallSession();s.start();
+ const token=s.beginSpeech();s.finishSpeech(token,true);s.assistantAudio(token);
+ s.setMuted(true);assert.equal(s.phase,'speaking');assert.equal(s.generation,token);
+ assert.equal(s.assistantDone(token),true);
 });
