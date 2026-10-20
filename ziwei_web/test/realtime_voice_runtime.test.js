@@ -29,7 +29,7 @@ test('hangup while admission pending stops exact native run after admission reso
 test('barge-in cancels native work on speech onset before silence boundary',async()=>{
  let receive,aborted=false,clear=0,started;const gate=new Promise(r=>started=r);
  const worker=new VoiceRoomWorker({pcmFrames:true,participant:{join:async()=>{},onAudio:fn=>{receive=fn;return()=>{};},publishAudio:async()=>{},clearPlayback:async()=>clear++,leave:async()=>{}},asr:{transcribe:async()=> '你好'},hermes:{reply:async(_,{signal})=>{started();await new Promise((_,reject)=>signal.addEventListener('abort',()=>{aborted=true;reject(signal.reason);},{once:true}));}},tts:{speak:async()=>{}}});
- await worker.start();for(let i=0;i<20;i++)receive(new Int16Array(320).fill(9000));for(let i=0;i<33;i++)receive(new Int16Array(320));await gate;receive(new Int16Array(320).fill(9000));await new Promise(r=>setImmediate(r));assert.equal(aborted,true);assert.ok(clear>=2);assert.equal(worker.closed,false);await worker.close();
+ await worker.start();for(let i=0;i<20;i++)receive(new Int16Array(320).fill(9000));for(let i=0;i<33;i++)receive(new Int16Array(320));await gate;for(let i=0;i<3;i++)receive(new Int16Array(320).fill(9000));await new Promise(r=>setImmediate(r));assert.equal(aborted,true);assert.ok(clear>=2);assert.equal(worker.closed,false);await worker.close();
 });
 test('publish failure closes worker without an unhandled rejection',async()=>{
  let receive;const worker=new VoiceRoomWorker({participant:{join:async()=>{},onAudio:fn=>{receive=fn;return()=>{};},publishAudio:async()=>{throw Error('offline');},clearPlayback:async()=>{},leave:async()=>{}},asr:{transcribe:async()=> '你好'},hermes:{reply:async(_,{onDelta})=>onDelta('你好。')},tts:{speak:async(_,{onAudio})=>await onAudio({})}});
@@ -76,4 +76,11 @@ test('timed-out LiveKit join releases admission and closes a late successful joi
   assert.ok(closeCount>=2,'late join must be closed again');
   assert.equal(s.calls.size,0);
  }finally{finishJoin();await s.close();}
+});
+
+test('empty ASR transcript returns session to listening without calling Hermes',async()=>{
+ const {RealtimeVoiceBridge}=require('../realtime_voice/bridge');
+ let replies=0;const bridge=new RealtimeVoiceBridge({asr:{transcribe:async()=> '   '},hermes:{reply:async()=>{replies++;}},tts:{speak:async()=>{}}});
+ bridge.start();const result=await bridge.utterance(Buffer.from('audio'));
+ assert.equal(result.status,'silence');assert.equal(bridge.session.phase,'listening');assert.equal(replies,0);
 });
