@@ -6,11 +6,11 @@ async function readJSON(r,limit){
  let n=0;const chunks=[];for await(const c of r.body){n+=c.length;if(n>limit)throw Error('voice_provider_response_limit');chunks.push(c);}
  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
-// Quotas are submitted units, not a billing ledger. Aborted requests may still be billed.
+// Usage counters are informational only; they never block a call. Aborted requests may still be billed.
 class VoiceQuota {
- constructor({maxASRSeconds=300,maxTTSCharacters=4000,maxTurns=20}={}){this.maxASRSeconds=maxASRSeconds;this.maxTTSCharacters=maxTTSCharacters;this.maxTurns=maxTurns;this.seconds=0;this.characters=0;this.turns=0;}
- asr(seconds){if(this.seconds+seconds>this.maxASRSeconds||this.turns>=this.maxTurns)throw Error('voice_usage_limit');this.seconds+=seconds;this.turns++;}
- tts(text){const n=[...text].length;if(this.characters+n>this.maxTTSCharacters)throw Error('voice_usage_limit');this.characters+=n;}
+ constructor(){this.seconds=0;this.characters=0;this.turns=0;}
+ asr(seconds){this.seconds+=seconds;this.turns++;}
+ tts(text){this.characters+=[...text].length;}
 }
 class ZhipuASR {
  constructor({apiKey,quota=new VoiceQuota(),fetchImpl=fetch}={}){this.key=apiKey;this.quota=quota;this.fetch=fetchImpl;}
