@@ -17,7 +17,7 @@ class RealtimeVoiceService {
   this.env=env;this.client=client;this.createWorker=createWorker;this.now=now;this.joinTimeoutMs=joinTimeoutMs;this.calls=new Map();this.url=livekitURL(env);
   this.rateFile=dataDir?path.join(dataDir,'voice-admission.json'):null;
   this.admissions=this.rateFile?load(this.rateFile,[]):[];
-  this.timer=setInterval(()=>{for(const c of this.calls.values())if(this.now()-c.touched>35000||this.now()-c.started>15*60000||!c.authorized())void this.end(c.id,c.owner).catch(()=>{});},1000);this.timer.unref();
+  this.timer=setInterval(()=>{for(const c of this.calls.values())if(this.now()-c.touched>35000||!c.authorized())void this.end(c.id,c.owner).catch(()=>{});},1000);this.timer.unref();
  }
  ready(){return !this.blocked&&this.env.ZIWEI_REALTIME_VOICE_ENABLED==='true'&&!!this.url&&!!this.env.LIVEKIT_API_KEY&&this.env.LIVEKIT_API_SECRET?.length>=16&&!!this.env.ZHIPU_API_KEY&&!!this.env.MINIMAX_API_KEY&&!!this.env.MINIMAX_VOICE_ID&&this.client.configured();}
  async start(owner,authorized=()=>true){
