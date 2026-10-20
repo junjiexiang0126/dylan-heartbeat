@@ -43,3 +43,37 @@ test('real HermesClient wire contract preserves native Web session and stores no
   assert.equal(output,'协议测试回复');assert.equal(fixture.executions,1);const run=[...fixture.runs.values()][0];assert.deepEqual(JSON.parse(run.body),{input:'真实协议测试',session_id:'existing-web-session'});assert.ok(fixture.seen.every(r=>r.sessionKey==='agent:main:web:existing-web-session'));
  }finally{fixture.server.closeAllConnections();await new Promise(r=>fixture.server.close(r));}
 });
+
+test('queued utterance during drain is processed without requiring another microphone event',async()=>{
+ let receive,releaseDrain,drains=0;const drained=new Promise(resolve=>{releaseDrain=resolve;});
+ const transcripts=[];
+ const worker=new VoiceRoomWorker({
+  participant:{join:async()=>{},onAudio:fn=>{receive=fn;return()=>{};},publishAudio:async()=>{},clearPlayback:async()=>{},leave:async()=>{},drain:async()=>{drains++;if(drains===1)await drained;}},
+  asr:{transcribe:async audio=>{transcripts.push(audio.toString());return '你好';}},
+  hermes:{reply:async(_,{onDelta})=>onDelta('好的。')},
+  tts:{speak:async()=>{}}
+ });
+ try{
+  await worker.start();receive(Buffer.from('first'));
+  for(let i=0;i<20&&drains===0;i++)await new Promise(r=>setImmediate(r));
+  assert.equal(drains,1);
+  receive(Buffer.from('second'));releaseDrain();
+  for(let i=0;i<30&&transcripts.length<2;i++)await new Promise(r=>setImmediate(r));
+  assert.deepEqual(transcripts,['first','second']);
+  assert.equal(worker.closed,false);
+ }finally{releaseDrain();await worker.close();}
+});
+test('timed-out LiveKit join releases admission and closes a late successful join',async()=>{
+ let finishJoin,closeCount=0,started=false;
+ const gate=new Promise(resolve=>{finishJoin=resolve;});
+ const s=new RealtimeVoiceService({env,client:{configured:()=>true},joinTimeoutMs:15,
+  createWorker:async()=>({start:async()=>{started=true;await gate;},close:async()=>{closeCount++;},setMuted:()=>{}})});
+ try{
+  await assert.rejects(s.start('owner'),/voice_join_timeout/);
+  assert.equal(started,true);assert.equal(s.calls.size,0);
+  assert.ok(closeCount>=1,'timeout must close the worker');
+  finishJoin();for(let i=0;i<20&&closeCount<2;i++)await new Promise(r=>setImmediate(r));
+  assert.ok(closeCount>=2,'late join must be closed again');
+  assert.equal(s.calls.size,0);
+ }finally{finishJoin();await s.close();}
+});
