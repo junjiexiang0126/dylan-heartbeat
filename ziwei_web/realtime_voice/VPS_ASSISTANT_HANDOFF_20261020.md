@@ -40,3 +40,16 @@
 
 ## 注意
 旧网页 E2E 三项失败暂缓；不要以修旧测试为由修改已验收前端。目标是尽快打通真实语音通话。
+
+## 验收记录（2026-10-21 补充）
+
+- **iPhone 真机验收已通过**：用户于 2026-10-21 通过 iPhone 真机完成语音通话验收，确认实时语音通话链路可用（LiveKit → 智谱 ASR → Hermes → MiniMax TTS）。
+- **当前状态**：语音功能当前没有问题；长期稳定性（打断/静音/恢复、长时间通话、网络波动重连等）仍需在后续日常使用中慢慢测定，暂未作为验收阻断项。
+- **VPS 部署快照（2026-10-21）**：
+  - `voice-livekit` 容器运行中，本地 7880 健康检查 200；7881（TCP）与 7882-7892（UDP）对公网开放供 WebRTC 真机连接。
+  - `ziwei-web` 容器（镜像 `136c56c7`）内 7 个语音环境变量均已注入（含 LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET / ZHIPU_API_KEY / MINIMAX_API_KEY / MINIMAX_VOICE_ID）。
+  - Caddy 在 `zhiweilove.me` 站点块内配置 LiveKit 反代（127.0.0.1:7880），与交接文档原计划的独立 staging 子域方案不同，采用正式域名路由方式。
+- **本次会话变更（2026-10-21）**：
+  - 删除遗留唤醒代码 `wake_up.js` 及全部运行时引用（package.json、railway_start.js、server.js、集成测试），提交 `a9c1b3b`，已推送到功能分支（截至本记录写入时尚未合并 main，合并时点由用户决定）。
+  - 清理部署遗留：删除两个被替换的旧容器（ziwei-web-old-pre / ziwei-web-old-fs）、构建缓存（884.5MB）及 10 个老标签镜像；保留在跑镜像与回滚点 rollback-20261021-0230、rollback-20261020-1353。
+  - 生产服务（ziwei-web、ziwei-hermes、Caddy、生产数据）全程未做变更。
