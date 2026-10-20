@@ -30,10 +30,11 @@ class RealtimeVoiceBridge {
    await this.invoke('llm',signal=>this.adapters.hermes.reply(text,{signal,onDelta:delta=>{
     if(!signal.aborted&&token===this.session.generation&&typeof delta==='string') {
      answer+=delta;pending+=delta;
-     const boundary=pending.search(/[。！？!?；;\n]/);
-     const matches=boundary<0?null:[pending.slice(0,boundary+1)];
-     if(matches){const sentence=matches[0];pending=pending.slice(sentence.length);
-      speaking=speaking.then(()=>this.speakSentence(sentence,token,chunks));}
+     let boundary;
+     while((boundary=pending.search(/[。！？!?；;\n]/))>=0){
+      const sentence=pending.slice(0,boundary+1);pending=pending.slice(boundary+1);
+      speaking=speaking.then(()=>this.speakSentence(sentence,token,chunks));
+     }
     }
    }}));
    if(token!==this.session.generation||this.session.closed)return {status:'interrupted'};
