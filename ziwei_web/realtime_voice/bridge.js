@@ -42,8 +42,8 @@ class RealtimeVoiceBridge {
       const sentence=pending.slice(0,boundary+1);pending=pending.slice(boundary+1);
       enqueue(sentence);
      }
+     while(pending.length>=240){enqueue(pending.slice(0,240));pending=pending.slice(240);}
     }
-    while(pending.length>=240){enqueue(pending.slice(0,240));pending=pending.slice(240);}
    }}));
    if(token!==this.session.generation||this.session.closed){await speaking;return {status:'interrupted'};}
    if(pending.trim())enqueue(pending);
