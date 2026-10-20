@@ -28,8 +28,10 @@ class RealtimeVoiceBridge {
   if(!audio||(audio.pcm instanceof Int16Array ? audio.pcm.length===0 : !audio.byteLength)){this.session.finishSpeech(token,false);return {status:'silence'};}
   let text;
   try{text=await this.invoke('asr',signal=>this.adapters.asr.transcribe(audio,{signal}));}
-  catch(e){if(e.name==='AbortError'||this.session.closed)return {status:'cancelled'};throw e;}
-  if(token!==this.session.generation||!text?.trim()||!this.session.finishSpeech(token,true))return {status:'ignored'};
+  catch(e){if(e.name==='AbortError'||this.session.closed){if(token===this.session.generation&&!this.session.closed)this.session.finishSpeech(token,false);return {status:'cancelled'};}throw e;}
+  if(token!==this.session.generation)return {status:'ignored'};
+  if(!text?.trim()){this.session.finishSpeech(token,false);return {status:'silence'};}
+  if(!this.session.finishSpeech(token,true))return {status:'ignored'};
   this.session.emit('user.transcript',{text});
   const chunks=[];let answer='';let pending='';let speaking=Promise.resolve();let speechError;
   const enqueue=sentence=>{const chars=[...sentence];for(let i=0;i<chars.length;i+=240){const part=chars.slice(i,i+240).join('');speaking=speaking.then(()=>{if(!speechError)return this.speakSentence(part,token,chunks);}).catch(e=>{speechError=e;this.cancel('llm');});}};

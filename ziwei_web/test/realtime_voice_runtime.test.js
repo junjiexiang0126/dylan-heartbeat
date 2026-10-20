@@ -29,7 +29,7 @@ test('hangup while admission pending stops exact native run after admission reso
 test('barge-in cancels native work on speech onset before silence boundary',async()=>{
  let receive,aborted=false,clear=0,started;const gate=new Promise(r=>started=r);
  const worker=new VoiceRoomWorker({pcmFrames:true,participant:{join:async()=>{},onAudio:fn=>{receive=fn;return()=>{};},publishAudio:async()=>{},clearPlayback:async()=>clear++,leave:async()=>{}},asr:{transcribe:async()=> '你好'},hermes:{reply:async(_,{signal})=>{started();await new Promise((_,reject)=>signal.addEventListener('abort',()=>{aborted=true;reject(signal.reason);},{once:true}));}},tts:{speak:async()=>{}}});
- await worker.start();for(let i=0;i<20;i++)receive(new Int16Array(320).fill(9000));for(let i=0;i<33;i++)receive(new Int16Array(320));await gate;receive(new Int16Array(320).fill(9000));await new Promise(r=>setImmediate(r));assert.equal(aborted,true);assert.ok(clear>=2);assert.equal(worker.closed,false);await worker.close();
+ await worker.start();for(let i=0;i<20;i++)receive(new Int16Array(320).fill(9000));for(let i=0;i<33;i++)receive(new Int16Array(320));await gate;for(let i=0;i<3;i++)receive(new Int16Array(320).fill(9000));await new Promise(r=>setImmediate(r));assert.equal(aborted,true);assert.ok(clear>=2);assert.equal(worker.closed,false);await worker.close();
 });
 test('publish failure closes worker without an unhandled rejection',async()=>{
  let receive;const worker=new VoiceRoomWorker({participant:{join:async()=>{},onAudio:fn=>{receive=fn;return()=>{};},publishAudio:async()=>{throw Error('offline');},clearPlayback:async()=>{},leave:async()=>{}},asr:{transcribe:async()=> '你好'},hermes:{reply:async(_,{onDelta})=>onDelta('你好。')},tts:{speak:async(_,{onAudio})=>await onAudio({})}});
@@ -42,4 +42,45 @@ test('real HermesClient wire contract preserves native Web session and stores no
   let output='';await new HermesVoiceAdapter({client}).reply('真实协议测试',{signal:new AbortController().signal,onDelta:d=>output+=d});
   assert.equal(output,'协议测试回复');assert.equal(fixture.executions,1);const run=[...fixture.runs.values()][0];assert.deepEqual(JSON.parse(run.body),{input:'真实协议测试',session_id:'existing-web-session'});assert.ok(fixture.seen.every(r=>r.sessionKey==='agent:main:web:existing-web-session'));
  }finally{fixture.server.closeAllConnections();await new Promise(r=>fixture.server.close(r));}
+});
+
+test('queued utterance during drain is processed without requiring another microphone event',async()=>{
+ let receive,releaseDrain,drains=0;const drained=new Promise(resolve=>{releaseDrain=resolve;});
+ const transcripts=[];
+ const worker=new VoiceRoomWorker({
+  participant:{join:async()=>{},onAudio:fn=>{receive=fn;return()=>{};},publishAudio:async()=>{},clearPlayback:async()=>{},leave:async()=>{},drain:async()=>{drains++;if(drains===1)await drained;}},
+  asr:{transcribe:async audio=>{transcripts.push(audio.toString());return '你好';}},
+  hermes:{reply:async(_,{onDelta})=>onDelta('好的。')},
+  tts:{speak:async()=>{}}
+ });
+ try{
+  await worker.start();receive(Buffer.from('first'));
+  for(let i=0;i<20&&drains===0;i++)await new Promise(r=>setImmediate(r));
+  assert.equal(drains,1);
+  receive(Buffer.from('second'));releaseDrain();
+  for(let i=0;i<30&&transcripts.length<2;i++)await new Promise(r=>setImmediate(r));
+  assert.deepEqual(transcripts,['first','second']);
+  assert.equal(worker.closed,false);
+ }finally{releaseDrain();await worker.close();}
+});
+test('timed-out LiveKit join releases admission and closes a late successful join',async()=>{
+ let finishJoin,closeCount=0,started=false;
+ const gate=new Promise(resolve=>{finishJoin=resolve;});
+ const s=new RealtimeVoiceService({env,client:{configured:()=>true},joinTimeoutMs:15,
+  createWorker:async()=>({start:async()=>{started=true;await gate;},close:async()=>{closeCount++;},setMuted:()=>{}})});
+ try{
+  await assert.rejects(s.start('owner'),/voice_join_timeout/);
+  assert.equal(started,true);assert.equal(s.calls.size,0);
+  assert.ok(closeCount>=1,'timeout must close the worker');
+  finishJoin();for(let i=0;i<20&&closeCount<2;i++)await new Promise(r=>setImmediate(r));
+  assert.ok(closeCount>=2,'late join must be closed again');
+  assert.equal(s.calls.size,0);
+ }finally{finishJoin();await s.close();}
+});
+
+test('empty ASR transcript returns session to listening without calling Hermes',async()=>{
+ const {RealtimeVoiceBridge}=require('../realtime_voice/bridge');
+ let replies=0;const bridge=new RealtimeVoiceBridge({asr:{transcribe:async()=> '   '},hermes:{reply:async()=>{replies++;}},tts:{speak:async()=>{}}});
+ bridge.start();const result=await bridge.utterance(Buffer.from('audio'));
+ assert.equal(result.status,'silence');assert.equal(bridge.session.phase,'listening');assert.equal(replies,0);
 });

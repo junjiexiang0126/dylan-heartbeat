@@ -20,7 +20,7 @@ class VoiceRoomWorker {
   this.pending=audio;if(this.running){this.bridge.interrupt();return;}
   this.running=true;
   const task=(async()=>{while(this.pending&&!this.closed){const next=this.pending;this.pending=null;await this.bridge.utterance(next);await this.participant.drain?.();}})();
-  this.inflight.add(task);task.catch(()=>this.fail('voice_turn_failed')).finally(()=>{this.inflight.delete(task);this.running=false;}).catch(()=>{});
+  this.inflight.add(task);task.catch(()=>this.fail('voice_turn_failed')).finally(()=>{this.inflight.delete(task);this.running=false;if(this.pending&&!this.closed)queueMicrotask(()=>{if(this.pending&&!this.closed&&!this.running){const next=this.pending;this.pending=null;this.queueUtterance(next);}});}).catch(()=>{});
  }
  setMuted(value){if(value)this.pending=null;this.framer?.setMuted(value);return this.bridge.mute(value);}
  async publish(frame){if(!this.closed)await this.participant.publishAudio(frame);}

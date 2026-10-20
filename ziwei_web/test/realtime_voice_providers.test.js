@@ -45,3 +45,12 @@ test('installed native LiveKit resampler converts actual 48 kHz PCM to 16 kHz',a
   assert.equal(frames.reduce((n,f)=>n+f.data.length,0),16000);assert.ok(frames.every(f=>f.sampleRate===16000&&f.channels===1));
  }finally{resampler.close();await rtc.dispose();}
 });
+
+test('MiniMax rejects a truncated final SSE completion instead of reporting success',async()=>{
+ const pcm=Buffer.alloc(640);pcm.writeInt16LE(1234,0);
+ const events='data: '+JSON.stringify({data:{status:1,audio:pcm.toString('hex')}})+'\n\n'+'data: '+JSON.stringify({data:{status:2}});
+ const received=[];
+ const t=new MiniMaxTTS({apiKey:'test',voiceId:'test',fetchImpl:async()=>new Response(events)});
+ await assert.rejects(t.speak('尾音',{onAudio:async frame=>received.push(frame.pcm)}),/voice_tts_incomplete/);
+ assert.equal(received.length,1);assert.equal(received[0][0],1234);
+});

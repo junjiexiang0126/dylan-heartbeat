@@ -44,3 +44,10 @@ test('malformed frames and format are rejected',()=>{
 test('silent preroll does not count toward minimum voiced duration',()=>{
  let n=0;const f=new PcmSpeechFramer({onSpeech:()=>n++});for(let i=0;i<10;i++)f.push(new Int16Array(320));for(let i=0;i<8;i++)f.push(new Int16Array(320).fill(9000));for(let i=0;i<33;i++)f.push(new Int16Array(320));assert.equal(n,0);
 });
+
+test('one loud noise frame does not interrupt, sustained speech does',()=>{
+ let starts=0;const f=new PcmSpeechFramer({onSpeechStart:()=>starts++});
+ f.push(loud());f.push(silent());assert.equal(starts,0);
+ f.push(loud());f.push(loud());assert.equal(starts,0);
+ f.push(loud());assert.equal(starts,1);f.close();
+});
