@@ -16,7 +16,7 @@ class RealtimeCallSession {
     this.muted=Boolean(value);
     // Invalidate any pending speech collection. The transport must stop the mic track
     // and abort its ASR upload; this module never submits audio on its own.
-    if(this.muted) { this.generation++; this.onCancel('asr'); }
+    if(this.muted) { if(this.phase==='user-speaking') { this.generation++; this.phase='listening'; } this.onCancel('asr'); }
     this.emit(this.muted?'microphone.muted':'microphone.unmuted');
     return true;
   }
