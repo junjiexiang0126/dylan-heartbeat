@@ -4,10 +4,10 @@ const {RealtimeCallSession}=require('./session');
 // adapters: asr.transcribe(audio,{signal}), hermes.reply(text,{signal,onDelta}),
 // tts.speak(text,{signal,onAudio}). A production transport handles LiveKit/WebRTC.
 class RealtimeVoiceBridge {
- constructor({asr,hermes,tts,onEvent=()=>{},onAudio=()=>{},maxTurns=60}={}) {
+ constructor({asr,hermes,tts,onEvent=()=>{},onAudio=()=>{}}={}) {
   if(!asr?.transcribe||!hermes?.reply||!tts?.speak)throw Error('voice_adapters_required');
   this.adapters={asr,hermes,tts};this.onAudio=onAudio;this.controllers=new Map();
-  this.session=new RealtimeCallSession({maxTurns,onEvent,onCancel:type=>this.cancel(type)});
+  this.session=new RealtimeCallSession({onEvent,onCancel:type=>this.cancel(type)});
  }
  start(){return this.session.start();}
  interrupt(){
