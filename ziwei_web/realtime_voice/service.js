@@ -13,8 +13,8 @@ function livekitURL(env){
  }catch{}return null;
 }
 class RealtimeVoiceService {
- constructor({env=process.env,client=new HermesClient(env),dataDir,createWorker,now=Date.now}={}){
-  this.env=env;this.client=client;this.createWorker=createWorker;this.now=now;this.calls=new Map();this.url=livekitURL(env);
+ constructor({env=process.env,client=new HermesClient(env),dataDir,createWorker,now=Date.now,joinTimeoutMs=15000}={}){
+  this.env=env;this.client=client;this.createWorker=createWorker;this.now=now;this.joinTimeoutMs=joinTimeoutMs;this.calls=new Map();this.url=livekitURL(env);
   this.rateFile=dataDir?path.join(dataDir,'voice-admission.json'):null;
   this.admissions=this.rateFile?load(this.rateFile,[]):[];
   this.timer=setInterval(()=>{for(const c of this.calls.values())if(this.now()-c.touched>35000||this.now()-c.started>15*60000||!c.authorized())void this.end(c.id,c.owner).catch(()=>{});},1000);this.timer.unref();
@@ -45,7 +45,7 @@ class RealtimeVoiceService {
     c.worker=new VoiceRoomWorker({participant:c.participant,pcmFrames:true,onEvent,asr:new ZhipuASR({apiKey:this.env.ZHIPU_API_KEY,quota}),tts:new MiniMaxTTS({apiKey:this.env.MINIMAX_API_KEY,voiceId:this.env.MINIMAX_VOICE_ID,quota,endpoint:this.env.MINIMAX_TTS_ENDPOINT||undefined}),hermes:new HermesVoiceAdapter({client:this.client,onEvent})});
    }
    let timeout;const joining=Promise.resolve().then(()=>c.worker.start());
-   try{await Promise.race([joining,new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('voice_join_timeout')),15000);})]);}
+   try{await Promise.race([joining,new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('voice_join_timeout')),this.joinTimeoutMs);})]);}
    catch(e){if(e.message==='voice_join_timeout'){
     c.closed=true;void joining.then(()=>c.worker?.close()).catch(()=>{});
    }throw e;}finally{clearTimeout(timeout);}
