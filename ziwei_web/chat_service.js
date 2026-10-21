@@ -77,11 +77,13 @@ function tokensDelta(u){
   let prev=null;
   try{const row=store.db.prepare("SELECT value FROM meta WHERE key='usage_cum'").get();prev=row?JSON.parse(row.value):null;}catch{}
   try{store.db.prepare("INSERT INTO meta(key,value) VALUES('usage_cum',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
-   .run(JSON.stringify({input:snap.input,output:snap.output}));}catch{}
+   .run(JSON.stringify({input:snap.input,output:snap.output,cache:snap.cache_read}));}catch{}
   if(!prev||!Number.isFinite(prev.input)||!Number.isFinite(prev.output))return {input:null,output:null,total:null,first:true};
   const di=Math.max(0,snap.input-prev.input),dout=Math.max(0,snap.output-prev.output);
-  if(di===0&&dout===0)return null;
-  return {input:di,output:dout,total:di+dout};
+  const dcache=Math.max(0,(snap.cache_read||0)-(prev.cache||0));
+  const tot=di+dout+dcache;
+  if(tot===0)return null;
+  return {input:di,output:dout,cache:dcache,total:tot};
 }
 function finish(id,o){
   if(!TERMINAL.includes(o.status))return false;
