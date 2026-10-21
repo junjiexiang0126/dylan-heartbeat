@@ -84,7 +84,7 @@ window.ZiweiRecords=(()=>{
  function logChrome(){
   const readable=kind==='work'||kind==='diary';
   $('#logReader').hidden=!readable;$('#logRefresh').hidden=!readable;$('#logUnavailable').hidden=readable||kind==='photos';
-  const unavailable=$('#logUnavailable');unavailable.replaceChildren();if(kind==='private'){unavailable.append(el('h2','private-log-title','这一格是《默记》'),el('p','private-log-copy','他写给自己，不给人看。哪天他想让你读，他会自己把它改成可分享的那一层——那时它就会出现在个人日志里。'),el('p','private-log-note','只写给知微自己；这里不展示内容、标题、日期或数量，也不读取内容。'));}else if(!readable)unavailable.textContent='照片墙尚未接入，暂时没有可查看的照片。';
+  const unavailable=$('#logUnavailable');unavailable.replaceChildren();if(kind==='private'){unavailable.append(el('h2','private-log-title','这一格是《默记》'),el('p','private-log-copy','他写给自己，不给人看。哪天他想让你读，他会自己把它改成可分享的那一层——那时它就会出现在个人日志里。'));}else if(!readable)unavailable.textContent='照片墙尚未接入，暂时没有可查看的照片。';
   $('#workLogScope').hidden=kind!=='work';if(!readable){$('#workTimeline').replaceChildren();$('#logRecords').replaceChildren();$('#logStatus').textContent='';$('#logError').textContent='';}
   for(const b of document.querySelectorAll('[data-log-kind]')){const selected=b.dataset.logKind===kind;b.classList.toggle('active',selected);b.setAttribute('aria-selected',String(selected));}
  }
