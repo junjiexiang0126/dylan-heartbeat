@@ -1,13 +1,10 @@
 'use strict';
 window.ZiweiChatAppearance=(()=>{
- const layer=document.querySelector('#chatWallpaper'),image=document.querySelector('#chatWallpaperImage');
- const actions=document.querySelector('#chatTopActions'),message=document.querySelector('#chatBackgroundMessage');
- let visible=false,wallpaper=null,loaded=false,revision=0,loading=null,changing=false;
+ const actions=document.querySelector('#chatTopActions');
+ let visible=false;
  function paint(){
   document.body.classList.toggle('chat-view',visible);
-  document.body.classList.toggle('chat-has-wallpaper',visible&&!!wallpaper);
-  actions.hidden=!visible;document.querySelector('#chatAvatar').hidden=!visible;document.querySelector('#chatHeaderTitle').hidden=!visible;document.querySelector('.brand').hidden=visible;layer.hidden=!visible||!wallpaper;
-  image.src=visible&&wallpaper?wallpaper:'';
+  actions.hidden=!visible;document.querySelector('#chatAvatar').hidden=!visible;document.querySelector('#chatHeaderTitle').hidden=!visible;document.querySelector('.brand').hidden=visible;
  }
  function storage(write,value,key='wallpaper'){return new Promise((resolve,reject)=>{
   const open=indexedDB.open('ziwei-chat-appearance',1);
@@ -27,41 +24,7 @@ window.ZiweiChatAppearance=(()=>{
  fontInput.oninput=()=>{fontRevision++;applyFont(fontInput.value);fontMessage.textContent='字号已应用。';};fontInput.onchange=saveFont;
  document.querySelector('#resetChatFont').onclick=()=>{fontRevision++;applyFont(14);saveFont();};
  const fontEpoch=fontRevision;applyFont(14);storage(false,null,'fontSize').then(value=>{if(fontEpoch===fontRevision&&value!==undefined)applyFont(value);}).catch(()=>{});
- function setVisible(value){
-  visible=!!value;paint();
-  if(!visible||loaded||loading)return;
-  const epoch=revision;
-  loading=storage(false).then(value=>{
-   if(epoch===revision){wallpaper=typeof value==='string'&&value.startsWith('data:image/jpeg;base64,')?value:null;loaded=true;paint();}
-  }).catch(()=>{loaded=true;}).finally(()=>{loading=null;});
- }
- async function prepare(file){
-  if(!file||!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>12*1024*1024)throw Error('请选择 12 MB 以内的 JPEG、PNG 或 WebP 图片。');
-  const url=URL.createObjectURL(file),img=new Image();
-  try{
-   img.src=url;try{await img.decode();}catch{throw Error('invalid_image');}if(!img.naturalWidth||!img.naturalHeight)throw Error('invalid_image');
-   const scale=Math.min(1,1600/Math.max(img.naturalWidth,img.naturalHeight)),canvas=document.createElement('canvas');
-   canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
-   const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
-   return canvas.toDataURL('image/jpeg',.85);
-  }finally{URL.revokeObjectURL(url);}
- }
- function controls(value){changing=value;document.querySelector('#chooseChatBackground').disabled=value;document.querySelector('#resetChatBackground').disabled=value;}
- document.querySelector('#chooseChatBackground').onclick=()=>document.querySelector('#chatBackgroundFile').click();
- document.querySelector('#chatBackgroundFile').onchange=async e=>{
-  const file=e.target.files[0];e.target.value='';if(!file||changing)return;controls(true);const epoch=++revision;
-  try{
-   const value=await prepare(file);if(epoch!==revision)return;wallpaper=value;loaded=true;paint();
-   try{await storage(true,value);message.textContent='聊天背景已保存到当前设备。';}catch{message.textContent='背景已应用，但此设备暂时无法保存。';}
-  }catch(e){message.textContent=e.message==='invalid_image'?'图片无法读取，请选择其他图片。':e.message;}
-  finally{controls(false);}
- };
- document.querySelector('#resetChatBackground').onclick=async()=>{
-  if(changing)return;controls(true);revision++;wallpaper=null;loaded=true;paint();
-  try{await storage(true,null);message.textContent='聊天背景已恢复跟随整体主题。';}
-  catch{message.textContent='已恢复主题背景，但此设备暂时无法保存。';}
-  finally{controls(false);}
- };
+ function setVisible(value){visible=!!value;paint();}
  return {setVisible};
 })();
 
