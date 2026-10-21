@@ -17,7 +17,7 @@ class RealtimeVoiceService {
   this.env=env;this.client=client;this.createWorker=createWorker;this.now=now;this.joinTimeoutMs=joinTimeoutMs;this.calls=new Map();this.url=livekitURL(env);
   this.rateFile=dataDir?path.join(dataDir,'voice-admission.json'):null;
   this.admissions=this.rateFile?load(this.rateFile,[]):[];
-  this.timer=setInterval(()=>{for(const c of this.calls.values())if(this.now()-c.touched>35000||!c.authorized())void this.end(c.id,c.owner).catch(()=>{});},1000);this.timer.unref();
+  this.timer=setInterval(()=>{for(const c of this.calls.values())if(this.now()-c.touched>35000||!c.authorized())void this.end(c.id,c.owner).catch(()=>{});this.writeVoiceState();},1000);this.timer.unref();this.writeVoiceState();
  }
  ready(){return !this.blocked&&this.env.ZIWEI_REALTIME_VOICE_ENABLED==='true'&&!!this.url&&!!this.env.LIVEKIT_API_KEY&&this.env.LIVEKIT_API_SECRET?.length>=16&&!!this.env.ZHIPU_API_KEY&&this.ttsConfigured()&&this.client.configured();}
  ttsConfigured(){return (!!this.env.ELEVENLABS_API_KEY&&!!this.env.ELEVENLABS_VOICE_ID)||(!!this.env.MINIMAX_API_KEY&&!!this.env.MINIMAX_VOICE_ID);}
@@ -55,6 +55,7 @@ class RealtimeVoiceService {
    return {url:this.url,token,room,identity:user,agentIdentity:'ziwei-'+id,callId:id,expiresIn:300};
   }catch(e){await this.end(id,owner);throw e;}
  }
+ writeVoiceState(){try{const c=[...this.calls.values()][0];const dir=this.dataDir||process.env.ZIWEI_WEB_DATA_DIR||"/webdata";atomicWrite(path.join(dir,"voice-state.json"),{active:!!c,callId:c?c.id:null,since:c?new Date(c.started).toISOString():null,touched:c?new Date(c.touched).toISOString():null,at:new Date().toISOString()});}catch{}}
  get(id,owner){const c=this.calls.get(id);if(!c||c.owner!==owner||c.closed)throw Error('voice_call_not_found');return c;}
  control(id,owner,{muted}){const c=this.get(id,owner);if(typeof muted!=='boolean')throw Error('voice_invalid_control');c.touched=this.now();c.worker.setMuted(muted);return {ok:true};}
  async end(id,owner){
