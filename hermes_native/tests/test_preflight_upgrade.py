@@ -30,6 +30,24 @@ class UpgradeTests(unittest.TestCase):
         self.assertEqual(receipt['old_sha256'],upgrade.digest(self.old))
         self.assertEqual(self.target.read_bytes(),self.new)
         self.assertEqual((self.home/'scripts'/('autonomy_gate.before-'+upgrade.digest(self.old)+'.py')).read_bytes(),self.old)
+    def test_previous_reviewed_image_can_upgrade_with_backup(self):
+        # The previously shipped NEW_SHA must remain a recognized source version.
+        with patch.object(upgrade, 'OLD_SHA', 'unrelated-original'), \
+             patch.object(upgrade, 'PREVIOUS_SHA', 'unrelated-previous'), \
+             patch.object(upgrade, 'PREVIOUS_IMAGE_SHA', 'unrelated-image'), \
+             patch.object(upgrade, 'PREVIOUS_REVIEWED_SHA', upgrade.digest(self.old)):
+            receipt = upgrade.upgrade(self.home, self.source)
+        self.assertEqual(receipt['state'], 'updated')
+        self.assertEqual(self.target.read_bytes(), self.new)
+        backup = self.home / 'scripts' / ('autonomy_gate.before-' + upgrade.digest(self.old) + '.py')
+        self.assertEqual(backup.read_bytes(), self.old)
+
+    def test_selecting_previous_version_does_not_authorize_new_upgrade(self):
+        with patch.dict(os.environ, {'ZIWEI_PREFLIGHT_UPGRADE_SHA256': upgrade.PREVIOUS_REVIEWED_SHA}):
+            with self.assertRaisesRegex(RuntimeError, 'not_authorized'):
+                upgrade.upgrade(self.home, self.source)
+        self.assertEqual(self.target.read_bytes(), self.old)
+
     def test_unknown_previous_hash_and_wrong_image_refused(self):
         self.target.chmod(0o644);self.target.write_bytes(b'unknown');self.target.chmod(0o444)
         with self.assertRaisesRegex(RuntimeError,'unknown_previous_hash'):upgrade.upgrade(self.home,self.source)

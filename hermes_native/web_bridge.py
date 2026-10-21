@@ -867,60 +867,37 @@ MOMENT_RETIRED_FILE = 'moments-retired.json'
 
 
 def _diary_display(text, title):
-    """把正文里那几个 markdown 记号去掉：标题行不再重复、**粗体**还原成字。"""
+    """Keep Markdown for the reader; move only leading metadata/title into chrome.
+
+    This is a display projection. The saved file and its fingerprint are intact.
+    Metadata-looking prose or code after the opening remains part of the body.
+    """
     lines = []
+    opening = True
     dropped_heading = False
     for line in text.splitlines():
         stripped = line.strip()
-        if not dropped_heading and stripped.startswith('## ') and stripped[3:].strip() == title:
+        if opening and DIARY_FIELD.match(stripped):
+            continue
+        heading = re.match(r'^#{1,6}\s+(.+)$', stripped)
+        if opening and heading and not dropped_heading and heading.group(1).strip() == title:
             dropped_heading = True
             continue
+        if opening and re.fullmatch(r'#\s+\d{4}-\d{2}-\d{2}(?:\s*日记)?', stripped):
+            continue
         lines.append(line)
-    body = '\n'.join(lines).strip()
-    body = re.sub(r'\*\*(.+?)\*\*', r'\1', body)
-    body = re.sub(r'(?m)^#{1,6}\s*', '', body)
-    body = re.sub(r'`(.+?)`', r'\1', body)
-    return body
+        if stripped:
+            opening = False
+    return '\n'.join(lines).strip()
 
 
-def impressions_page(limit=None):
-    """今日印记：只读 workspace/events/impressions.jsonl，只返回 add 且未被 retract 的行。
-
-    没有发生的事不会被写进去，这里也造不出内容：文件不存在就是空列表。
-    """
-    try:
-        size = int(limit) if limit not in (None, '') else 60
-    except (TypeError, ValueError):
-        raise MemoryError('invalid_pagination')
-    if not 1 <= size <= 200:
-        raise MemoryError('invalid_pagination')
-    path = home() / 'workspace' / 'events' / 'impressions.jsonl'
-    rows, errors = [], []
-    try:
-        raw = read_beneath(path.parent, 'impressions.jsonl', 8 * 1024 * 1024)
-    except FileNotFoundError:
-        raw = b''
-    except (OSError, ValueError):
-        raise MemoryError('impressions_unreadable')
-    retracted = set()
-    for line in raw.decode('utf-8', 'replace').splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            row = json.loads(line)
-        except ValueError:
-            errors.append({'code': 'impressions_bad_line'})
-            continue
-        if row.get('op') == 'retract':
-            if row.get('target'):
-                retracted.add(str(row['target']))
-            continue
-        rows.append(row)
-    rows = [r for r in rows if str(r.get('id', '')) not in retracted]
-    rows.sort(key=lambda r: str(r.get('ts', '')), reverse=True)
-    return {'data': rows[:size], 'total': len(rows), 'checkedAt': datetime.now(BANGKOK).isoformat(),
-            'errors': errors}
+def impressions_page(limit=None, cursor=None, since=None):
+    from impressions import page
+    # A namespace also supports isolated importlib-loaded bridge tests.
+    from types import SimpleNamespace
+    return page(SimpleNamespace(home=home, read_beneath=read_beneath,
+                                diary_records=diary_records, MemoryError=MemoryError),
+                limit, cursor, since)
 
 
 def diary_records():
@@ -955,7 +932,7 @@ def diary_records():
         record = {'id': _diary_id(relative), 'title': title, 'date': date,
                   'at': stamp.isoformat(), 'savedAt': stamp.isoformat(), 'source': relative,
                   'preview': body.strip()[:DIARY_PREVIEW], 'revision': hashlib.sha256(raw).hexdigest(),
-                  'document': True, 'content': body, 'visibility': DIARY_SHARED}
+                  'document': True, 'content': body, 'originalContent': text, 'visibility': DIARY_SHARED}
         if fields['mood']:
             record['mood'] = fields['mood']
         if fields['summary']:
@@ -981,7 +958,7 @@ def diary_page(limit=None, offset=None, q=None):
     if needle:
         records = [r for r in records if needle in r['content'].lower() or needle in r['title'].lower()]
     total = len(records)
-    page = [{k: v for k, v in record.items() if k != 'content'} for record in records[start:start + size]]
+    page = [{k: v for k, v in record.items() if k not in ('content', 'originalContent')} for record in records[start:start + size]]
     following = start + size
     return {'data': page, 'total': total, 'nextOffset': following if following < total else None,
             'checkedAt': datetime.now(BANGKOK).isoformat(), 'errors': errors}
@@ -997,6 +974,7 @@ def diary_document(identifier):
         if record['id'] == wanted:
             document = {'id': record['id'], 'title': record['title'], 'date': record['date'],
                         'visibility': record['visibility'], 'content': record['content'],
+                        'originalContent': record['originalContent'],
                         'source': record['source'], 'revision': record['revision'],
                         'savedAt': record['savedAt'], 'errors': errors}
             for key in ('mood', 'summary', 'tags'):
@@ -1067,11 +1045,14 @@ def install_status_tool(registry, toolsets):
         'description': (
             'Write one line into the Logs page for the wake-up you just used: what you chose, what you '
             'actually did and the files that prove it. Call it at the end of every autonomous '
-            'opportunity, including the ones you spend resting. Never describe a plan as done work.'),
+            'opportunity, including the ones you spend resting. Never describe a plan as done work. '
+            'Write did as a few natural sentences in your own voice: what happened, what remains, '
+            'and a thought if you actually have one. Keep JSON, shell commands, file paths and '
+            'internal choice codes out of did; use the structured choice/evidence fields for those.'),
         'parameters': {'type': 'object', 'properties': {
             'choice': {'type': 'string', 'enum': list(BRIEFING_CHOICES)},
-            'did': {'type': 'string', 'description': '1-2000 characters; what really happened.'},
-            'opportunity': {'type': 'integer', 'description': 'Which of the six daily opportunities this was.'},
+            'did': {'type': 'string', 'description': '1-2000 characters of natural prose about what really happened; no JSON envelope or technical report template.'},
+            'opportunity': {'type': 'integer', 'description': 'The actual opportunity number provided by the wake-up receipt; use the active profile schedule.'},
             'at': {'type': 'string', 'description': 'ISO8601 with timezone; defaults to now (UTC).'},
             'evidence': {'type': 'array', 'items': {'type': 'string'},
                          'description': 'Paths or ids a reader could check.'},
@@ -1164,7 +1145,7 @@ def install():
         err = self._check_auth(request)
         if err is not None: return err
         try:
-            value = await asyncio.to_thread(impressions_page, request.query.get('limit'))
+            value = await asyncio.to_thread(impressions_page, request.query.get('limit'), request.query.get('cursor'), request.query.get('since'))
         except MemoryError as exc:
             code = 400 if exc.code == 'invalid_pagination' else 500
             return web.json_response({'error': exc.code, 'data': [], 'total': 0, 'errors': [{'code': exc.code}]},

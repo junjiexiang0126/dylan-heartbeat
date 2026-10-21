@@ -156,7 +156,6 @@ body.has-space-wallpaper.records-subpage .shell{background:transparent}
 .memory-main-excerpt:disabled{opacity:1}
 #memory .memory-uncategorized{border:0;padding-bottom:0;font-size:var(--ui-font-12);color:var(--muted)}
 .memory-main-link{width:100%;text-align:left;padding:var(--ui-space-14) var(--memory-entry-padding) var(--ui-space-18);font-size:var(--ui-font-12)}
-#memory .memory-entry:not(.memory-primary){box-shadow:none;background:transparent}
 .memory-small-entries{border:0;margin-top:var(--ui-space-12);padding:0;gap:0 var(--ui-space-12)}
 .memory-category-filters{display:flex;flex-wrap:wrap;gap:var(--ui-space-6) var(--ui-space-12);margin-bottom:var(--ui-space-12)}
 .memory-category-filters button[aria-pressed=true]{text-decoration:underline;color:var(--ink)}
@@ -202,3 +201,39 @@ body.has-space-wallpaper.records-subpage .shell{background:transparent}
 #logs .log-entry[data-log-kind=private] .log-entry-icon{background:transparent}
 
 .memory-budget-value small{font-size:var(--ui-font-13);font-weight:400;color:var(--muted)}
+
+/* Article reading view: paragraphs, quiet metadata and optional original text. */
+#logs .record-body.record-reading,#memory .record-body.record-reading{white-space:normal;line-height:1.95;overflow-wrap:anywhere}
+.record-reading p{margin:0 0 1.05em;white-space:pre-line}
+.record-reading p:last-child{margin-bottom:0}
+.record-reading h3,.record-reading h4,.record-reading h5,.record-reading h6{font-family:var(--records-reading-font);font-size:1.12em;line-height:1.6;margin:1.6em 0 .65em;font-weight:600;letter-spacing:.02em}
+.record-reading>:first-child{margin-top:0}
+.record-reading ul,.record-reading ol{margin:.65em 0 1.1em;padding-left:1.5em}
+.record-reading li{margin:.3em 0;line-height:1.9}
+.record-reading blockquote{margin:1.2em 0;padding:.25em 0 .25em 1em;border-left:2px solid var(--accent);color:var(--muted)}
+.record-reading blockquote p{margin:.25em 0}
+.record-reading a{color:var(--accent);text-underline-offset:3px;overflow-wrap:anywhere}
+.record-reading code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.85em;background:var(--accent-soft);border-radius:4px;padding:.12em .3em}
+.record-reading .record-code{margin:1em 0;padding:.7em .9em;background:var(--accent-soft);border-radius:10px;font-size:.9em}
+.record-code summary{cursor:pointer;color:var(--muted);line-height:1.8;min-height:30px}
+.record-code pre,.record-original{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:1.8;padding:12px 0;text-align:left}
+.record-reading .record-code code{background:transparent;padding:0;white-space:pre-wrap}
+.record-reading hr{border:0;border-top:1px solid var(--paper-rule);margin:1.8em 0}
+.record-table{max-width:100%;overflow:auto;margin:1em 0}
+.record-table table{border-collapse:collapse;width:100%;font-size:.88em}
+.record-table th,.record-table td{padding:.5em .65em;border-bottom:1px solid var(--paper-rule);text-align:left;min-width:5em}
+.record-context{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:12px;color:var(--muted);margin:0 0 20px}
+.record-context .record-state{margin:0}
+.record-provenance{border-top:1px solid var(--paper-rule);padding-top:16px;margin-top:28px;font-size:12px;color:var(--muted);line-height:1.8;overflow-wrap:anywhere}
+.record-provenance>summary{min-height:32px;cursor:pointer}
+.diary-meta:empty{display:none}
+#logs.diary-reading .diary-card{max-width:680px;margin-inline:auto;width:100%}
+#logs.diary-reading .record-title{font-size:clamp(23px,5vw,30px);line-height:1.6;margin:8px 0 24px}
+#logs.diary-reading .record-body{font-size:16px;line-height:2.05}
+#logs.diary-reading .record-author{margin-bottom:10px}
+#logs.diary-reading .record-actions{margin-top:30px}
+#logs:not(.diary-reading) .diary-card{padding-block:20px!important;border-bottom:1px solid var(--paper-rule)!important}
+@media(max-width:360px){#logs.diary-reading .record-body{font-size:15px}}
+#logs.diary-reading .record-page-header{margin-bottom:12px}
+#logs.diary-reading .records-list{margin-top:12px}
+#logs.diary-reading .diary-card{padding-top:20px}

@@ -122,7 +122,14 @@ def evaluate(home: Path, now: datetime) -> dict:
             "choice": "chosen for this actual moment; doing nothing is allowed",
             "moment_daily_post_limit": 2,
             "write_long_term_memory": False,
-            "diary": "optional short entry; never copy the whole Moments store",
+            "diary": ("Optional: if you choose to write a diary, use your existing voice to leave one "
+                      "to three short paragraphs about a specific moment that really happened. "
+                      "You may connect it with an actual earlier conversation or memory and say "
+                      "why it stayed with you. Avoid a task-report or weather/mood checklist. "
+                      "Do not invent physical experiences, feelings, weather or conversations. "
+                      "Technical details belong in work records; a personal diary may mention "
+                      "what a real piece of work meant to you. Skipping is allowed. "
+                      "Never copy the whole Moments store."),
             "note": "File presence is evidence of a saved artifact, not proof of external success."}
 
 

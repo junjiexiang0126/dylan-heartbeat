@@ -84,9 +84,9 @@ function passkeyUnavailableReason() {
 function renderPasskeyControls() {
   const reason=passkeyUnavailableReason();
   $('#unlockButton').hidden=false;$('#unlockButton').disabled=!!reason;
-  $('#unlockHint').textContent=reason || '已开启后可用 Face ID / 设备解锁。首次请用访问密码登录，再到右上角设置顶部开启。';
+  $('#unlockHint').textContent=reason || '已开启后可用 Face ID / 设备解锁。首次请用访问密码登录，再到设置的「设备」中开启。';
   $('#registerPasskey').disabled=!!reason;
-  $('#passkeyMessage').textContent=reason || (sessionData.passkeyCount ? `已保存 ${sessionData.passkeyCount} 个设备解锁凭据。锁定后可用 Face ID / 设备解锁。` : '尚未开启：输入访问密码，点击“开启 Face ID / 设备解锁”创建通行密钥。');
+  $('#passkeyMessage').textContent=reason || (sessionData.passkeyCount ? `已保存 ${sessionData.passkeyCount} 个设备解锁凭据。锁定后可用 Face ID / 设备解锁。` : '尚未开启：输入访问密码，点击“开启设备解锁”创建通行密钥。');
   $('#removePasskeys').disabled=!sessionData?.passkeyCount;
 }
 async function refresh() {
@@ -115,7 +115,7 @@ $('#settingsButton').onclick=async()=>{
     $('#historyList').replaceChildren();
     homeData.profileHistory.slice().reverse().forEach(h=>{const li=document.createElement('li');li.textContent=`${new Intl.DateTimeFormat('zh-CN',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Bangkok'}).format(new Date(h.at))} · 你修改了${h.who==='user'?'你的':'知微的'}资料：${h.before.nickname} → ${h.after.nickname}${h.before.avatar!==h.after.avatar?'（头像已变更）':''}`;$('#historyList').append(li);});
     if(!homeData.profileHistory.length){const li=document.createElement('li');li.textContent='还没有资料变更。';$('#historyList').append(li);}
-    $('#settings').showModal();$('#settings').scrollTop=0;$('#verifyPassword').blur();
+    window.ZiweiSettings?.prepare();$('#settings').showModal();$('#settings').scrollTop=0;$('#verifyPassword').blur();
   }catch(e){$('#loginError').textContent=e.message;}
 };
 $('#closeSettings').onclick=()=>{$('#settings').close();pendingAvatars={};$('#verifyPassword').value='';};

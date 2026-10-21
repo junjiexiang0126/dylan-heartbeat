@@ -1,0 +1,216 @@
+/* One shared theme and wallpaper. Artwork is confined to books and cards. */
+:root{--zw-paper:var(--paper-cream);--zw-paper-ink:var(--paper-ink);--zw-paper-edge:var(--paper-rule);--zw-gold:var(--accent);--zw-rose:var(--accent);--zw-fiber:repeating-linear-gradient(0deg,transparent 0 3px,color-mix(in srgb,var(--ink) 2%,transparent) 3px 4px);--zw-motion-duration:240ms}
+/* Secondary routes reveal the same root canvas, including when no photo is selected. */
+body.records-subpage .shell,body.photos-subpage .shell{background:transparent}
+:root:not([data-experience=off]) :is(#logs,#memory,#photoPage){--ink:var(--paper-ink);--muted:var(--paper-muted);--accent:inherit;--accent-soft:inherit;--record-page-fill:transparent}
+:root:not([data-experience=off]) :is(.section-heading h1,.record-page-header h1){font-family:var(--ui-serif);font-size:var(--page-title-size);font-weight:var(--ui-weight-medium);letter-spacing:.04em}
+:root:not([data-experience=off]) :is(.record-page-header,.memory-overview-header){padding-bottom:var(--ui-space-16);margin-bottom:var(--ui-space-20);border-bottom:1px solid var(--paper-rule)}
+:root:not([data-experience=off]) :is(.record-page-header,.memory-overview-header) .record-page-meta{font-size:var(--ui-font-12);line-height:1.8}
+/* Shared tactile feedback, without moving the navigation or changing hit targets. */
+:root:not([data-experience=off]) :is(button,.paper-note){transition:color .2s,background-color .2s,box-shadow .2s}
+:root:not([data-experience=off]) :is(button,.paper-note):focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+:root:not([data-experience=off]) :is(.work-heading-actions button,.record-search-toggle){width:44px;min-height:44px;display:inline-grid;place-items:center}
+.work-heading-actions svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+:root:not([data-experience=off]) :is(.icon-button,.chat-icon-button,.work-heading-actions button,.record-search-toggle):active{background:var(--selected-fill)}
+:root:not([data-experience=off]) :is(.log-entry,.memory-entry,.paper-note):active{box-shadow:var(--zw-glass-shadow);filter:brightness(.97)}
+:root[data-zw-motion=on]:not([data-experience=off]) .panel:not([hidden]){animation:zw-route-enter var(--zw-motion-duration) ease-out}
+@keyframes zw-route-enter{from{opacity:.3;translate:0 5px}to{opacity:1;translate:0 0}}
+.zw-journal-hero,.zw-library-label,.zw-page-flourish,.zw-page-folio,.zw-reading-tools,.zw-memory-prologue,.zw-memory-tab,.zw-memory-note,.zw-memory-clip,.zw-memory-divider{display:none}
+:root:not([data-experience=off]) #logs:not(.record-open)>.zw-journal-hero{display:grid;position:relative;grid-template-columns:1fr 1fr;gap:12px;align-items:center;min-height:196px;margin:0 0 16px;padding:6px 4px 12px;perspective:900px}
+:root:not([data-experience=off]) .zw-hero-copy h2{font:500 calc(22px * var(--ui-font-scale))/1.5 var(--ui-serif);letter-spacing:.05em;color:var(--ink);margin:10px 0 12px}
+:root:not([data-experience=off]) .zw-hero-copy p{font:var(--ui-font-12)/1.9 var(--ui-serif);color:var(--muted)}
+:root:not([data-experience=off]) .zw-hero-copy .zw-kicker{font:var(--ui-font-9)/1.8 var(--ui-sans);letter-spacing:.14em;color:var(--accent)}
+:root:not([data-experience=off]) .zw-library-label{display:flex;align-items:center;gap:12px;font:var(--ui-font-11)/1.8 var(--ui-serif);color:var(--accent);margin:20px 0 16px}
+.zw-library-label::after,.zw-memory-divider::after{content:'';height:1px;flex:1;background:var(--paper-rule)}
+#logs.record-open>.zw-library-label,#logs.record-open>.zw-journal-hero{display:none!important}
+:root:not([data-experience=off]) #logs .log-today{background:var(--zw-glass-bg);border:1px solid var(--zw-glass-border);border-radius:var(--log-entry-radius);box-shadow:var(--zw-glass-shadow)}
+:root:not([data-experience=off]) #logs .log-entry strong{font-family:var(--ui-serif);font-weight:var(--ui-weight-medium)}
+/* Page details stay inside a sheet; the page itself has no new wallpaper. */
+:root:not([data-experience=off]) body:not(.impressions-open) #logs.record-open .record-sheet,:root:not([data-experience=off]) #memory.record-open .record-sheet{max-width:720px;margin-inline:auto}
+:root:not([data-experience=off]) body:not(.impressions-open) #logs .diary-card,:root:not([data-experience=off]) #memoryDetail .record-card{position:relative;padding:var(--ui-space-24)!important;margin-bottom:var(--ui-space-18);border:1px solid var(--paper-rule)!important;border-radius:var(--record-reading-radius,var(--ui-radius-18));background:var(--zw-fiber),var(--paper-fill)!important;box-shadow:var(--paper-shadow)!important;overflow:hidden}
+:root:not([data-experience=off]) #logs.diary-reading .diary-card{padding-block:calc(32px * var(--ui-spacing-scale))!important;border-radius:var(--log-entry-radius);isolation:isolate}
+:root:not([data-experience=off]) #logs.diary-reading .diary-card::after{content:'';position:absolute;inset:8px;border:1px solid var(--paper-rule);border-radius:inherit;pointer-events:none}
+:root:not([data-experience=off]) #logs.diary-reading .record-title{font:500 var(--ui-font-26)/1.6 var(--ui-serif);margin:12px 0 24px;padding-bottom:20px;border-bottom:1px solid var(--paper-rule);letter-spacing:.04em;color:var(--ink)}
+:root:not([data-experience=off]) :is(#logs.diary-reading,#memoryDetail) .record-body{font-family:var(--records-reading-font);font-size:var(--records-body-size);line-height:2.1;color:var(--ink)}
+:root:not([data-experience=off]) #logs.diary-reading .record-author{font-size:var(--ui-font-11);letter-spacing:.1em;color:var(--accent)}
+:root:not([data-experience=off]) .zw-page-flourish{display:block;position:absolute!important;inset:0 auto auto 0;width:100px;height:100px;background:url('/journal-art/botanical-flourish.svg') center/contain no-repeat;opacity:.25;pointer-events:none;transform:rotate(90deg);z-index:0!important}
+:root:not([data-experience=off]) .zw-page-folio{display:block;text-align:center;font:var(--ui-font-10)/1.8 var(--ui-serif);color:var(--accent);margin-top:30px}
+:root:not([data-experience=off]) .zw-reading-tools{display:flex;justify-content:space-between;align-items:center;gap:12px;font:var(--ui-font-11)/1.8 var(--ui-sans);color:var(--muted);margin:10px 0 18px}
+.zw-reading-tools button,.zw-hero-open{font:inherit;color:var(--accent);background:transparent;border:0;border-bottom:1px solid var(--paper-rule);padding:6px 0;cursor:pointer}
+.zw-reading-tools[hidden]{display:none!important}
+/* All three memory pockets always remain glass, including empty categories. */
+:root:not([data-experience=off]) #memory .memory-entry-grid{gap:var(--ui-space-16)}
+:root:not([data-experience=off]) #memory .memory-main-group{display:block;position:relative;background:var(--zw-glass-bg);border:1px solid var(--zw-glass-border);box-shadow:var(--zw-glass-shadow);border-radius:var(--memory-entry-radius);overflow:visible}
+:root:not([data-experience=off]) #memory .memory-primary{display:flex;flex-direction:column;align-items:stretch;gap:0;min-height:0;padding:20px 22px 12px;background:transparent;box-shadow:none;border:0;backdrop-filter:none;-webkit-backdrop-filter:none;border-radius:inherit}
+:root:not([data-experience=off]) #memory .memory-primary strong{font-size:var(--memory-main-size);padding-right:34px;margin:4px 0 6px}
+:root:not([data-experience=off]) #memoryBudgetValue{font-size:var(--ui-font-26);margin-top:0}
+:root:not([data-experience=off]) #memoryMainExcerpt{font:var(--ui-font-13)/1.9 var(--ui-serif);margin:0 22px;padding:12px 0 0;border-top:1px dashed var(--paper-rule);-webkit-line-clamp:2}
+:root:not([data-experience=off]) #memoryAllLink{padding:12px 22px 16px}
+:root:not([data-experience=off]) #memory .memory-entry:not(.memory-primary){display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:112px;padding:18px 50px 18px 60px;background:var(--zw-glass-bg);border:1px solid var(--zw-glass-border);box-shadow:var(--zw-glass-shadow);border-radius:var(--memory-entry-radius);backdrop-filter:var(--zw-glass-blur);-webkit-backdrop-filter:var(--zw-glass-blur)}
+:root:not([data-experience=off]) #memory .memory-entry:not(.memory-primary) strong{font-size:var(--memory-entry-title-size);padding:0;margin:0}
+:root:not([data-experience=off]) #memory .memory-entry:not(.memory-primary) .memory-entry-link{padding-top:5px;font-size:var(--ui-font-10);color:var(--accent)}
+:root:not([data-experience=off]) .zw-memory-tab{display:grid;place-items:center;position:absolute!important;left:16px;top:24px;width:26px;height:54px;border:1px solid var(--accent);border-radius:13px 13px 3px 3px;transform:rotate(-4deg);font:italic var(--ui-font-13)/1 var(--ui-serif);color:var(--accent);background:var(--selected-fill);pointer-events:none}
+:root:not([data-experience=off]) .zw-memory-note,:root:not([data-experience=off]) .zw-memory-prologue{display:block;font:var(--ui-font-11)/1.8 var(--ui-serif);color:var(--muted);margin-top:6px}
+:root:not([data-experience=off]) .zw-memory-divider{display:flex;align-items:center;gap:12px;grid-column:1/-1;font:var(--ui-font-11)/1.8 var(--ui-serif);color:var(--accent);margin:8px 0 0}
+:root:not([data-experience=off]) #memory .memory-main-group>.zw-memory-clip{display:block;position:absolute;right:36px;top:-8px;width:14px;height:32px;border:2px solid var(--accent);border-radius:8px;transform:rotate(9deg);pointer-events:none;opacity:.7}
+.zw-memory-clip::after{content:'';position:absolute;inset:3px 3px 6px;border:1px solid var(--accent);border-radius:5px}
+/* Settings jump links make appearance reachable without altering security flows. */
+.zw-settings-nav{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 22px;padding-bottom:16px;border-bottom:1px solid var(--paper-rule)}
+.zw-settings-nav a{color:var(--accent);font-size:var(--ui-font-12);padding:6px 10px;border:1px solid var(--paper-rule);border-radius:var(--ui-radius-round);text-decoration:none}
+#settings fieldset{scroll-margin-top:16px}
+.zw-book-scene{position:fixed;inset:0;z-index:40;display:grid;place-content:center;justify-items:center;perspective:1000px;overflow:hidden;pointer-events:none;transition:opacity .3s;background:transparent}
+.zw-book-scene.zw-leaving{opacity:0}
+.zw-skip-book{pointer-events:auto;position:absolute;bottom:32px;left:50%;transform:translateX(-50%);background:var(--glass);color:var(--ink);border:1px solid var(--paper-rule);border-radius:var(--ui-radius-round);padding:8px 16px;font:var(--ui-font-12)/1.8 var(--ui-sans)}
+.zw-book{position:relative;width:190px;height:266px;transform-style:preserve-3d;transform:rotate(-5deg);filter:drop-shadow(0 26px 22px #6e414a35);animation:zw-book-arrive 1.1s cubic-bezier(.18,.75,.24,1) both}
+.zw-book-pages{position:absolute;inset:5px 0 5px 7px;border:1px solid var(--zw-paper-edge);border-radius:3px 12px 12px 3px;background:repeating-linear-gradient(to right,#f7ecdf 0 2px,#e3d2c1 2px 3px);box-shadow:5px 3px 0 #eedfce}
+.zw-book-page{position:absolute;inset:0 4px 0 0;border-radius:4px 12px 12px 4px;padding:36px 23px;background:var(--zw-paper);border:1px solid var(--zw-paper-edge);color:var(--zw-paper-ink);font-family:var(--ui-serif,serif)}
+.zw-book-page small{display:block;font-size:9px;letter-spacing:.24em;color:var(--zw-gold);margin-bottom:24px}.zw-book-page p{font-size:14px;line-height:2.2;margin:0}.zw-book-page i{display:block;height:1px;background:var(--zw-paper-edge);margin-top:19px;opacity:.55}
+.zw-book-cover{position:absolute;inset:0;border:1px solid #c39499;border-radius:4px 13px 13px 4px;transform-origin:0 50%;transform-style:preserve-3d;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(125deg,#f2ddd7,#e6bdc4 70%,#d8a8b4);color:#72505a;box-shadow:inset 6px 0 12px #98646f25,inset 0 0 0 8px #ffffff2b;animation:zw-book-open 1.25s .35s cubic-bezier(.2,.65,.25,1) both}
+.zw-book-cover::before{content:'';position:absolute;inset:16px 13px 16px 18px;border:1px solid #fff7eb80;border-radius:2px 7px 7px 2px}.zw-book-cover .zw-seal{font-size:25px;color:#fff9eb;margin-bottom:23px}.zw-book-cover strong{font:500 23px/1.8 var(--ui-serif,serif);letter-spacing:.15em;writing-mode:vertical-rl}.zw-book-cover small{font-size:8px;letter-spacing:.25em;margin-top:22px}
+.zw-book-caption{margin:34px 0 0;font:13px/1.8 var(--ui-serif,serif);letter-spacing:.16em;color:var(--zw-paper-ink);animation:zw-caption .7s .2s both}
+.zw-spark{position:absolute;width:4px;height:4px;border-radius:50%;background:#e7bc88;box-shadow:0 0 10px #fff1bd;left:var(--x);top:var(--y);animation:zw-spark 2s var(--delay) ease-out both}
+.zw-letter{display:inline-block;white-space:pre;transform-origin:50% 85%}.zw-visual{white-space:pre-wrap}.zw-sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.zw-writing-controls{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:34px;margin:0 0 18px;padding-bottom:10px;border-bottom:1px solid var(--zw-paper-edge);color:var(--muted);font:11px/1.8 var(--ui-sans,system-ui)}.zw-writing-controls button{border:0;background:transparent;color:var(--accent);font:inherit;padding:5px 0;cursor:pointer}.zw-writing-controls .zw-pen{display:inline-block;color:var(--zw-gold);margin-right:6px;animation:zw-pen 1.1s infinite ease-in-out}
+@keyframes zw-book-arrive{from{opacity:0;transform:translateY(64px) rotateX(20deg) rotate(-9deg) scale(.8)}to{opacity:1;transform:translateY(0) rotateX(0) rotate(-5deg) scale(1)}}
+@keyframes zw-page-arrive{from{opacity:0;transform:translateY(24px) rotateX(5deg)}to{opacity:1;transform:translateY(0) rotateX(0)}}
+@keyframes zw-caption{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@keyframes zw-spark{from{opacity:0;transform:translateY(35px) scale(.4)}40%{opacity:.65}to{opacity:0;transform:translateY(-55px) scale(1)}}
+@keyframes zw-pen{50%{transform:translateY(-2px) rotate(-12deg)}}
+.zw-hero-copy{position:relative;z-index:2}.zw-hero-copy .zw-kicker{font:9px/1.7 var(--ui-sans,system-ui);letter-spacing:.22em;color:var(--zw-rose)}.zw-hero-copy h1{font:500 37px/1.35 var(--ui-serif,serif);letter-spacing:.13em;margin:12px 0 14px;color:var(--zw-paper-ink)}.zw-hero-copy p{font:12px/1.95 var(--ui-serif,serif);color:var(--muted);margin:0}.zw-hero-rule{display:block;width:65px;height:12px;margin:13px 0;background:linear-gradient(var(--zw-gold),var(--zw-gold)) left center/44px 1px no-repeat}.zw-hero-rule::after{content:'✧';float:right;color:var(--zw-gold);font-size:14px;line-height:10px}
+.zw-hero-book{position:relative;height:226px;width:150px;max-width:100%;padding:0;border:0;border-radius:4px 9px 9px 4px;background:transparent;cursor:pointer;transform:rotateY(-14deg) rotateZ(5deg);transform-style:preserve-3d;transition:transform .65s cubic-bezier(.2,.7,.25,1);justify-self:center;box-shadow:14px 23px 29px -11px #503a3e60}
+.zw-hero-book::before{content:'';position:absolute;inset:4px -6px 3px 4px;background:repeating-linear-gradient(90deg,#e8dac4 0 1px,#fff7e7 1px 3px);border:1px solid #cfbca1;border-radius:2px 7px 7px 2px;transform:translateZ(-5px)}
+.zw-hero-cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ad827d url('/journal-art/botanical-book-cover.jpg') center/cover;border:1px solid #8c6463;border-radius:3px 7px 7px 3px;box-shadow:inset 5px 0 8px #4c2e3555;overflow:hidden;transform-style:preserve-3d}
+.zw-hero-cover::after{content:'';position:absolute;inset:-50%;background:linear-gradient(110deg,transparent 38%,#fff4c74d 49%,transparent 61%);transform:translateX(-70%);animation:zw-foil-sweep 7s 1.8s infinite}
+.zw-hero-cover strong{font:500 19px/1.65 var(--ui-serif,serif);letter-spacing:.13em;color:#ffebbd;text-shadow:0 1px 1px #5e3532,0 0 8px #fff0a92b;writing-mode:vertical-rl;margin-top:-2px}.zw-hero-cover small{font:6px/2 var(--ui-sans,system-ui);letter-spacing:.16em;color:#ffedbe;position:absolute;bottom:28%;left:0;right:0;text-align:center}
+.zw-book-ribbon{position:absolute;z-index:-1;right:17px;bottom:-20px;width:12px;height:65px;background:linear-gradient(90deg,#9e6f79,#c09b9f 50%,#8d636d);clip-path:polygon(0 0,100% 0,100% 100%,50% 88%,0 100%);box-shadow:2px 2px 2px #43252b30;transform-origin:50% 0;animation:zw-ribbon-sway 6s ease-in-out infinite}
+.zw-hero-open{display:block;margin-top:16px;border:0;background:transparent;border-bottom:1px solid var(--zw-paper-edge);color:var(--zw-rose);font:11px/2 var(--ui-sans,system-ui);padding:0 0 3px;letter-spacing:.08em}.zw-hero-open span{padding-left:12px;color:var(--zw-gold)}
+.zw-writing-controls{font-size:10px;min-height:32px;margin:0 0 18px;border-bottom:1px dotted var(--zw-paper-edge)}
+.zw-pen-tip{position:fixed;z-index:8;width:48px;height:66px;pointer-events:none;filter:drop-shadow(2px 3px 2px #48322635);transform-origin:8% 95%;background:url('/journal-art/quill.svg') center/contain no-repeat;transition:left .035s linear,top .035s linear;animation:zw-quill-write .32s ease-in-out infinite alternate}.zw-pen-tip::after{content:'';position:absolute;left:0;bottom:1px;width:3px;height:3px;border-radius:50%;background:#ae825d;box-shadow:0 0 9px #dab676}
+.zw-book-scene .zw-book{width:202px;height:302px;filter:drop-shadow(0 28px 25px #4e313f50);animation:zw-book-arrive 1.2s cubic-bezier(.16,.8,.25,1) both}
+.zw-book-scene .zw-book-cover{background:#ad827d url('/journal-art/botanical-book-cover.jpg') center/cover;border-color:#956d67;box-shadow:inset 8px 0 15px #4d2c3540;animation:zw-cover-open 2.45s .65s cubic-bezier(.28,.65,.2,1) both}
+.zw-book-scene .zw-book-cover::before{display:none}.zw-book-scene .zw-book-cover strong{color:#ffe3af;text-shadow:0 1px 2px #5c302c;font-size:25px;margin-top:24px;letter-spacing:.15em}.zw-book-scene .zw-book-cover .zw-seal{display:none}.zw-book-scene .zw-book-cover small{color:#f7dfab;font-size:7px;letter-spacing:.25em;margin-top:15px}
+.zw-book-scene .zw-book-page{padding:55px 30px 25px;background:var(--zw-fiber),var(--zw-paper);box-shadow:inset 13px 0 18px #62462c12}
+.zw-book-scene .zw-book-page::after{content:'';position:absolute;width:125px;height:125px;bottom:6px;left:5px;background:url('/journal-art/botanical-flourish.svg') center/contain no-repeat;opacity:.55}
+.zw-book-scene .zw-book-caption{font-size:12px;letter-spacing:.23em;margin-top:40px}.zw-book-scene .zw-spark{width:3px;height:3px;animation-duration:3.5s}
+.zw-book-leaf{position:absolute;inset:3px 5px 3px 2px;border:1px solid var(--zw-paper-edge);background:var(--zw-fiber),var(--zw-paper);border-radius:1px 10px 10px 1px;transform-origin:left center;animation:zw-intro-leaf 1.45s var(--leaf-delay) cubic-bezier(.28,.7,.2,1) both;box-shadow:inset 9px 0 14px #6a493917;backface-visibility:hidden}.zw-book-leaf::after{content:'';position:absolute;inset:55px 25px;background:repeating-linear-gradient(transparent 0 22px,#c1a77644 22px 23px)}
+@keyframes zw-cover-open{0%,22%{transform:rotateY(0)}100%{transform:rotateY(-160deg)}}
+@keyframes zw-intro-leaf{0%,18%{transform:rotateY(0)}100%{transform:rotateY(-145deg)}}
+@keyframes zw-foil-sweep{0%,55%{transform:translateX(-70%)}80%,100%{transform:translateX(70%)}}
+@keyframes zw-ribbon-sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(5deg)}}
+@keyframes zw-quill-write{from{transform:rotate(-6deg)}to{transform:rotate(3deg)}}
+/* The hero is a smaller object in the original space, not a replacement masthead. */
+.zw-hero-book{width:112px;height:170px;box-shadow:10px 15px 24px -10px color-mix(in srgb,var(--ink) 30%,transparent)}
+.zw-hero-cover::after{animation:zw-foil-sweep 3.8s 1s 1}
+.zw-book-ribbon{animation:zw-ribbon-sway 4s 2}
+.zw-hero-cover strong{font-size:17px}.zw-hero-cover small{font-size:6px}
+.zw-book-scene .zw-book{width:174px;height:254px;animation-duration:.6s}
+.zw-book-scene .zw-book-cover{animation-duration:1.5s;animation-delay:.25s}
+.zw-book-leaf{animation-duration:1s}
+.zw-tap-wave{position:fixed;z-index:50;pointer-events:none;width:52px;height:52px;border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:50%}
+:root[data-zw-motion=off] :is(.zw-book-ribbon,.zw-hero-cover::after){animation:none}
+:root[data-reduce-glass=true] :is(#logs .log-today,#memory .memory-main-group,#memory .memory-entry:not(.memory-primary)){background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none}
+@media(prefers-reduced-transparency:reduce){:is(#logs .log-today,#memory .memory-main-group,#memory .memory-entry:not(.memory-primary)){background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none}}
+@media(min-width:650px){:root:not([data-experience=off]) #logs:not(.record-open)>.zw-journal-hero{max-width:720px;margin-inline:auto;grid-template-columns:1fr 220px;padding-inline:30px}}
+@media(max-width:360px){:root:not([data-experience=off]) #memory .memory-entry:not(.memory-primary){padding-left:53px}.zw-hero-book{width:116px;height:176px}}
+@media(prefers-reduced-motion:reduce){.zw-book-scene,.zw-pen-tip{display:none!important}:is(.zw-hero-cover::after,.zw-book-ribbon,.zw-writing-controls .zw-pen){animation:none!important}:root .panel:not([hidden]){animation:none!important}}
+
+:root:not([data-experience=off]) #logs:not(.record-open)>.records-heading{margin-bottom:12px}
+.zw-replay-book{font-size:10px;margin-top:8px;color:var(--muted)}
+:root[data-zw-motion=off] .record-sheet{animation:none}
+
+/* Keep the peer centered even with the new-session action in the right cluster. */
+body.chat-view .topbar{position:relative;--zw-header-top:27px}
+body.chat-view .chat-header-title{position:absolute;left:50%;top:calc(var(--zw-header-top) + env(safe-area-inset-top,0px) + 21.5px);transform:translate(-50%,-50%)}
+body.chat-view .topbar-controls{grid-column:3}
+@media(max-width:360px){body.chat-view .chat-top-actions .chat-icon-button,body.chat-view #settingsButton{width:28px}body.chat-view .topbar-controls,body.chat-view .chat-top-actions{gap:4px}}
+
+@media(max-width:550px){body.chat-view .topbar{--zw-header-top:20px}}
+
+:root:not([data-experience=off]) #logs.diary-reading .diary-card::before{content:'';display:block;position:absolute;top:0;right:24px;width:12px;height:34px;z-index:4;background:var(--accent);opacity:.65;clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%);pointer-events:none}
+:root:not([data-experience=off]) #memory .memory-main-group::after{content:'';position:absolute;bottom:2px;left:2px;width:82px;height:82px;background:url('/journal-art/botanical-flourish.svg') center/contain no-repeat;opacity:.18;pointer-events:none}
+
+/* Settings: a quiet cabinet, with compact controls and a fixed action shelf. */
+#settings{width:min(calc(100% - 24px),520px);height:min(86dvh,760px);max-height:calc(100dvh - 24px);padding:0!important;overflow:hidden;border:1px solid var(--paper-rule);border-radius:var(--dialog-radius);box-shadow:var(--dialog-shadow);scroll-padding:0}
+#settings[open]{display:flex;flex-direction:column}
+#settings::backdrop{background:color-mix(in srgb,var(--ink) 24%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#settings .settings-heading{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:22px 22px 12px;flex:none;isolation:isolate}
+#settings .settings-heading::after{content:'';position:absolute;right:48px;top:-15px;width:120px;height:120px;background:url('/journal-art/botanical-flourish.svg') center/contain no-repeat;opacity:.14;pointer-events:none;z-index:-1;transform:rotate(90deg)}
+#settings .settings-heading .eyebrow{font-size:9px;letter-spacing:.14em}
+#settingsTitle{font:500 20px/1.6 var(--ui-serif);letter-spacing:.025em;margin:5px 0 3px}
+#settings .settings-heading p{font-size:11px;line-height:1.8}
+#settings #closeSettings{width:34px;height:34px;min-height:34px;flex:none;font-size:24px;background:transparent;border:1px solid var(--paper-rule)}
+#settings .zw-settings-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;margin:0 20px 14px;border:1px solid var(--paper-rule);border-radius:13px;flex:none;background:var(--selected-fill)}
+#settings .zw-settings-nav button{min-height:34px;min-width:0;padding:4px 8px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:12px/1.8 var(--ui-serif)}
+#settings .zw-settings-nav button[aria-pressed=true]{background:var(--paper-fill);color:var(--accent);box-shadow:var(--paper-shadow)}
+#settingsContent{position:relative;flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 20px 10px;scroll-padding-top:8px;scrollbar-width:thin;scrollbar-color:var(--paper-rule) transparent}
+#settings .settings-section{position:relative;min-width:0;margin:8px 0 18px;padding:14px 16px 16px;border:1px solid var(--paper-rule);border-radius:16px;background:var(--paper-fill);box-shadow:0 2px 10px color-mix(in srgb,var(--ink) 3%,transparent);scroll-margin:8px}
+#settings .settings-section legend{padding:0 7px;margin-left:-3px;margin-bottom:0;color:var(--ink);font:500 15px/1.8 var(--ui-serif)}
+#settings .settings-section legend>span:first-child{font:italic 11px/1 Georgia,serif;color:var(--accent);margin-right:5px}
+#settings label{margin:0 0 6px;font-size:11px;line-height:1.8}
+#settings :is(input:not([type=range]):not([type=checkbox]),select){height:40px;min-height:40px;width:100%;padding:6px 10px;border:1px solid var(--paper-rule);border-radius:9px;background:var(--input);box-shadow:inset 0 1px 2px color-mix(in srgb,var(--ink) 2%,transparent)}
+#settings .settings-field-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#settings .settings-row-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+#settings .settings-row-heading strong{font-weight:500;font-size:12px}
+#settings .settings-row-heading>span{font-size:10px;color:var(--muted)}
+#settings .settings-wallpaper{border-block:1px solid var(--paper-rule);padding:13px 0 12px;margin:14px 0 12px}
+#settings .settings-inline-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px}
+#settings :is(button.secondary,button.primary){width:auto;min-height:36px;margin:0;padding:7px 12px;font-size:12px;line-height:1.8;border-radius:10px;white-space:normal}
+#settings button.secondary{background:var(--selected-fill);border-color:var(--paper-rule)}
+#settings .text-button{min-height:32px;padding:5px 0;font-size:11px;line-height:1.8}
+#settings .hint{font-size:10px;line-height:1.85;margin-top:7px;color:var(--muted)}
+#settings .settings-slider>label{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:0}
+#settings output{font:11px/1.8 var(--ui-sans);font-variant-numeric:tabular-nums;color:var(--accent);white-space:nowrap}
+#settings input[type=range]{display:block;appearance:none;-webkit-appearance:none;height:28px;min-height:28px;width:100%;border:0;padding:0;margin:3px 0;background:transparent;box-shadow:none;cursor:pointer;accent-color:var(--accent)}
+#settings input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--paper-rule);border-radius:8px}
+#settings input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:15px;height:15px;margin-top:-6px;border:3px solid var(--bg);border-radius:50%;background:var(--accent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent),0 2px 4px color-mix(in srgb,var(--ink) 10%,transparent)}
+#settings input[type=range]::-moz-range-track{height:3px;background:var(--paper-rule);border-radius:8px}
+#settings input[type=range]::-moz-range-thumb{width:10px;height:10px;border:3px solid var(--bg);border-radius:50%;background:var(--accent);box-shadow:0 0 0 1px var(--paper-rule)}
+#settings .settings-scale{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:-2px}
+#settings .settings-toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px;margin:0;padding:10px 0;text-align:left;cursor:pointer}
+#settings .settings-toggle+ .settings-toggle{border-top:1px solid var(--paper-rule)}
+#settings .settings-toggle strong{display:block;font-size:12px;font-weight:500;color:var(--ink)}
+#settings .settings-toggle small{display:block;font-size:10px;color:var(--muted);line-height:1.8;margin-top:2px}
+#settings .settings-toggle input{position:relative;appearance:none;-webkit-appearance:none;width:34px;height:20px;min-height:20px;padding:0;margin:0;flex:none;border:1px solid var(--paper-rule);border-radius:20px;background:color-mix(in srgb,var(--muted) 20%,transparent);cursor:pointer;transition:background .2s}
+#settings .settings-toggle input::before{content:'';display:block;position:absolute;left:3px;top:3px;width:12px;height:12px;background:var(--bg);border-radius:50%;box-shadow:0 1px 3px #0002;transition:transform .2s}
+#settings .settings-toggle input:checked{background:var(--accent);border-color:var(--accent)}
+#settings .settings-toggle input:checked::before{transform:translateX(14px)}
+#settings .settings-profiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:16px}
+#settings .settings-person{min-width:0}
+#settings .settings-portrait{display:grid;place-items:center;overflow:hidden;width:42px;height:42px;border:1px solid var(--paper-rule);border-radius:50%;background:var(--selected-fill);color:var(--accent);font:18px/1 var(--ui-serif);margin-bottom:10px;box-shadow:0 0 0 3px var(--paper-fill)}
+#settings .settings-portrait img{width:100%;height:100%;object-fit:cover}
+#settings .settings-avatar-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:7px}
+#settings .settings-file-label{font-size:10px;line-height:1.8;color:var(--accent);cursor:pointer;min-height:28px;padding:5px 0;margin:0}
+#settings .settings-avatar-actions .text-button{font-size:10px;min-height:28px}
+#settings .settings-file-name{display:block;max-width:100%;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+#settings .settings-label-note{font-size:10px;color:var(--muted);margin-left:8px}
+#settings .chat-font-settings{padding-top:15px;margin-top:8px;border-top:1px solid var(--paper-rule)}
+#settings #chatFontPreview{padding:10px 12px;margin:6px 0 0;font-family:var(--ui-serif);border-left:2px solid var(--paper-rule);background:transparent;border-radius:0;color:var(--ink)}
+#settings .chat-font-settings .settings-inline-actions{margin-top:2px;gap:10px}
+#settings .chat-font-settings .hint{margin:0}
+#settings :is(#profileHistory,.settings-security-note){border-top:1px solid var(--paper-rule);padding-top:10px;margin-top:12px;font-size:11px}
+#settings summary{font-size:11px}
+#settings .security>.hint:first-of-type{margin:0 0 12px}
+#settings #verifyPassword{margin-bottom:2px}
+#settings .logout-actions{display:flex;align-items:center;gap:14px;border-top:1px solid var(--paper-rule);margin-top:14px;padding-top:12px;flex-wrap:wrap}
+#settings #logoutAll{color:var(--muted)}
+#settings .settings-workbench{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:38px;background:transparent;color:var(--ink);border:0;border-top:1px solid var(--paper-rule);padding:12px 0 0;margin-top:14px;font-size:12px;text-align:left}
+#settings .settings-workbench small{font-size:10px;color:var(--muted);margin-left:8px}
+#settings .settings-endnote{text-align:center;font:10px/1.8 var(--ui-serif);color:var(--muted);padding:0 0 8px}
+#settings .settings-footer{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;border-top:1px solid var(--paper-rule);background:var(--bg)}
+#settings .settings-footer>div{min-width:0}
+#settings #settingsMessage{font-size:11px;line-height:1.65;margin:0;color:var(--accent);overflow-wrap:anywhere}
+#settings .settings-footer small{display:block;font-size:9px;color:var(--muted);line-height:1.7}
+#settings #saveProfile{flex:none;background:var(--accent);color:var(--bg);border:0;min-height:38px;padding:8px 14px}
+#settings #saveProfile span{margin-left:10px}
+@media(max-width:360px){#settings .settings-heading{padding:18px 16px 10px}#settingsTitle{font-size:17px}#settings .zw-settings-nav{margin-inline:14px}#settingsContent{padding-inline:14px}#settings .settings-section{padding-inline:12px}#settings .settings-inline-actions{gap:10px}#settings .settings-row-heading>span{display:none}#settings .settings-footer{padding:10px 14px}#settings .settings-field-pair,#settings .settings-profiles{gap:10px}}
+@media(max-height:450px){#settings{height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}#settings .settings-heading{padding:10px 18px 5px}#settings .settings-heading p,#settings .settings-heading .eyebrow{display:none}#settings .zw-settings-nav{margin-bottom:8px}#settings .settings-footer{padding-block:8px}}
+/* A persistent base keeps the connection visible between the two portraits. */
+.home .heartbeat{width:96px;min-width:64px;flex:0 1 96px}
+.home .heartbeat svg{height:38px}
+.home .heartbeat svg path{vector-effect:non-scaling-stroke;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}
+.home .heartbeat .pulse-base{opacity:.3}
+.home .heartbeat .pulse{opacity:.9;stroke-dasharray:22 78;stroke-dashoffset:100;animation:zw-heartbeat-line 3.8s linear infinite}
+@keyframes zw-heartbeat-line{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+:root[data-zw-motion=off] .home .heartbeat .pulse{animation:none;stroke-dasharray:none;stroke-dashoffset:0;opacity:.8}
+@media(prefers-reduced-motion:reduce){.home .heartbeat .pulse{animation:none!important;stroke-dasharray:none;stroke-dashoffset:0;opacity:.8}}
+@media(forced-colors:active){#settings .settings-toggle input{appearance:auto;-webkit-appearance:auto}#settings .settings-toggle input::before{display:none}}
