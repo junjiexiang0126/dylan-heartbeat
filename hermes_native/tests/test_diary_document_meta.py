@@ -37,6 +37,25 @@ class DiaryDocumentMetaTest(unittest.TestCase):
         self.assertEqual(d['visibility'], 'shared')
         self.assertIn('正文一段', d['content'])
 
+    def test_reading_body_keeps_markdown_and_full_original_is_separate(self):
+        text = '心情：安静\n一句：留下一个小片段\n可见：共享\n\n## 窗边的一页\n\n**今天**记住了一句话。\n\n### 后来想到\n\n> 她昨天说的话。\n\n- 第一件事\n- 第二件事\n\n```python\n# 心情：这是一行代码\nprint("hello")\n```\n'
+        path=self.dir/'2026-10-21.md';path.write_text(text,encoding='utf-8')
+        row=bridge.diary_page()['data'][0]
+        self.assertNotIn('content',row);self.assertNotIn('originalContent',row)
+        doc=bridge.diary_document(row['id'])
+        self.assertEqual(doc['originalContent'],text)
+        self.assertEqual(path.read_text(),text)
+        self.assertNotIn('## 窗边的一页',doc['content'])
+        self.assertNotIn('可见：共享',doc['content'])
+        self.assertIn('**今天**',doc['content']);self.assertIn('### 后来想到',doc['content'])
+        self.assertIn('# 心情：这是一行代码',doc['content'])
+
+    def test_metadata_like_lines_inside_body_remain_literal(self):
+        text='## 一页\n\n我记住了这句话：\n心情：不是元数据，而是引用。\n'
+        (self.dir/'2026-10-21.md').write_text(text,encoding='utf-8')
+        doc=bridge.diary_document(bridge.diary_page()['data'][0]['id'])
+        self.assertIn('心情：不是元数据，而是引用。',doc['content'])
+
     def test_private_still_404(self):
         (self.dir / '2026-10-16-memo.md').write_text('心情：低\n\n## 只给自己\n\n夜里。\n', encoding='utf-8')
         with self.assertRaises(bridge.MemoryError) as caught:
