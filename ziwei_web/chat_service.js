@@ -66,15 +66,21 @@ function createChatService(dir,{authorized=()=>true}={}){
   })().finally(()=>mediaJobs.delete(r.id));mediaJobs.set(r.id,job);return job;
  }
 
- function tokensDelta(u){
-  if(!u||typeof u!=='object')return null;
-  const inp=Number(u.input_tokens),out=Number(u.output_tokens);
-  if(!Number.isFinite(inp)||!Number.isFinite(out))return null;
+ function readUsageSnap(){
+  try{const fs=require('node:fs');const p='/webdata/hermes-usage.json';const v=JSON.parse(fs.readFileSync(p,'utf8'));
+   if(!v||!Number.isFinite(v.input)||!Number.isFinite(v.output))return null;return v;}catch{return null;}
+}
+function tokensDelta(u){
+  // 真实用量来自宿主导出的会话累计快照，与上一次存下的值做差
+  const snap=readUsageSnap();
+  if(!snap)return null;
   let prev=null;
   try{const row=store.db.prepare("SELECT value FROM meta WHERE key='usage_cum'").get();prev=row?JSON.parse(row.value):null;}catch{}
-  try{store.db.prepare("INSERT INTO meta(key,value) VALUES('usage_cum',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(JSON.stringify({input_tokens:inp,output_tokens:out}));}catch{}
-  if(!prev||!Number.isFinite(prev.input_tokens)||!Number.isFinite(prev.output_tokens))return {input:null,output:null,total:null,first:true};
-  const di=Math.max(0,inp-prev.input_tokens),dout=Math.max(0,out-prev.output_tokens);
+  try{store.db.prepare("INSERT INTO meta(key,value) VALUES('usage_cum',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+   .run(JSON.stringify({input:snap.input,output:snap.output}));}catch{}
+  if(!prev||!Number.isFinite(prev.input)||!Number.isFinite(prev.output))return {input:null,output:null,total:null,first:true};
+  const di=Math.max(0,snap.input-prev.input),dout=Math.max(0,snap.output-prev.output);
+  if(di===0&&dout===0)return null;
   return {input:di,output:dout,total:di+dout};
 }
 function finish(id,o){
