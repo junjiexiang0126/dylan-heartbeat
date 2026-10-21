@@ -1,0 +1,59 @@
+{
+  "_schema": 3,
+  "_description": "V1.3 auto-discovery backup config — managed roots + exclusion rules + alert policies. Copy to v13-config.json and fill in your values.",
+  "bucket": "cos://YOUR-BUCKET-NAME/YOUR-PREFIX",
+  "state": "/opt/backups/.cos-v13-state",
+  "stage": "/opt/backups/.cos-v13-staging",
+  "key": "/root/.ziwei-backup-key",
+  "coscli": "coscli",
+  "max_object_bytes": 4294967296,
+  "max_stage_bytes": 10737418240,
+  "managed_roots": [
+    {
+      "path": "/opt/hermes-data",
+      "source": "docker-bind:YOUR-CONTAINER:/opt/data",
+      "reason": "primary application data — managed by Docker bind mount"
+    }
+  ],
+  "exclude_patterns": [
+    {"path": "/opt/hermes-data/cache", "reason": "runtime cache — audio/images/video transcodes"},
+    {"path": "/opt/hermes-data/logs", "reason": "rotating logs — not worth backing up"},
+    {"path": "/opt/hermes-data/tmp", "reason": "temporary files"},
+    {"path": "/opt/hermes-data/workspace/tmp", "reason": "git working copies — backed by remotes"},
+    {"path": "/opt/hermes-data/node_modules", "reason": "npm dependencies — restored via package.json"},
+    {"path": "/opt/hermes-data/__pycache__", "reason": "Python bytecode cache"},
+    {"path": "/opt/hermes-data/.git", "reason": "git metadata — backed by remotes"}
+  ],
+  "sqlite_discovery": {
+    "enabled": true,
+    "extensions": [".sqlite", ".db"],
+    "exclude_paths": ["/opt/hermes-data/cache"],
+    "integrity_check": true
+  },
+  "unknown_storage_alert": {
+    "enabled": true,
+    "extensions": [".sql", ".duckdb", ".mdb", ".accdb", ".rdb", ".dat", ".parquet"],
+    "alert_on_found": true
+  },
+  "docker_mount_discovery": {
+    "enabled": true,
+    "containers": ["YOUR-CONTAINER-1", "YOUR-CONTAINER-2"],
+    "auto_discover": true
+  },
+  "host_services": {
+    "enabled": true,
+    "paths": ["/etc/systemd/system/YOUR-SERVICE-*.service"],
+    "backup_service_files": true
+  },
+  "stage_cleanup": {
+    "enabled": true,
+    "max_age_days": 7,
+    "min_free_bytes": 5368709120,
+    "safe_check": true
+  },
+  "required_files": [
+    "/opt/hermes-data/SOUL.md",
+    "/opt/hermes-data/config.yaml",
+    "/opt/hermes-data/memory"
+  ]
+}
