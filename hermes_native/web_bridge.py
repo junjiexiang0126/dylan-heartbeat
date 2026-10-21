@@ -809,7 +809,7 @@ DIARY_PREVIEW = 200
 # 一天可以有两页：共享的 2026-10-16.md，和只写给自己的一页 2026-10-16-memo.md。
 DIARY_NAME = re.compile(r'^(\d{4}-\d{2}-\d{2})(?:[-_.][A-Za-z0-9_-]+)?\.md$')
 # 她自己写在开头的手写字段：心情：… / 一句：… / 标签：词、词 / 可见：共享|私人
-DIARY_FIELD = re.compile(r'^(心情|一句|标签|可见)\s*[:：]\s*(.*)$')
+DIARY_FIELD = re.compile(r'^[\s*]*(心情|一句|标签|可见)(?:话)?[\s*]*[:：][\s*]*(.*)$')
 DIARY_PRIVATE_NAME = re.compile(r'(^|[-_.])(memo|private|默记)([-_.]|$)', re.IGNORECASE)
 DIARY_SHARED = 'shared'
 DIARY_PRIVATE = 'private'
@@ -977,6 +977,10 @@ def diary_document(identifier):
                         'originalContent': record['originalContent'],
                         'source': record['source'], 'revision': record['revision'],
                         'savedAt': record['savedAt'], 'errors': errors}
+            # 2026-10-22: 单篇全文接口补透传 mood/summary/tags（列表接口早已有）
+            for key in ('mood', 'summary', 'tags'):
+                if record.get(key):
+                    document[key] = record[key]
             for key in ('mood', 'summary', 'tags'):
                 if record.get(key):
                     document[key] = record[key]
