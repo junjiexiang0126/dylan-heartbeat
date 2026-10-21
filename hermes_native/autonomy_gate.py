@@ -52,7 +52,9 @@ def _notify_block(home, reason: str):
         records.append({"id": str(uuid.uuid4()),
                         "at": now.isoformat(), "author": "ziwei", "target": "user"})
         atomic_json(pokes_path, {"records": records})
+        os.chown(pokes_path, 10000, 10000)
         atomic_json(throttle_path, {"reason": reason, "ts": now.timestamp()})
+        os.chown(throttle_path, 10000, 10000)
     except Exception:
         pass
 
