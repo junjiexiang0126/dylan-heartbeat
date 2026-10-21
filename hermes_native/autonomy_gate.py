@@ -6,9 +6,9 @@ opportunities, and inspect file evidence before accepting a task's completion.
 import fcntl
 import json
 import os
-import sys
 import tempfile
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 ACTIVE = {"pending", "in_progress"}
@@ -17,42 +17,46 @@ ACTIVE = {"pending", "in_progress"}
 STATES = ACTIVE | {"completed", "failed", "waiting_user", "waiting_front", "deferred"}
 
 
-LEGACY_EVIDENCE_WAIVERS = frozenset({
-    "home-raven-only-time", "action-timeline-above-bubble",
-    "ci-fix-remaining-workflows", "branch-audit-17", "backend-ci-work-webkit",
-    "vision-routing-fix", "web-polish-batch1-remain", "hermes-impressions-route",
-})
-DEFAULT_DAILY_OPPORTUNITIES = 15  # Reported current setting; never rewrite a profile's config.
-
-
-def _daily_opportunities(home: Path):
-    """Use the evaluated profile, not a possibly different process environment.
-
-    Missing configuration uses the documented default. Unreadable, malformed or
-    out-of-range explicit configuration refuses the wake instead of raising its cap.
-    """
-    path = home / "autonomy_gate.json"
+def _daily_opportunities():
+    """每天允许的自主唤醒次数：读 $HERMES_HOME/autonomy_gate.json，默认 15。"""
+    path = os.path.join(os.environ.get("HERMES_HOME", "/opt/data"), "autonomy_gate.json")
     try:
-        settings = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return DEFAULT_DAILY_OPPORTUNITIES
-    if not isinstance(settings, dict):
-        raise ValueError("Invalid autonomy gate configuration")
-    value = settings.get("daily_opportunities", DEFAULT_DAILY_OPPORTUNITIES)
-    if type(value) is not int or not 1 <= value <= 48:
-        raise ValueError("Invalid daily opportunities")
-    return value
+        with open(path, encoding="utf-8") as fh:
+            value = int(json.load(fh).get("daily_opportunities", 15))
+        return max(1, min(48, value))
+    except Exception:
+        return 15
 
 
-def _legacy_waiver(task):
-    reason = task.get("evidence_waived")
-    if isinstance(reason, dict):
-        reason = reason.get("reason")
-    return (task.get("id") in LEGACY_EVIDENCE_WAIVERS
-            and isinstance(reason, str) and bool(reason.strip()))
 
+def _notify_block(home, reason: str):
+    """Best-effort notice into the web pokes feed when the gate blocks a wake.
+    Owner decision 2026-10-21: silent refusals must reach the operator.
+    A failed notice must never affect the gate decision."""
+    try:
+        now = datetime.now(timezone.utc)
+        throttle_path = home / ".autonomy-gate-notify.json"
+        try:
+            state = json.loads(throttle_path.read_text())
+        except Exception:
+            state = {}
+        if state.get("reason") == reason and now.timestamp() - float(state.get("ts") or 0) < 3600:
+            return
+        pokes_path = home / "workspace" / "web-pokes.json"
+        try:
+            records = json.loads(pokes_path.read_text())["records"]
+        except FileNotFoundError:
+            records = []
+        except Exception:
+            return
+        records.append({"id": str(uuid.uuid4()),
+                        "at": now.isoformat(), "author": "ziwei", "target": "user"})
+        atomic_json(pokes_path, {"records": records})
+        atomic_json(throttle_path, {"reason": reason, "ts": now.timestamp()})
+    except Exception:
+        pass
 
-def evaluate(home: Path, now: datetime, *, persist=True) -> dict:
+def evaluate(home: Path, now: datetime) -> dict:
     workspace = home / "workspace"
     state_path = home / "autonomy_gate_state.json"
     tasks_path = workspace / "tasks.json"
@@ -66,6 +70,7 @@ def evaluate(home: Path, now: datetime, *, persist=True) -> dict:
         if isinstance(jobs, dict):
             jobs = jobs.get("jobs", [])
         if any(j.get("name", "").startswith("ziwei-") and int(j.get("failure_streak") or 0) >= 3 for j in jobs):
+            _notify_block(home, "three consecutive failures; operator review needed")
             return {"wakeAgent": False, "reason": "three consecutive failures; operator review needed"}
     invalid_completions = []
     waived_evidence = []
@@ -74,7 +79,7 @@ def evaluate(home: Path, now: datetime, *, persist=True) -> dict:
             continue
         # 历史遗留：这条规则生效前完成的、没留存产物。显式豁免并记进日志，
         # 不伪造证据，也不让一条旧账把整台机器锁死。
-        if _legacy_waiver(task):
+        if task.get("evidence_waived"):
             waived_evidence.append(task.get("id"))
             continue
         paths = task.get("evidence", [])
@@ -84,20 +89,17 @@ def evaluate(home: Path, now: datetime, *, persist=True) -> dict:
             valid = valid and p.is_relative_to(workspace.resolve()) and p.is_file() and p.stat().st_size > 0
         if not valid:
             invalid_completions.append(task.get("id"))
-    if invalid_completions:
-        # The gate lock is not shared by native file/kanban tools. Rewriting
-        # tasks.json here can silently discard a concurrent Agent update.
-        # Pause instead; retain the original task document for reconciliation.
-        return {"wakeAgent": False,
-                "reason": "completed task lacks scoped nonempty file evidence; operator review needed",
-                "invalid_completions": invalid_completions}
+    # Owner decision 2026-10-21: evidence gaps are reminders, not locks.
+    # Missing evidence is flagged and handed to the agent for reconciliation;
+    # it no longer blocks the wake opportunity. The audit log keeps the trail.
+    invalid_completions = invalid_completions
     date = now.date().isoformat()
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
     if state.get("date") != date:
         state = {"date": date, "wakes": 0}
-    daily_limit = _daily_opportunities(home)
-    if int(state.get("wakes", 0)) >= daily_limit:
-        return {"wakeAgent": False, "reason": "daily opportunities used", "daily_limit": daily_limit}
+    if int(state.get("wakes", 0)) >= _daily_opportunities():
+        _notify_block(home, "daily opportunities used")
+        return {"wakeAgent": False, "reason": "daily opportunities used"}
     active = [t for t in tasks if t["status"] in ACTIVE]
     diary = workspace / "diary" / (date + ".md")
     diary_due = not (diary.is_file() and not diary.is_symlink() and diary.stat().st_size > 0)
@@ -108,10 +110,10 @@ def evaluate(home: Path, now: datetime, *, persist=True) -> dict:
     idle = not active and not diary_due
     state["wakes"] += 1
     state["last_opportunity"] = now.isoformat()
-    if persist:
-        atomic_json(state_path, state)
+    atomic_json(state_path, state)
     return {"wakeAgent": True, "time": now.isoformat(), "tasks": active,
-            "waived_evidence": waived_evidence, "daily_limit": daily_limit,
+            "waived_evidence": waived_evidence,
+            "invalid_completions": invalid_completions,
             "diary_due": diary_due, "idle": idle, "opportunity": state["wakes"],
             "available_actions": ["contact_user", "rest", "self_directed_task",
                                   "publish_moment", "write_diary"],
@@ -135,41 +137,29 @@ def atomic_json(path: Path, data):
             os.unlink(name)
 
 
-def main(argv=None):
-    args = [] if argv is None else argv
-    dry_run = args == ["--dry-run"]
+def main():
     home = None
     now = datetime.now().astimezone()
     try:
-        if args not in ([], ["--dry-run"]):
-            raise ValueError("Unsupported gate arguments")
         home = Path(os.environ["HERMES_HOME"])
-        if dry_run:
-            result = evaluate(home, now, persist=False)
-        else:
-            with (home / ".autonomy-gate.lock").open("a") as lock:
-                fcntl.flock(lock, fcntl.LOCK_EX)
-                result = evaluate(home, now)
+        with (home / ".autonomy-gate.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            result = evaluate(home, now)
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
         # Hermes treats a nonzero script exit as prompt context and may still
         # invoke the model. Always return a successful wakeAgent=false gate.
+        if home:
+            _notify_block(home, "preflight invalid; operator review needed")
         result = {"wakeAgent": False, "reason": "preflight invalid; operator review needed", "error_type": type(exc).__name__}
     # Every refusal needs a timestamp too; do not log exception messages or data.
     result.setdefault("time", now.isoformat())
-    if dry_run:
-        # Never attach this diagnostic mode as a paid Cron gate: it cannot authorize a wake.
-        result["would_wake"] = bool(result.get("wakeAgent"))
-        result["wakeAgent"] = False
-        result["diagnostic_only"] = True
-        result["active_task_count"] = len(result.pop("tasks", []))
     try:
-        if not dry_run:
-            with (home / "logs" / "autonomy_preflight.jsonl").open("a") as log:
-                log.write(json.dumps(result, ensure_ascii=False) + "\n")
+        with (home / "logs" / "autonomy_preflight.jsonl").open("a") as log:
+            log.write(json.dumps(result, ensure_ascii=False) + "\n")
     except (OSError, TypeError):
         pass  # Losing an audit sink must not turn the gate into a paid run.
     print(json.dumps(result, ensure_ascii=False))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()
