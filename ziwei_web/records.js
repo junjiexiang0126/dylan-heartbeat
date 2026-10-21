@@ -29,13 +29,13 @@ function createRecords(){
   if(req.method!=='GET')return json(405,{error:'read_only'});
   const kind=url.pathname.slice('/api/records/'.length),q=url.searchParams.get('q')||'',category=url.searchParams.get('category')||'all',offset=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||20),id=url.searchParams.get('id');
   if(!['diary','work','memory','artifact','impressions'].includes(kind))return json(404,{error:'not_found'});
-  if([...url.searchParams.keys()].some(k=>!['q','category','offset','limit','id'].includes(k))||url.search.length>2400||q.length>200||!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>50||!['all','user','self','protected','work','uncategorized','memory'].includes(category))return json(400,{error:'invalid_query'});
+  if([...url.searchParams.keys()].some(k=>!(kind==='impressions'?['limit','cursor','since']:['q','category','offset','limit','id']).includes(k))||url.search.length>2400||q.length>200||!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>50||!['all','user','self','protected','work','uncategorized','memory'].includes(category))return json(400,{error:'invalid_query'});
   try{
    if(kind==='impressions'){
-    const qs=new URLSearchParams({limit:String(limit)});
+    const qs=new URLSearchParams({limit:String(limit)});for(const key of ['cursor','since'])if(url.searchParams.has(key))qs.set(key,url.searchParams.get(key));
     const value=await client.json('/ziwei/web/impressions?'+qs,{signal:AbortSignal.timeout(15000)});
     if(!Array.isArray(value.data))throw Error('invalid_native_records');
-    return json(200,{data:value.data,total:value.data.length,source:'hermes_native',readOnly:true,checkedAt:value.checkedAt||new Date().toISOString(),errors:value.errors||[]});
+    return json(200,{data:value.data,total:value.total,nextCursor:value.nextCursor??null,wake:value.wake??null,automatic:value.automatic===true,source:'hermes_native',readOnly:true,checkedAt:value.checkedAt||new Date().toISOString(),errors:value.errors||[]});
    }
    if(kind==='artifact'){
     // Only a future explicit, authenticated native artifact endpoint may serve

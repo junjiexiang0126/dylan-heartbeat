@@ -112,7 +112,9 @@
       <section id="impressionsPage" hidden aria-label="今日印记">
         <div class="imp-head"><span class="eyebrow">WHAT I DID TODAY</span><h1>今日印记</h1><p>我今天做过的事，按时间留在这里。写日记、发朋友圈、逛小花园、做完文件，都在。</p></div>
         <div class="imp-range" role="group" aria-label="时间范围"><button type="button" class="text-button" data-imp-range="week" aria-pressed="true">最近一周</button><button type="button" class="text-button" data-imp-range="all" aria-pressed="false">全部</button></div>
+        <div class="imp-sync"><p id="impressionsStatus" class="hint" role="status" aria-live="polite"></p><button id="impressionsRefresh" type="button" class="text-button">刷新</button></div>
         <div class="imp-rail" id="impressionsRail"></div>
+        <button id="impressionsMore" type="button" class="text-button" hidden>查看更早的活动</button>
         <section id="impressionsDetail" class="imp-detail" hidden aria-live="polite"></section>
         <p id="impressionsEmpty" class="hint" hidden>今天还没有印记。</p>
         <p id="impressionsError" class="error" role="alert" hidden></p>

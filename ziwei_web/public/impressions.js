@@ -5,6 +5,11 @@
   const MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
   const WEEK = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
   const KIND = {
+    status: {cat:'状态',sticker:'此刻'},
+    wake: { cat: '自主活动', sticker: '醒来' },
+    memory: { cat: '记忆', sticker: '整理' },
+    browse: { cat: '浏览', sticker: '看看' },
+    activity: { cat: '活动', sticker: '足迹' },
     diary:   { cat: 'DIARY',     sticker: '写日记' },
     memo:    { cat: 'PRIVATE',   sticker: '默记' },
     work:    { cat: 'WORK',      sticker: '工作' },
@@ -17,38 +22,31 @@
     happy:   { cat: 'MOOD',      sticker: '开心' },
   };
 
-  let loaded = false, busy = false, apiFn = null;
-  const state = { range: 'week' };
+  let busy = false, apiFn = null, active = false, timer = null, generation = 0, revision = '';
+  const state = { range: 'week', rows: [], next: null, pages: 1 };
+  const STATUS = {completed:'已完成',failed:'未完成',in_progress:'进行中',recorded:'已记录',skipped:'未唤醒'};
 
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  const pad = n => String(n).padStart(2, '0');
 
   function parts(ts) {
-    const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(ts || '');
-    if (!m) return null;
-    const d = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00`);
-    return { date: `${m[1]}-${m[2]}-${m[3]}`, y: m[1], mo: Number(m[2]), d: Number(m[3]), hh: m[4], mm: m[5],
-             dow: isNaN(d) ? '' : WEEK[d.getDay()] };
+    const d = new Date(ts); if (!Number.isFinite(d.getTime())) return null;
+    const values = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d).map(p=>[p.type,p.value]));
+    return {date:`${values.year}-${values.month}-${values.day}`,y:values.year,mo:Number(values.month),d:Number(values.day),hh:values.hour,mm:values.minute,dow:WEEK[new Date(`${values.year}-${values.month}-${values.day}T12:00:00+07:00`).getUTCDay()]};
   }
-
-  function todayLabel(date) {
-    const now = new Date();
-    const t = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-    return date === t ? '今天' : '';
-  }
+  function todayLabel(date) { return date === parts(new Date().toISOString()).date ? '今天' : ''; }
 
   function itemHTML(r) {
     const p = parts(r.ts); if (!p) return '';
     const meta = KIND[r.kind] || { cat: 'NOTE', sticker: '记录' };
-    const detail = r.detail ? ` data-detail="${esc(r.detail)}"` : '';
+    const detail = r.detail || (r.target?.kind === 'diary' ? 'diary/' + r.target.id : '');
     return `<div class="imp-item"><span class="imp-time">${p.hh}:${p.mm}</span>
-      <div class="imp-card" role="${r.detail ? 'button' : 'group'}" tabindex="${r.detail ? '0' : '-1'}"
-           data-detail="${esc(r.detail || '')}" data-title="${esc(r.title || '')}"
+      <div class="imp-card" role="${detail ? 'button' : 'group'}" tabindex="${detail ? '0' : '-1'}"
+           data-detail="${esc(detail)}" data-title="${esc(r.title || '')}" data-target-id="${esc(r.target?.kind==='diary'?r.target.id:'')}"
            data-summary="${esc(r.summary || '')}" data-ts="${esc(r.ts || '')}" data-kind="${esc(r.kind || '')}">
         <span class="imp-cat">${esc(meta.cat)}</span>
-        <strong>${esc(r.title)}</strong>
+        <strong>${esc(r.title)}</strong><span class="imp-state" data-state="${esc(r.state||'recorded')}">${esc(STATUS[r.state]||'已记录')}${Number.isSafeInteger(r.opportunity)?' · 第 '+r.opportunity+' 次自主机会':''}${r.automatic?' · 自动同步':''}</span>
         ${r.summary ? `<p>${esc(r.summary)}</p>` : ''}
-        ${r.detail ? '<span class="imp-open">看看详情 ↗</span>' : ''}
+        ${detail ? '<span class="imp-open">看看详情 ↗</span>' : ''}
         <span class="imp-sticker" data-kind="${esc(r.kind)}" data-label="${esc(meta.sticker)}"></span>
       </div></div>`;
   }
@@ -57,7 +55,7 @@
     const detail = card.dataset.detail || '';
     const title = card.dataset.title || '印记';
     const summary = card.dataset.summary || '';
-    const ts = (card.dataset.ts || '').replace('T', ' ').slice(0, 16);
+    const stamp=parts(card.dataset.ts);const ts=stamp?stamp.date+' '+stamp.hh+':'+stamp.mm:'';
     const box = document.getElementById('impressionsDetail');
     if (!box) return;
     const isDiary = /^diary\//.test(detail);
@@ -67,7 +65,7 @@
       <h2>${esc(title)}</h2>
       <p class="imp-detail-time">${esc(ts)}</p>
       ${summary ? `<p class="imp-detail-body">${esc(summary)}</p>` : ''}
-      <p class="imp-detail-path">${esc(detail)}</p>
+      <details><summary>记录来源</summary><p class="imp-detail-path">${esc(detail)}</p></details>
       ${isDiary ? '<button type="button" class="imp-detail-link" data-goto="diary">去日记里打开这篇 ↗</button>' : ''}
       ${isFile ? '<p class="imp-detail-hint">这份文件在知微的工作区里，需要的话让他发给你。</p>' : ''}
       <button type="button" class="imp-detail-close">收起</button>`;
@@ -77,8 +75,8 @@
     const goto = box.querySelector('[data-goto="diary"]');
     if (goto) goto.onclick = () => {
       box.hidden = true; box.innerHTML = '';
-      const b = document.querySelector('[data-log-kind="diary"]');
-      if (b) b.click();
+      if(card.dataset.targetId) window.ZiweiRecords?.openDiaryById(card.dataset.targetId);
+      else document.querySelector('[data-log-kind="diary"]')?.click();
     };
   }
 
@@ -98,14 +96,9 @@
     const err = document.getElementById('impressionsError');
     if (!rail) return;
     const list = (rows || []).filter(r => parts(r.ts));
-    // 语 2026-10-18：印记要能按日期查，不能只看当天。
-    const range = state.range || 'week';
-    const shown = range === 'all' ? list : list.filter(r => {
-      const d = parts(r.ts); if (!d) return false;
-      return (Date.now() - new Date(d.date + 'T00:00:00').getTime()) <= 7 * 86400000;
-    });
+    const shown = list;
     if (err) { err.hidden = true; err.textContent = ''; }
-    if (!shown.length) { rail.innerHTML = ''; if (empty) { empty.textContent = '这一天还没有印记。'; empty.hidden = false; } return; }
+    if (!shown.length) { rail.innerHTML = ''; if (empty) { empty.textContent = state.range==='all'?'还没有可读取的活动记录。':'最近一周还没有活动记录。'; empty.hidden = false; } return; }
     if (empty) empty.hidden = true;
 
     // 按日期分组：日内按时间正序，日期之间新的在前
@@ -121,9 +114,9 @@
     for (const date of dates) {
       const p = parts(groups.get(date)[0].ts);
       const rowsOfDay = groups.get(date).sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
-      if (p.mo !== lastMonth) {
+      if (p.y+'-'+p.mo !== lastMonth) {
         html += `<section class="imp-group"><div class="imp-year">${p.y}</div><div class="imp-month">${MONTHS[p.mo - 1]}</div>`;
-        lastMonth = p.mo;
+        lastMonth = p.y+'-'+p.mo;
       } else {
         html += '<section class="imp-group">';
       }
@@ -136,75 +129,73 @@
     bindCards(rail);
   }
 
-  async function load() {
-    if (busy) return;
-    busy = true;
+  async function load(more = false) {
+    if (!active || busy || !apiFn || more && !state.next) return;
+    busy = true; const run = generation;
+    const status = document.getElementById('impressionsStatus');
     const err = document.getElementById('impressionsError');
+    const nextButton = document.getElementById('impressionsMore');
+    status.textContent = state.rows.length ? '正在同步最新活动…' : '正在读取活动记录…';
+    nextButton.disabled = true;
     try {
-      const plain = p => fetch(p, { cache: 'no-store' }).then(r => r.json());
-      let value;
-      try { value = await (apiFn || plain)('/api/records/impressions?limit=50'); }
-      catch (inner) {
-        // 记录用的 api() 带 CSRF 头，印记是只读接口，失败就退回普通 fetch
-        value = await plain('/api/records/impressions?limit=50');
+      let rows = more ? [...state.rows] : [], cursor = more ? state.next : null, value;
+      const pages = more ? 1 : state.pages;
+      const since = state.range === 'week' ? parts(new Date(Date.now()-6*86400000).toISOString()).date+'T00:00:00+07:00' : null;
+      const errors = [];
+      for(let i=0;i<pages;i++) {
+        const q = new URLSearchParams({limit:'50'});
+        if(cursor) q.set('cursor',cursor); if(since) q.set('since',since);
+        value = await apiFn('/api/records/impressions?'+q);
+        if(run!==generation || !active) return;
+        if(!Array.isArray(value.data) || value.source!=='hermes_native') throw Error('invalid_response');
+        rows.push(...value.data); errors.push(...(value.errors||[])); cursor = value.nextCursor;
+        if(!cursor) break;
       }
-      render(value && value.data);
-      if (value && value.errors && value.errors.length && err) {
-        err.hidden = false; err.textContent = '有一点没读到：' + value.errors.join('；');
-      }
-    } catch (e) {
-      render([]);
-      if (err) { err.hidden = false; err.textContent = '印记没读到，等会儿再试。'; }
-    } finally { busy = false; }
+      state.rows = [...new Map(rows.map(r=>[r.id,r])).values()]; state.next = cursor || null;
+      if(more) state.pages++;
+      const changed = JSON.stringify(state.rows);
+      if(changed!==revision) { render(state.rows); revision=changed; }
+      nextButton.hidden = !state.next;
+      const wake=value.wake;
+      const count=Number.isSafeInteger(wake?.count)?` · 今天已使用 ${wake.count}${Number.isSafeInteger(wake.dailyLimit)?' / '+wake.dailyLimit:''} 次自主机会`:'';
+      const checked=parts(value.checkedAt);
+      status.textContent=`${checked?'已同步至 '+checked.hh+':'+checked.mm:'已同步'} · ${value.total??state.rows.length} 条活动${count}`;
+      err.hidden = errors.length===0;
+      err.textContent = errors.length ? '部分活动来源暂时未读全，当前记录可能不完整；系统会自动重试。' : '';
+      if(errors.length && !state.rows.length) document.getElementById('impressionsEmpty').hidden=true;
+    } catch(e) {
+      if(run!==generation || !active) return;
+      status.textContent = state.rows.length ? '暂未同步成功，保留上次记录。' : '暂时无法读取活动记录。';
+      err.hidden=false;err.textContent='连接恢复后会自动重试，也可以点「刷新」。';
+      document.getElementById('impressionsEmpty').hidden=true;
+    } finally { if(run===generation) {busy=false;nextButton.disabled=false;} }
   }
-
-  function bindRangeCtrl(api) {
-    if (api) apiFn = api;
-    document.querySelectorAll('[data-imp-range]').forEach(btn => {
-      btn.onclick = () => {
-        const r = btn.dataset.impRange;
-        document.querySelectorAll('[data-imp-range]').forEach(b => {
-          const on = b.dataset.impRange === r;
-          b.setAttribute('aria-pressed', String(on));
-          b.classList.toggle('active', on);
-        });
-        state.range = r; loaded = true; load();
-      };
-    });
+  function setRange(range) {
+    generation++; busy=false; state.range=range==='all'?'all':'week';state.rows=[];state.next=null;state.pages=1;revision='';
+    document.getElementById('impressionsRail')?.replaceChildren();
+    document.getElementById('impressionsMore').hidden=true;
+    for(const b of document.querySelectorAll('[data-imp-range]')) {const on=b.dataset.impRange===state.range;b.setAttribute('aria-pressed',String(on));b.classList.toggle('active',on);}
+    void load();
   }
-
+  function stop() {
+    active=false;generation++;busy=false;apiFn=null;clearInterval(timer);timer=null;
+    state.rows=[];state.next=null;state.pages=1;revision='';
+    for(const id of ['impressionsRail','impressionsDetail','impressionsStatus','impressionsError']) document.getElementById(id)?.replaceChildren();
+    const box=document.getElementById('impressionsDetail');if(box)box.hidden=true;
+  }
+  document.addEventListener('visibilitychange',()=>{if(active&&!document.hidden)void load();});
+  window.addEventListener('online',()=>{if(active)void load();});
   window.ZiweiImpressions = {
     show(on, api) {
-      if (api) apiFn = api;
-      const page = document.getElementById('impressionsPage');
-      // style.css 里 [hidden]{display:none!important}，光靠 class 显示不出来，必须摘掉 hidden
-      if (page) page.hidden = !on;
-      if (!on) return;
-      bindRangeCtrl(api);
-      // 每次显示都重新拉一次；容器若还没就位，延到下一帧再试
-      if (!document.getElementById('impressionsRail')) { loaded = false; return; }
-      loaded = true; setTimeout(load, 0);
+      const page=document.getElementById('impressionsPage');if(page)page.hidden=!on;
+      if(!on){if(active){active=false;generation++;busy=false;clearInterval(timer);timer=null;}return;}
+      if(api)apiFn=api;
+      if(active)return;active=true;
+      for(const b of document.querySelectorAll('[data-imp-range]'))b.onclick=()=>setRange(b.dataset.impRange);
+      document.getElementById('impressionsRefresh').onclick=()=>load();
+      document.getElementById('impressionsMore').onclick=()=>load(true);
+      void load();timer=setInterval(()=>{if(!document.hidden)void load();},15000);
     },
-    bindRange(api) {
-      if (api) apiFn = api;
-      document.querySelectorAll('[data-imp-range]').forEach(btn => {
-        btn.onclick = () => {
-          const r = btn.dataset.impRange;
-          document.querySelectorAll('[data-imp-range]').forEach(b => {
-            const on = b.dataset.impRange === r;
-            b.setAttribute('aria-pressed', String(on));
-            b.classList.toggle('active', on);
-          });
-          state.range = r; loaded = true; load();
-        };
-      });
-    },
-    reload() { loaded = true; load(); },
-    setRange(range, api) {
-      state.range = range === 'all' ? 'all' : 'week';
-      if (api) apiFn = api;
-      if (!loaded) { loaded = true; load(); } else { load(); }
-    },
-    _render: render,
+    stop, reload:()=>load(), setRange, _render:render,
   };
 })();

@@ -883,44 +883,13 @@ def _diary_display(text, title):
     return body
 
 
-def impressions_page(limit=None):
-    """今日印记：只读 workspace/events/impressions.jsonl，只返回 add 且未被 retract 的行。
-
-    没有发生的事不会被写进去，这里也造不出内容：文件不存在就是空列表。
-    """
-    try:
-        size = int(limit) if limit not in (None, '') else 60
-    except (TypeError, ValueError):
-        raise MemoryError('invalid_pagination')
-    if not 1 <= size <= 200:
-        raise MemoryError('invalid_pagination')
-    path = home() / 'workspace' / 'events' / 'impressions.jsonl'
-    rows, errors = [], []
-    try:
-        raw = read_beneath(path.parent, 'impressions.jsonl', 8 * 1024 * 1024)
-    except FileNotFoundError:
-        raw = b''
-    except (OSError, ValueError):
-        raise MemoryError('impressions_unreadable')
-    retracted = set()
-    for line in raw.decode('utf-8', 'replace').splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            row = json.loads(line)
-        except ValueError:
-            errors.append({'code': 'impressions_bad_line'})
-            continue
-        if row.get('op') == 'retract':
-            if row.get('target'):
-                retracted.add(str(row['target']))
-            continue
-        rows.append(row)
-    rows = [r for r in rows if str(r.get('id', '')) not in retracted]
-    rows.sort(key=lambda r: str(r.get('ts', '')), reverse=True)
-    return {'data': rows[:size], 'total': len(rows), 'checkedAt': datetime.now(BANGKOK).isoformat(),
-            'errors': errors}
+def impressions_page(limit=None, cursor=None, since=None):
+    from impressions import page
+    # A namespace also supports isolated importlib-loaded bridge tests.
+    from types import SimpleNamespace
+    return page(SimpleNamespace(home=home, read_beneath=read_beneath,
+                                diary_records=diary_records, MemoryError=MemoryError),
+                limit, cursor, since)
 
 
 def diary_records():
@@ -1164,7 +1133,7 @@ def install():
         err = self._check_auth(request)
         if err is not None: return err
         try:
-            value = await asyncio.to_thread(impressions_page, request.query.get('limit'))
+            value = await asyncio.to_thread(impressions_page, request.query.get('limit'), request.query.get('cursor'), request.query.get('since'))
         except MemoryError as exc:
             code = 400 if exc.code == 'invalid_pagination' else 500
             return web.json_response({'error': exc.code, 'data': [], 'total': 0, 'errors': [{'code': exc.code}]},
