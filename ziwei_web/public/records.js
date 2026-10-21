@@ -59,7 +59,6 @@ window.ZiweiRecords=(()=>{
   if(value){
    const counts={...value.counts,all:value.total};
    for(const b of document.querySelectorAll('[data-memory-count]')){const count=counts[b.dataset.memoryCount];b.textContent=Number.isSafeInteger(count)?count+' 条':'待同步';}
-   for(const c of ['user','work']){const count=counts[c],small=Number.isSafeInteger(count)&&count<=1;document.querySelector('.memory-entry[data-memory-category="'+c+'"]').hidden=small;document.querySelector('#memorySmallEntries [data-memory-category="'+c+'"]').hidden=!small;}
    const count=counts.uncategorized;$('#memoryUncategorized').hidden=!Number.isSafeInteger(count)||count===0;$('#memoryUncategorized').textContent=count?'未分类 '+count+' 条 · 查看原文':'';
    const file=value.overview?.files?.find(f=>f.name==='MEMORY.md'),metric=Number.isSafeInteger(file?.chars)&&file.chars>=0&&Number.isSafeInteger(file?.budget)&&file.budget>0;
    $('#memoryBudgetValue').hidden=$('#memoryBudgetBar').hidden=$('#memoryBudgetHint').hidden=!metric;$('#memoryPrimaryTitle [data-memory-count]').hidden=metric;$('#memoryAllLink').textContent='全部记忆 '+value.total+' 条 · 可搜索、按分类筛选';

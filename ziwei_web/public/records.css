@@ -156,7 +156,6 @@ body.has-space-wallpaper.records-subpage .shell{background:transparent}
 .memory-main-excerpt:disabled{opacity:1}
 #memory .memory-uncategorized{border:0;padding-bottom:0;font-size:var(--ui-font-12);color:var(--muted)}
 .memory-main-link{width:100%;text-align:left;padding:var(--ui-space-14) var(--memory-entry-padding) var(--ui-space-18);font-size:var(--ui-font-12)}
-#memory .memory-entry:not(.memory-primary){box-shadow:none;background:transparent}
 .memory-small-entries{border:0;margin-top:var(--ui-space-12);padding:0;gap:0 var(--ui-space-12)}
 .memory-category-filters{display:flex;flex-wrap:wrap;gap:var(--ui-space-6) var(--ui-space-12);margin-bottom:var(--ui-space-12)}
 .memory-category-filters button[aria-pressed=true]{text-decoration:underline;color:var(--ink)}
