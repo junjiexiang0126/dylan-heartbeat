@@ -151,7 +151,18 @@ def main():
     now = datetime.now().astimezone()
     try:
         home = Path(os.environ["HERMES_HOME"])
-        with (home / ".autonomy-gate.lock").open("a") as lock:
+        # 2026-10-21: 不用 open("a")（带 O_CREAT，遇到迁移遗留的坏 inode 会 EACCES）。
+        # 先尝试不带 O_CREAT 打开；不存在时才创建，并放宽为 666 以免换身份后写不了。
+        lock_path = home / ".autonomy-gate.lock"
+        try:
+            lock_fd = os.open(lock_path, os.O_WRONLY | os.O_APPEND)
+        except FileNotFoundError:
+            lock_fd = os.open(lock_path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o666)
+            try:
+                os.chmod(lock_path, 0o666)
+            except OSError:
+                pass
+        with os.fdopen(lock_fd, "a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             result = evaluate(home, now)
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
