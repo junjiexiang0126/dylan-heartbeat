@@ -21,6 +21,8 @@ class ChatStore {
    CREATE TABLE IF NOT EXISTS imports (sha256 TEXT PRIMARY KEY,label TEXT NOT NULL,created_at TEXT NOT NULL,count INTEGER NOT NULL);
    CREATE INDEX IF NOT EXISTS message_order ON messages(source,seq);
    CREATE INDEX IF NOT EXISTS request_state ON requests(state,seq);`);
+  try{const cols=this.db.prepare('PRAGMA table_info(messages)').all().map(c=>c.name);if(!cols.includes('tokens'))this.db.exec('ALTER TABLE messages ADD COLUMN tokens TEXT');}catch{}
+
   const old=this.db.prepare('SELECT value FROM meta WHERE key=?').get('scope');
   if(old&&old.value!==scope){if(this.db.prepare('SELECT count(*) n FROM requests').get().n){this.db.close();throw Error('chat_scope_changed_review_migration');}this.db.prepare('UPDATE meta SET value=? WHERE key=?').run(scope,'scope');}
   this.db.prepare('INSERT OR IGNORE INTO meta VALUES (?,?)').run('scope',scope);
@@ -46,14 +48,14 @@ class ChatStore {
  event(id,kind,data){return Number(this.db.prepare('INSERT INTO events(request_id,kind,data) VALUES(?,?,?)').run(id||'',kind,JSON.stringify(data)).lastInsertRowid);}
  events(after=0){return this.db.prepare('SELECT * FROM events WHERE seq>? ORDER BY seq LIMIT 500').all(after).map(x=>({...x,data:JSON.parse(x.data)}));}
  upstreamEvent(id,seq,fn){return this.transaction(()=>{const r=this.request(id);if(Number.isSafeInteger(seq)&&seq<=r.upstream_seq)return false;fn();if(Number.isSafeInteger(seq))this.db.prepare('UPDATE requests SET upstream_seq=? WHERE id=?').run(seq,id);return true;});}
- assistant(id,key,text,kind='final',status='completed'){
+ assistant(id,key,text,kind='final',status='completed',tokens=null){
   if(typeof text!=='string')return;
-  this.db.prepare('INSERT INTO messages(id,request_id,role,kind,content,created_at,status) VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,status=excluded.status').run(key,id,'assistant',kind,text,new Date().toISOString(),status);
+  this.db.prepare('INSERT INTO messages(id,request_id,role,kind,content,created_at,status,tokens) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content,status=excluded.status,tokens=COALESCE(excluded.tokens,messages.tokens)').run(key,id,'assistant',kind,text,new Date().toISOString(),status,tokens?JSON.stringify(tokens):null);
   this.event(id,'message.saved',{id:key});
  }
  addMedia(id,ids){const m=this.message(id);if(!m)return;const attachments=[...new Set([...m.attachments,...ids])];this.db.prepare('UPDATE messages SET attachments=? WHERE id=?').run(JSON.stringify(attachments),id);this.event(null,'timeline.changed',{id});}
  message(id){const m=this.db.prepare('SELECT * FROM messages WHERE id=? AND deleted=0').get(id);return m?this.decode(m):null;}
- decode(m){const value={...m,attachments:JSON.parse(m.attachments),quote:m.quote?JSON.parse(m.quote):null,favorite:!!m.favorite,deleted:!!m.deleted};if(m.role==='assistant'&&m.kind==='final'&&m.request_id){const row=this.db.prepare('SELECT value FROM meta WHERE key=?').get('media:'+m.request_id);if(row)try{value.mediaDelivery=JSON.parse(row.value);}catch{}}if(this.actions&&m.role==='assistant'&&m.id==='reply-'+m.request_id)value.toolActions=this.actions.list(m.request_id);else if(this.actions&&m.role==='user'&&!this.db.prepare('SELECT 1 FROM messages WHERE id=? AND deleted=0').get('reply-'+m.request_id))value.toolActions=this.actions.list(m.request_id);return value;}
+ decode(m){const value={...m,attachments:JSON.parse(m.attachments),quote:m.quote?JSON.parse(m.quote):null,favorite:!!m.favorite,deleted:!!m.deleted,tokens:m.tokens?JSON.parse(m.tokens):null};if(m.role==='assistant'&&m.kind==='final'&&m.request_id){const row=this.db.prepare('SELECT value FROM meta WHERE key=?').get('media:'+m.request_id);if(row)try{value.mediaDelivery=JSON.parse(row.value);}catch{}}if(this.actions&&m.role==='assistant'&&m.id==='reply-'+m.request_id)value.toolActions=this.actions.list(m.request_id);else if(this.actions&&m.role==='user'&&!this.db.prepare('SELECT 1 FROM messages WHERE id=? AND deleted=0').get('reply-'+m.request_id))value.toolActions=this.actions.list(m.request_id);return value;}
  list({before=Number.MAX_SAFE_INTEGER,limit=50,q='',favorite=false,source='live',trash=false}={}){
   const cursor=before===Number.MAX_SAFE_INTEGER?null:this.db.prepare('SELECT created_at FROM messages WHERE source=? AND seq=?').get(source,before);
   if(before!==Number.MAX_SAFE_INTEGER&&!cursor)return [];

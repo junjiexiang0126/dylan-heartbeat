@@ -66,15 +66,27 @@ function createChatService(dir,{authorized=()=>true}={}){
   })().finally(()=>mediaJobs.delete(r.id));mediaJobs.set(r.id,job);return job;
  }
 
- function finish(id,o){
+ function tokensDelta(u){
+  if(!u||typeof u!=='object')return null;
+  const inp=Number(u.input_tokens),out=Number(u.output_tokens);
+  if(!Number.isFinite(inp)||!Number.isFinite(out))return null;
+  let prev=null;
+  try{const row=store.db.prepare("SELECT value FROM meta WHERE key='usage_cum'").get();prev=row?JSON.parse(row.value):null;}catch{}
+  try{store.db.prepare("INSERT INTO meta(key,value) VALUES('usage_cum',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(JSON.stringify({input_tokens:inp,output_tokens:out}));}catch{}
+  if(!prev||!Number.isFinite(prev.input_tokens)||!Number.isFinite(prev.output_tokens))return {input:null,output:null,total:null,first:true};
+  const di=Math.max(0,inp-prev.input_tokens),dout=Math.max(0,out-prev.output_tokens);
+  return {input:di,output:dout,total:di+dout};
+}
+function finish(id,o){
   if(!TERMINAL.includes(o.status))return false;
+  const usageDelta=tokensDelta(o.usage);
   store.db.prepare('DELETE FROM meta WHERE key=?').run('approval:'+id);
   store.transaction(()=>{
    if(typeof o.output==='string'&&o.output){
     const view=o.status==='completed'?presentation.parse(o.output):{messages:[o.output]};
     if(view.structured)store.db.prepare('INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run('presentation:'+id,JSON.stringify({raw:o.output,type:'ziwei.reply.v1'}));
     if(view.summary)store.assistant(id,'summary-'+id,view.summary,'summary',o.status);
-    view.messages.forEach((text,index)=>store.assistant(id,index===view.messages.length-1?'reply-'+id:'reply-'+id+'-part-'+index,text,'final',o.status));
+    view.messages.forEach((text,index)=>store.assistant(id,index===view.messages.length-1?'reply-'+id:'reply-'+id+'-part-'+index,text,'final',o.status,index===view.messages.length-1?usageDelta:null));
    }
    store.state(id,o.status,o.status==='completed'?null:'hermes_'+o.status);
   });return true;

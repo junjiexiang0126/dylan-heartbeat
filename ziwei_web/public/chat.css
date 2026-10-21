@@ -193,3 +193,6 @@ dialog.chat-call-dialog{position:fixed;inset:0;width:100%;max-width:none;height:
 
 /* Consecutive messages keep one sender label; only the final action row is mounted. */
 #chat .message.same-sender .message-sender-label{display:none}
+
+.message-tokens{display:inline-flex;align-items:center;justify-content:center;margin-left:.45rem;padding:.08rem .46rem;font-family:'EBGaramond',Georgia,serif;font-size:10.5px;line-height:1.45;letter-spacing:.05em;font-variant-numeric:tabular-nums;color:rgba(122,99,84,.72);background:rgba(255,252,247,.5);border:1px solid rgba(150,120,100,.16);border-radius:999px;vertical-align:middle;user-select:none;cursor:default;}
+.message.user .message-tokens{color:rgba(122,99,84,.62);}
