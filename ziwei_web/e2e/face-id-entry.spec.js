@@ -3,15 +3,15 @@ const {test,expect}=require('./helpers/isolated-app');
 const {screenshotPath}=require('./helpers/screenshot-path');
 const password='isolated-e2e-password-123456';
 async function login(page){await page.goto('/');await page.locator('#password').fill(password);await page.locator('#loginForm button').click();await expect(page.locator('#app')).toBeVisible();}
-async function settings(page){await page.locator('#settingsButton').click();await expect(page.locator('#settings')).toBeVisible();}
+async function settings(page){await page.locator('#settingsButton').click();await expect(page.locator('#settings')).toBeVisible();await page.locator('[data-settings-section=deviceSecurity]').click();}
 // CI 的 WebKit 无平台认证器与媒体输入设备，这些用例只能在真机验收（2026-10-19）。
 test.skip(({ browserName }) => browserName === 'webkit', '需要真设备提供平台认证器/麦克风，CI 无此条件，见 docs/E2E_WEBKIT_2026-10-19.md');
-test('Face ID entry is above profile settings and visible without scrolling at phone sizes',async({page},testInfo)=>{
+test('device security is directly reachable from compact settings at phone sizes',async({page},testInfo)=>{
  await login(page);
  for(const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390}]){
   await page.setViewportSize(size);await settings(page);
-  await expect(page.locator('#deviceSecurity legend')).toHaveText('Face ID / 设备解锁');
-  expect(await page.locator('#deviceSecurity').evaluate(e=>!!(e.compareDocumentPosition(document.querySelector('#profileForm'))&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  await expect(page.locator('#deviceSecurity legend')).toContainText('Face ID / 设备解锁');
+  await expect(page.locator('[data-settings-section=deviceSecurity]')).toHaveAttribute('aria-pressed','true');
   if(size.height>400)await expect(page.locator('#registerPasskey')).toBeInViewport();
   expect(await page.locator('#settings').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
   await page.locator('#closeSettings').click();

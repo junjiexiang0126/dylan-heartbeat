@@ -128,3 +128,89 @@ body.chat-view .topbar-controls{grid-column:3}
 
 :root:not([data-experience=off]) #logs.diary-reading .diary-card::before{content:'';display:block;position:absolute;top:0;right:24px;width:12px;height:34px;z-index:4;background:var(--accent);opacity:.65;clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%);pointer-events:none}
 :root:not([data-experience=off]) #memory .memory-main-group::after{content:'';position:absolute;bottom:2px;left:2px;width:82px;height:82px;background:url('/journal-art/botanical-flourish.svg') center/contain no-repeat;opacity:.18;pointer-events:none}
+
+/* Settings: a quiet cabinet, with compact controls and a fixed action shelf. */
+#settings{width:min(calc(100% - 24px),520px);height:min(86dvh,760px);max-height:calc(100dvh - 24px);padding:0!important;overflow:hidden;border:1px solid var(--paper-rule);border-radius:var(--dialog-radius);box-shadow:var(--dialog-shadow);scroll-padding:0}
+#settings[open]{display:flex;flex-direction:column}
+#settings::backdrop{background:color-mix(in srgb,var(--ink) 24%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#settings .settings-heading{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:22px 22px 12px;flex:none;isolation:isolate}
+#settings .settings-heading::after{content:'';position:absolute;right:48px;top:-15px;width:120px;height:120px;background:url('/journal-art/botanical-flourish.svg') center/contain no-repeat;opacity:.14;pointer-events:none;z-index:-1;transform:rotate(90deg)}
+#settings .settings-heading .eyebrow{font-size:9px;letter-spacing:.14em}
+#settingsTitle{font:500 20px/1.6 var(--ui-serif);letter-spacing:.025em;margin:5px 0 3px}
+#settings .settings-heading p{font-size:11px;line-height:1.8}
+#settings #closeSettings{width:34px;height:34px;min-height:34px;flex:none;font-size:24px;background:transparent;border:1px solid var(--paper-rule)}
+#settings .zw-settings-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;margin:0 20px 14px;border:1px solid var(--paper-rule);border-radius:13px;flex:none;background:var(--selected-fill)}
+#settings .zw-settings-nav button{min-height:34px;min-width:0;padding:4px 8px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:12px/1.8 var(--ui-serif)}
+#settings .zw-settings-nav button[aria-pressed=true]{background:var(--paper-fill);color:var(--accent);box-shadow:var(--paper-shadow)}
+#settingsContent{position:relative;flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 20px 10px;scroll-padding-top:8px;scrollbar-width:thin;scrollbar-color:var(--paper-rule) transparent}
+#settings .settings-section{position:relative;min-width:0;margin:8px 0 18px;padding:14px 16px 16px;border:1px solid var(--paper-rule);border-radius:16px;background:var(--paper-fill);box-shadow:0 2px 10px color-mix(in srgb,var(--ink) 3%,transparent);scroll-margin:8px}
+#settings .settings-section legend{padding:0 7px;margin-left:-3px;margin-bottom:0;color:var(--ink);font:500 15px/1.8 var(--ui-serif)}
+#settings .settings-section legend>span:first-child{font:italic 11px/1 Georgia,serif;color:var(--accent);margin-right:5px}
+#settings label{margin:0 0 6px;font-size:11px;line-height:1.8}
+#settings :is(input:not([type=range]):not([type=checkbox]),select){height:40px;min-height:40px;width:100%;padding:6px 10px;border:1px solid var(--paper-rule);border-radius:9px;background:var(--input);box-shadow:inset 0 1px 2px color-mix(in srgb,var(--ink) 2%,transparent)}
+#settings .settings-field-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#settings .settings-row-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+#settings .settings-row-heading strong{font-weight:500;font-size:12px}
+#settings .settings-row-heading>span{font-size:10px;color:var(--muted)}
+#settings .settings-wallpaper{border-block:1px solid var(--paper-rule);padding:13px 0 12px;margin:14px 0 12px}
+#settings .settings-inline-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px}
+#settings :is(button.secondary,button.primary){width:auto;min-height:36px;margin:0;padding:7px 12px;font-size:12px;line-height:1.8;border-radius:10px;white-space:normal}
+#settings button.secondary{background:var(--selected-fill);border-color:var(--paper-rule)}
+#settings .text-button{min-height:32px;padding:5px 0;font-size:11px;line-height:1.8}
+#settings .hint{font-size:10px;line-height:1.85;margin-top:7px;color:var(--muted)}
+#settings .settings-slider>label{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:0}
+#settings output{font:11px/1.8 var(--ui-sans);font-variant-numeric:tabular-nums;color:var(--accent);white-space:nowrap}
+#settings input[type=range]{display:block;appearance:none;-webkit-appearance:none;height:28px;min-height:28px;width:100%;border:0;padding:0;margin:3px 0;background:transparent;box-shadow:none;cursor:pointer;accent-color:var(--accent)}
+#settings input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--paper-rule);border-radius:8px}
+#settings input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:15px;height:15px;margin-top:-6px;border:3px solid var(--bg);border-radius:50%;background:var(--accent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent),0 2px 4px color-mix(in srgb,var(--ink) 10%,transparent)}
+#settings input[type=range]::-moz-range-track{height:3px;background:var(--paper-rule);border-radius:8px}
+#settings input[type=range]::-moz-range-thumb{width:10px;height:10px;border:3px solid var(--bg);border-radius:50%;background:var(--accent);box-shadow:0 0 0 1px var(--paper-rule)}
+#settings .settings-scale{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:-2px}
+#settings .settings-toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px;margin:0;padding:10px 0;text-align:left;cursor:pointer}
+#settings .settings-toggle+ .settings-toggle{border-top:1px solid var(--paper-rule)}
+#settings .settings-toggle strong{display:block;font-size:12px;font-weight:500;color:var(--ink)}
+#settings .settings-toggle small{display:block;font-size:10px;color:var(--muted);line-height:1.8;margin-top:2px}
+#settings .settings-toggle input{position:relative;appearance:none;-webkit-appearance:none;width:34px;height:20px;min-height:20px;padding:0;margin:0;flex:none;border:1px solid var(--paper-rule);border-radius:20px;background:color-mix(in srgb,var(--muted) 20%,transparent);cursor:pointer;transition:background .2s}
+#settings .settings-toggle input::before{content:'';display:block;position:absolute;left:3px;top:3px;width:12px;height:12px;background:var(--bg);border-radius:50%;box-shadow:0 1px 3px #0002;transition:transform .2s}
+#settings .settings-toggle input:checked{background:var(--accent);border-color:var(--accent)}
+#settings .settings-toggle input:checked::before{transform:translateX(14px)}
+#settings .settings-profiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:16px}
+#settings .settings-person{min-width:0}
+#settings .settings-portrait{display:grid;place-items:center;overflow:hidden;width:42px;height:42px;border:1px solid var(--paper-rule);border-radius:50%;background:var(--selected-fill);color:var(--accent);font:18px/1 var(--ui-serif);margin-bottom:10px;box-shadow:0 0 0 3px var(--paper-fill)}
+#settings .settings-portrait img{width:100%;height:100%;object-fit:cover}
+#settings .settings-avatar-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:7px}
+#settings .settings-file-label{font-size:10px;line-height:1.8;color:var(--accent);cursor:pointer;min-height:28px;padding:5px 0;margin:0}
+#settings .settings-avatar-actions .text-button{font-size:10px;min-height:28px}
+#settings .settings-file-name{display:block;max-width:100%;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+#settings .settings-label-note{font-size:10px;color:var(--muted);margin-left:8px}
+#settings .chat-font-settings{padding-top:15px;margin-top:8px;border-top:1px solid var(--paper-rule)}
+#settings #chatFontPreview{padding:10px 12px;margin:6px 0 0;font-family:var(--ui-serif);border-left:2px solid var(--paper-rule);background:transparent;border-radius:0;color:var(--ink)}
+#settings .chat-font-settings .settings-inline-actions{margin-top:2px;gap:10px}
+#settings .chat-font-settings .hint{margin:0}
+#settings :is(#profileHistory,.settings-security-note){border-top:1px solid var(--paper-rule);padding-top:10px;margin-top:12px;font-size:11px}
+#settings summary{font-size:11px}
+#settings .security>.hint:first-of-type{margin:0 0 12px}
+#settings #verifyPassword{margin-bottom:2px}
+#settings .logout-actions{display:flex;align-items:center;gap:14px;border-top:1px solid var(--paper-rule);margin-top:14px;padding-top:12px;flex-wrap:wrap}
+#settings #logoutAll{color:var(--muted)}
+#settings .settings-workbench{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:38px;background:transparent;color:var(--ink);border:0;border-top:1px solid var(--paper-rule);padding:12px 0 0;margin-top:14px;font-size:12px;text-align:left}
+#settings .settings-workbench small{font-size:10px;color:var(--muted);margin-left:8px}
+#settings .settings-endnote{text-align:center;font:10px/1.8 var(--ui-serif);color:var(--muted);padding:0 0 8px}
+#settings .settings-footer{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;border-top:1px solid var(--paper-rule);background:var(--bg)}
+#settings .settings-footer>div{min-width:0}
+#settings #settingsMessage{font-size:11px;line-height:1.65;margin:0;color:var(--accent);overflow-wrap:anywhere}
+#settings .settings-footer small{display:block;font-size:9px;color:var(--muted);line-height:1.7}
+#settings #saveProfile{flex:none;background:var(--accent);color:var(--bg);border:0;min-height:38px;padding:8px 14px}
+#settings #saveProfile span{margin-left:10px}
+@media(max-width:360px){#settings .settings-heading{padding:18px 16px 10px}#settingsTitle{font-size:17px}#settings .zw-settings-nav{margin-inline:14px}#settingsContent{padding-inline:14px}#settings .settings-section{padding-inline:12px}#settings .settings-inline-actions{gap:10px}#settings .settings-row-heading>span{display:none}#settings .settings-footer{padding:10px 14px}#settings .settings-field-pair,#settings .settings-profiles{gap:10px}}
+@media(max-height:450px){#settings{height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}#settings .settings-heading{padding:10px 18px 5px}#settings .settings-heading p,#settings .settings-heading .eyebrow{display:none}#settings .zw-settings-nav{margin-bottom:8px}#settings .settings-footer{padding-block:8px}}
+/* A persistent base keeps the connection visible between the two portraits. */
+.home .heartbeat{width:96px;min-width:64px;flex:0 1 96px}
+.home .heartbeat svg{height:38px}
+.home .heartbeat svg path{vector-effect:non-scaling-stroke;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}
+.home .heartbeat .pulse-base{opacity:.3}
+.home .heartbeat .pulse{opacity:.9;stroke-dasharray:22 78;stroke-dashoffset:100;animation:zw-heartbeat-line 3.8s linear infinite}
+@keyframes zw-heartbeat-line{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+:root[data-zw-motion=off] .home .heartbeat .pulse{animation:none;stroke-dasharray:none;stroke-dashoffset:0;opacity:.8}
+@media(prefers-reduced-motion:reduce){.home .heartbeat .pulse{animation:none!important;stroke-dasharray:none;stroke-dashoffset:0;opacity:.8}}
+@media(forced-colors:active){#settings .settings-toggle input{appearance:auto;-webkit-appearance:auto}#settings .settings-toggle input::before{display:none}}
