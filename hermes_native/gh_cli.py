@@ -16,13 +16,54 @@
 from __future__ import annotations
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 REPO_SLUG = "junjiexiang0126/dylan-heartbeat"
 DEFAULT_BRANCH = "integration/main-consolidation-20261017"
+LEGACY_REPO = "/data/hermes_native/workspace/tmp/zwweb"
+
+# 只允许 git 分支名里的合法字符；刻意保守，宁可拒绝也不要在远端建出怪名字。
+_BRANCH_CHARS = re.compile(r"[A-Za-z0-9._/-]{1,120}")
+
+
+def validate_branch(branch: str) -> str | None:
+    """检查分支名。合法返回 None，不合法返回拒绝原因（给人看的中文）。
+
+    2026-10-18 事故：`gh.py push --help` 把 "--help" 当分支名推上了远端，
+    在 GitHub 上留下一个名为 "--help" 的分支。参数被当成分支名会造成
+    远端副作用，所以在取令牌、跑 git 之前就必须挡住。
+    """
+    if not branch:
+        return "分支名为空"
+    if branch.startswith("-"):
+        return f"'{branch}' 看起来是命令参数，不是分支名"
+    if not _BRANCH_CHARS.fullmatch(branch):
+        return f"'{branch}' 含非法字符（只允许字母、数字、. _ - /）"
+    if branch.startswith("/") or branch.endswith("/") or "//" in branch:
+        return f"'{branch}' 的斜杠位置不合法"
+    if ".." in branch:
+        return f"'{branch}' 含 '..'"
+    if branch.endswith(".") or branch.endswith(".lock"):
+        return f"'{branch}' 不能以 '.' 或 '.lock' 结尾"
+    if "@{" in branch:
+        return f"'{branch}' 含 '@{{'"
+    return None
+
+
+def resolve_repo() -> str:
+    """找要推送的仓库目录：显式环境变量 > 本文件所在仓库 > 旧迁移路径。"""
+    explicit = os.environ.get("ZW_REPO")
+    if explicit:
+        return explicit
+    candidate = Path(__file__).resolve().parents[1]
+    if (candidate / ".git").exists():
+        return str(candidate)
+    return LEGACY_REPO
 
 
 def gateway_environ() -> dict[str, str]:
@@ -78,10 +119,20 @@ def cmd_check() -> int:
 
 
 def cmd_push(argv: list[str]) -> int:
+    # 参数校验放在取令牌、跑 git 之前：非法输入不该有任何副作用，
+    # 也不该先花一次令牌请求。
+    if len(argv) > 1:
+        print(f"拒绝推送：只接受一个分支名参数，收到 {len(argv)} 个：{argv}")
+        return 2
     branch = argv[0] if argv else DEFAULT_BRANCH
-    repo = os.environ.get("ZW_REPO", "/data/hermes_native/workspace/tmp/zwweb")
+    reason = validate_branch(branch)
+    if reason:
+        print(f"拒绝推送：{reason}。用法：gh.py push <branch>")
+        return 2
+    repo = resolve_repo()
     tok = get_token()
-    url = f"https://x-access-token:{tok}@github.com/{REPO_SLUG}.git"
+    slug = os.environ.get("ZW_REPO_SLUG", REPO_SLUG)
+    url = f"https://x-access-token:{tok}@github.com/{slug}.git"
     r = subprocess.run(["git", "-C", repo, "push", url, f"HEAD:{branch}"],
                        capture_output=True, text=True)
     tail = (r.stdout + r.stderr).strip().splitlines()
