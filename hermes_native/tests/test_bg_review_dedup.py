@@ -132,6 +132,14 @@ class TestConcurrentTrigger(DedupTestBase):
         events = self.log_events()
         self.assertEqual(events[-1]["reason"], "already_in_flight")
 
+
+    def test_explicit_does_not_replace_background_reservation(self):
+        self.assertIsNotNone(self.trigger())
+        fingerprint = dedup._fingerprint(self.agent)
+        stamp = self.state.in_flight[fingerprint]
+        self.assertIsNotNone(self.trigger(explicit=True))
+        self.assertEqual(self.state.in_flight[fingerprint], stamp)
+
     def test_threaded_triggers_single_run(self):
         results = []
 
@@ -157,6 +165,26 @@ class TestFailureRetry(DedupTestBase):
         self.assertIsNone(self.trigger())
         events = self.log_events()
         self.assertEqual(events[-1]["reason"], "failure_retry_exhausted")
+
+
+    def test_force_interval_cannot_bypass_exhausted_retries(self):
+        self.assertIsNotNone(self.trigger())
+        for i in range(dedup.MAX_CONSECUTIVE_FAILURES - 1):
+            self.complete("error")
+            self.assertIsNotNone(self.trigger())
+        self.complete("error")
+        self.state.last_run_at -= dedup.DEFAULT_FORCE_INTERVAL_SECONDS + 1
+        self.assertIsNone(self.trigger())
+        self.assertEqual(self.log_events()[-1]["reason"], "failure_retry_exhausted")
+
+    def test_new_fingerprint_recovers_from_exhausted_retries(self):
+        self.assertIsNotNone(self.trigger())
+        for i in range(dedup.MAX_CONSECUTIVE_FAILURES - 1):
+            self.complete("error")
+            self.assertIsNotNone(self.trigger())
+        self.complete("error")
+        self.edit_memory("# changed after failed review")
+        self.assertIsNotNone(self.trigger())
 
     def test_success_resets_failures(self):
         self.assertIsNotNone(self.trigger())
