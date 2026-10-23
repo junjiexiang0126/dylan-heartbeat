@@ -29,7 +29,7 @@ Mechanics (see hermes_native/patches/README.md):
   api calls, tokens, result. No chat content is ever logged.
 
 Config (auxiliary.background_review, all optional):
-  dedup_enabled: true            # set false to bypass dedup entirely
+  dedup_enabled: false           # opt in only after integration acceptance
   dedup_force_interval_seconds: 21600
 """
 from __future__ import annotations
@@ -112,7 +112,8 @@ def _dedup_enabled(task_cfg: Optional[Dict[str, Any]]) -> bool:
     module behave identically everywhere. Unset means enabled."""
     value = (task_cfg or {}).get("dedup_enabled")
     if value is None:
-        return True
+        # Opt-in until the real Hermes queue/lifecycle integration is proven.
+        return False
     if isinstance(value, str):
         return value.strip().lower() not in ("", "0", "false", "no", "off")
     return bool(value)
@@ -120,8 +121,9 @@ def _dedup_enabled(task_cfg: Optional[Dict[str, Any]]) -> bool:
 
 def _force_interval(task_cfg: Optional[Dict[str, Any]]) -> int:
     try:
-        return int((task_cfg or {}).get("dedup_force_interval_seconds")
-                   or DEFAULT_FORCE_INTERVAL_SECONDS)
+        seconds = int((task_cfg or {}).get("dedup_force_interval_seconds")
+                      or DEFAULT_FORCE_INTERVAL_SECONDS)
+        return max(1, seconds)
     except (TypeError, ValueError):
         return DEFAULT_FORCE_INTERVAL_SECONDS
 
@@ -252,19 +254,17 @@ def install_on_class(cls: Any, br_module: Any) -> bool:
                      "decision": "run" if run else "skip", "reason": reason})
             if not run:
                 return None
-            # Stash for the thread wrapper: the deferred (idle-queue) path spawns
-            # later and must settle the SAME fingerprint that was approved here.
+            # NOTE: deferred task identity still needs real Hermes integration
+            # validation before dedup is enabled. Never enable by default.
             self._ziwei_bg_dedup_fp = fingerprint
             return original_spawn(self, messages_snapshot, *args,
                                   review_memory=review_memory, review_skills=review_skills,
                                   focus=focus, task_cfg=task_cfg, explicit=explicit, **kwargs)
         except Exception:
-            # Fail-open: a broken dedup must never block a review.
-            logger.warning("bg_review_dedup: trigger wrapper failed; running review unchanged",
-                            exc_info=True)
-            return original_spawn(self, messages_snapshot, *args,
-                                  review_memory=review_memory, review_skills=review_skills,
-                                  focus=focus, task_cfg=task_cfg, explicit=explicit, **kwargs)
+            # Never invoke original_spawn twice: it may already have launched
+            # work before raising. Surface the original failure instead.
+            logger.exception("bg_review_dedup: trigger wrapper failed")
+            raise
 
     def _spawn_thread(agent, messages_snapshot, **kwargs):
         target, prompt = original_spawn_thread(agent, messages_snapshot, **kwargs)
