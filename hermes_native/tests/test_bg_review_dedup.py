@@ -60,6 +60,10 @@ class DedupTestBase(unittest.TestCase):
         patcher = mock.patch.object(dedup, "_home", lambda: self.home)
         patcher.start()
         self.addCleanup(patcher.stop)
+        cfg_patcher = mock.patch.object(dedup, "_load_task_cfg",
+                                        lambda br: {"dedup_enabled": True})
+        cfg_patcher.start()
+        self.addCleanup(cfg_patcher.stop)
         self.br = _FakeBR()
         self.cls = _FakeCls()
         self.assertTrue(dedup.install_on_class(self.cls, self.br))
@@ -221,6 +225,13 @@ class TestOverBudgetWarning(DedupTestBase):
 
 
 class TestDedupDisabled(DedupTestBase):
+    def test_default_is_disabled_until_integration_acceptance(self):
+        self.assertFalse(dedup._dedup_enabled({}))
+        self.assertFalse(dedup._dedup_enabled(None))
+
+    def test_invalid_force_interval_is_clamped(self):
+        self.assertEqual(dedup._force_interval({"dedup_force_interval_seconds": -5}), 1)
+
     def test_disabled_bypasses_dedup(self):
         with mock.patch.object(dedup, "_load_task_cfg",
                                lambda br: {"dedup_enabled": False}):
