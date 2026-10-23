@@ -144,21 +144,23 @@ class _DedupState:
                 if now - stamp > IN_FLIGHT_TIMEOUT_SECONDS:
                     del self.in_flight[fp]
             if explicit:
-                self.in_flight[fingerprint] = now
+                # Explicit reviews bypass dedup, but must not overwrite a
+                # tracked background review's reservation.
                 return True, "explicit"
             if fingerprint in self.in_flight:
                 return False, "already_in_flight"
             if self.last_run_at <= 0:
                 self.in_flight[fingerprint] = now
                 return True, "first_review"
+            if (self.consecutive_failures >= MAX_CONSECUTIVE_FAILURES
+                    and fingerprint == self.last_fingerprint):
+                return False, "failure_retry_exhausted"
             if now - self.last_run_at >= force_interval:
                 self.in_flight[fingerprint] = now
                 return True, "force_interval"
             if fingerprint != self.last_fingerprint:
                 self.in_flight[fingerprint] = now
                 return True, "fingerprint_changed"
-            if self.consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
-                return False, "failure_retry_exhausted"
             if self.consecutive_failures > 0:
                 self.in_flight[fingerprint] = now
                 return True, "retry_after_failure"
@@ -238,7 +240,9 @@ def install_on_class(cls: Any, br_module: Any) -> bool:
             if not _dedup_enabled(task_cfg):
                 _record({"event": "trigger", "session": getattr(self, "session_id", "?"),
                          "decision": "run", "reason": "dedup_disabled"})
-                return original_spawn(self, messages_snapshot, *args, task_cfg=task_cfg, **kwargs)
+                return original_spawn(self, messages_snapshot, *args,
+                                      review_memory=review_memory, review_skills=review_skills,
+                                      focus=focus, task_cfg=task_cfg, explicit=explicit, **kwargs)
             fingerprint = _fingerprint(self)
             run, reason = state.acquire(
                 fingerprint, bool(explicit or (focus or "").strip()), time.time(),
@@ -258,7 +262,9 @@ def install_on_class(cls: Any, br_module: Any) -> bool:
             # Fail-open: a broken dedup must never block a review.
             logger.warning("bg_review_dedup: trigger wrapper failed; running review unchanged",
                             exc_info=True)
-            return original_spawn(self, messages_snapshot, *args, **kwargs)
+            return original_spawn(self, messages_snapshot, *args,
+                                  review_memory=review_memory, review_skills=review_skills,
+                                  focus=focus, task_cfg=task_cfg, explicit=explicit, **kwargs)
 
     def _spawn_thread(agent, messages_snapshot, **kwargs):
         target, prompt = original_spawn_thread(agent, messages_snapshot, **kwargs)
