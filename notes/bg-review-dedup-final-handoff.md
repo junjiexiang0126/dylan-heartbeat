@@ -61,4 +61,4 @@
 缓存与显式等待为进程内 best effort，不保证重启后排队请求恢复或跨进程去重；卡死原生线程不会被伪装成已结束。真实模型审查质量与费用需在获准试运行后观察。目前仅交付代码和验收证据，生产保持原样。
 
 
-最新外部证据：bg-review-dedup-evidence/vps-actual-image-acceptance.json。部署/回滚方案：bg-review-dedup-rollout-plan.md。隔离镜像兼容验收通过；最小候选发布包（仅模块及必要安装点）尚待准备，不得将同名分支的 b28ca45 工作树整套覆盖上线。
+最新外部证据：bg-review-dedup-evidence/vps-actual-image-acceptance.json。部署/回滚方案：bg-review-dedup-rollout-plan.md。隔离镜像兼容验收通过；最小候选发布包（仅模块及必要安装点）已由 VPS 助手报告准备完成，候选 ID 为 863179914770d2c6da8b9610c75cd25ece25d98ca909578c3b60c654292a231e；近期数据备份恢复证明仍待核实，不得将同名分支的 b28ca45 工作树整套覆盖上线。

@@ -67,10 +67,11 @@
     "notes/bg-review-dedup-evidence/full-python-stream.log": "56615a70b8d752078361a8a38c3e919dc0e5e3b09bd2223a7815e5e64a5d0473",
     ".github/workflows/hermes-native.yml": "55fe28a4eab8bb0785781392812d3633acdcf5b383d87ad7f6b1935297044aec",
     "notes/bg-review-dedup-evidence/remote-ci-fbaa280.json": "6ace92a5e45e442c2b282f1b03c45fb835a3af5aa4ca8cf74ed9bcf9669af2f8",
-    "notes/bg-review-dedup-final-handoff.md": "af8441244e33fcd325f88a609d739a5c4ad0536aebcaea5c8c21a92751fb3c33",
+    "notes/bg-review-dedup-final-handoff.md": "d31ee9edfd49718b3ca43592cc414df071f5ed89c58e8de03fa3ea3d90486c40",
     "notes/bg-review-dedup-v1-acceptance.md": "053c0bf262e187393a712adb304864e7b46f263c44cf9efaa285a3d613f929ec",
-    "notes/bg-review-dedup-rollout-plan.md": "cc42aa9447c8129c02d7325c293d1fb11dcfae9956450ce2e82cc6380931461e",
-    "notes/bg-review-dedup-evidence/vps-actual-image-acceptance.json": "7016cffd47c406587dbdfbb76a8140b2052fb6f409ecb86441e9a9ccd53e7974"
+    "notes/bg-review-dedup-rollout-plan.md": "1ae53824141179a7700bb266ec8654224291cdc513003852c61b07834d3f5d42",
+    "notes/bg-review-dedup-evidence/vps-actual-image-acceptance.json": "7016cffd47c406587dbdfbb76a8140b2052fb6f409ecb86441e9a9ccd53e7974",
+    "notes/bg-review-dedup-evidence/vps-stage1-candidate.json": "ab2296ee932d9a16504f468e412903eb162765bde28458587a9fb61f96abe54a"
   },
   "pull_request": "https://github.com/junjiexiang0126/dylan-heartbeat/pull/96",
   "previous_tested_code_commit": "85c5495d63408972f803535f6fce37168f147734",
@@ -285,5 +286,38 @@
     "scope": "candidate module over actual-image Hermes and dependencies in an independent test container; not production home/config/plugins loaded from volumes or live startup installation",
     "production_changed_by_work": false,
     "deployment_authorized": false
+  },
+  "vps_stage1_candidate": {
+    "source": "user-forwarded VPS assistant stage-1 report; not directly inspected by Work",
+    "date_bangkok": "2026-10-24",
+    "candidate_source": "7d2dc458bc8c4ab7e6afb3039b448045127d51c8",
+    "base_image_id": "sha256:14bafd8ffa578c4ccd5a0537305e2fded5d632e89ed8c0566dd7e4bb41023d5b",
+    "candidate_image_id": "sha256:863179914770d2c6da8b9610c75cd25ece25d98ca909578c3b60c654292a231e",
+    "candidate_tag": "ziwei-hermes:dedup-v1-stage1",
+    "source_changes": {
+      "bg_review_dedup.py": {
+        "sha256": "08661eb89ea386d8350849d833c6e102ce5adb69fda7dce87b2b3810ca574927",
+        "change": "new module"
+      },
+      "web_bridge.py": {
+        "candidate_sha256": "b420bfead50b969b44aa58cb0cb2a776800f8fcb8d568ca768b5da12c7445a30",
+        "baseline_sha256_prefix_only": "4001a1a3",
+        "change": "four-line comment/import/install insertion before installed flag; no whole-file replacement"
+      }
+    },
+    "reported_isolated_checks": {
+      "install_marker": "background_review._ziwei_bg_dedup_installed",
+      "repeat_install_wrapper_and_state_identity": "pass",
+      "factory_signature": "pass",
+      "script_exit_code": 0,
+      "earlier_script_marker_mismatch": "corrected to current module-level marker; no candidate code change reported"
+    },
+    "reported_old_image_available": true,
+    "production_running_on_base_unchanged_reported": true,
+    "backup_recoverability": "not established; two empty directories do not establish global backup absence",
+    "raw_deploy_description": "kept VPS-local in /tmp/dedup-release-stage1; do not export because inspect may include credentials",
+    "stage2_authorized": false,
+    "production_deployed": false,
+    "private_data_modified_by_work": false
   }
 }
