@@ -34,6 +34,7 @@ Config (auxiliary.background_review, all optional):
 """
 from __future__ import annotations
 
+import contextvars
 import hashlib
 import json
 import logging
@@ -52,6 +53,7 @@ LOG_NAME = "bg_review_dedup_log.jsonl"
 LOG_ROTATE_BYTES = 5 * 1024 * 1024
 
 _fp_local = threading.local()
+_review_fingerprint = contextvars.ContextVar('ziwei_bg_review_fingerprint', default=None)
 
 
 def _home() -> Path:
@@ -109,7 +111,7 @@ def _load_task_cfg(br_module: Any) -> Dict[str, Any]:
 
 def _dedup_enabled(task_cfg: Optional[Dict[str, Any]]) -> bool:
     """Local truthy check: no Hermes utils import, so tests and the
-    module behave identically everywhere. Unset means enabled."""
+    module behave identically everywhere. Unset means disabled."""
     value = (task_cfg or {}).get("dedup_enabled")
     if value is None:
         # Opt-in until the real Hermes queue/lifecycle integration is proven.
@@ -264,12 +266,15 @@ def install_on_class(cls: Any, br_module: Any) -> bool:
                      "decision": "run" if run else "skip", "reason": reason})
             if not run:
                 return None
-            # NOTE: deferred task identity still needs real Hermes integration
-            # validation before dedup is enabled. Never enable by default.
-            self._ziwei_bg_dedup_fp = fingerprint
-            return original_spawn(self, messages_snapshot, *args,
-                                  review_memory=review_memory, review_skills=review_skills,
-                                  focus=focus, explicit=explicit, **kwargs)
+            # Bind only to this invocation, never to a mutable Agent slot.
+            # Deferred dispatch is untracked until the actual queue is hooked.
+            token = _review_fingerprint.set(fingerprint)
+            try:
+                return original_spawn(self, messages_snapshot, *args,
+                                      review_memory=review_memory, review_skills=review_skills,
+                                      focus=focus, explicit=explicit, **kwargs)
+            finally:
+                _review_fingerprint.reset(token)
         except Exception:
             # Never invoke original_spawn twice: it may already have launched
             # work before raising. Surface the original failure instead.
@@ -278,7 +283,11 @@ def install_on_class(cls: Any, br_module: Any) -> bool:
 
     def _spawn_thread(agent, messages_snapshot, **kwargs):
         target, prompt = original_spawn_thread(agent, messages_snapshot, **kwargs)
-        fingerprint = getattr(agent, "_ziwei_bg_dedup_fp", None) or _fingerprint(agent)
+        fingerprint = _review_fingerprint.get()
+        if fingerprint is None:
+            # Explicit, disabled, or deferred reviews have no owned
+            # reservation; never settle somebody else's in-flight entry.
+            return target, prompt
 
         def _tracked_target():
             _fp_local.usage = None
