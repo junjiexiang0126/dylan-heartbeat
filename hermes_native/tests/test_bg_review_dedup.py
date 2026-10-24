@@ -224,6 +224,25 @@ class TestOverBudgetWarning(DedupTestBase):
         self.assertEqual(complete[-1]["result"], "ok")
 
 
+class TestScopedFingerprint(DedupTestBase):
+    def test_no_mutable_agent_fingerprint_slot(self):
+        self.assertIsNotNone(self.trigger())
+        self.assertFalse(hasattr(self.agent, "_ziwei_bg_dedup_fp"))
+
+    def test_untracked_thread_does_not_settle_background_reservation(self):
+        self.assertIsNotNone(self.trigger())
+        fp = dedup._fingerprint(self.agent)
+        stamp = self.state.in_flight[fp]
+        target, _ = self.br.spawn_background_review_thread(self.agent, [])
+        target()
+        self.assertEqual(self.state.in_flight[fp], stamp)
+        self.assertEqual(self.state.last_run_at, 0)
+
+    def test_scoped_binding_resets_after_spawn(self):
+        self.assertIsNotNone(self.trigger())
+        self.assertIsNone(dedup._review_fingerprint.get())
+
+
 class TestHermesSignature(DedupTestBase):
     def test_disabled_path_does_not_forward_task_cfg(self):
         class StrictAgent:
