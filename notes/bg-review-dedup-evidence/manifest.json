@@ -1,5 +1,5 @@
 {
-  "date_bangkok": "2026-10-24",
+  "date_bangkok": "2026-10-25",
   "baseline_commit": "f8edcc0816bcd529920ee7a5db4ebf977eb3e6a1",
   "hermes_commit": "5894e750c3dba980d43b25aa29e3958149ba2c61",
   "python": "3.12.14",
@@ -67,11 +67,12 @@
     "notes/bg-review-dedup-evidence/full-python-stream.log": "56615a70b8d752078361a8a38c3e919dc0e5e3b09bd2223a7815e5e64a5d0473",
     ".github/workflows/hermes-native.yml": "55fe28a4eab8bb0785781392812d3633acdcf5b383d87ad7f6b1935297044aec",
     "notes/bg-review-dedup-evidence/remote-ci-fbaa280.json": "6ace92a5e45e442c2b282f1b03c45fb835a3af5aa4ca8cf74ed9bcf9669af2f8",
-    "notes/bg-review-dedup-final-handoff.md": "d31ee9edfd49718b3ca43592cc414df071f5ed89c58e8de03fa3ea3d90486c40",
-    "notes/bg-review-dedup-v1-acceptance.md": "053c0bf262e187393a712adb304864e7b46f263c44cf9efaa285a3d613f929ec",
-    "notes/bg-review-dedup-rollout-plan.md": "1ae53824141179a7700bb266ec8654224291cdc513003852c61b07834d3f5d42",
+    "notes/bg-review-dedup-final-handoff.md": "596cbdf05359b32d1250353ca2ec2dc11eae962605eb8a2350304b606cc6ee10",
+    "notes/bg-review-dedup-v1-acceptance.md": "00f88d7767edac4ed7892e4f4700d6cedbf4a6e2fc2faa1b1da7f78152388d55",
+    "notes/bg-review-dedup-rollout-plan.md": "fe9a0eac6a76c48995be3ec938b0e76d74e3bda6c8a960b0e2faa2c09b374b92",
     "notes/bg-review-dedup-evidence/vps-actual-image-acceptance.json": "7016cffd47c406587dbdfbb76a8140b2052fb6f409ecb86441e9a9ccd53e7974",
-    "notes/bg-review-dedup-evidence/vps-stage1-candidate.json": "ab2296ee932d9a16504f468e412903eb162765bde28458587a9fb61f96abe54a"
+    "notes/bg-review-dedup-evidence/vps-stage1-candidate.json": "ab2296ee932d9a16504f468e412903eb162765bde28458587a9fb61f96abe54a",
+    "notes/bg-review-dedup-evidence/vps-production-trial-20261025.json": "f0fab020a94b45928e6a1ea7b1337fcb5c44936bf0369f94471837b33334f194"
   },
   "pull_request": "https://github.com/junjiexiang0126/dylan-heartbeat/pull/96",
   "previous_tested_code_commit": "85c5495d63408972f803535f6fce37168f147734",
@@ -113,7 +114,7 @@
     "production_dedup_benefit": "not measured; isolated large tree plus missing links now validated with explicit scan budget"
   },
   "pre_adaptation_code_commit": "1d792eeb5456b30857770f531d43eed2cf342ced",
-  "tested_code_version": "current source hashes below; implementation commit to be recorded after CI",
+  "tested_code_version": "Implementation unchanged since 3795d94; validated code/workflow fbaa280; subsequent commits only record evidence and rollout documentation.",
   "vps_readonly_followup": {
     "evidence": "vps-readonly-followup.md",
     "external_memory_runtime": "unknown",
@@ -319,5 +320,21 @@
     "stage2_authorized": false,
     "production_deployed": false,
     "private_data_modified_by_work": false
-  }
+  },
+  "production_access_note": "production_access=false describes Work direct access only; externally executed authorized deployment is separately recorded below.",
+  "paid_provider_calls_note": "false describes isolated tests only; natural production cron activity occurred and is not a zero-cost claim.",
+  "production_trial": {
+    "evidence_file": "notes/bg-review-dedup-evidence/vps-production-trial-20261025.json",
+    "image_id": "sha256:863179914770d2c6da8b9610c75cd25ece25d98ca909578c3b60c654292a231e",
+    "candidate_source_commit": "7d2dc458bc8c4ab7e6afb3039b448045127d51c8",
+    "production_deployed_reported": true,
+    "disk_dedup_enabled": true,
+    "health_and_auth_reported": "passed",
+    "runtime_review_install_verified": false,
+    "natural_chat_roundtrip_verified": false,
+    "production_dedup_effect": "unknown",
+    "main_merged": false,
+    "evidence_source": "user-forwarded VPS reports; not Work direct execution"
+  },
+  "history_scope_note": "vps_actual_image_acceptance and vps_stage1_candidate describe their 2026-10-24 stages. Their deployment/authorization flags are historical snapshots, superseded for current status by production_trial."
 }

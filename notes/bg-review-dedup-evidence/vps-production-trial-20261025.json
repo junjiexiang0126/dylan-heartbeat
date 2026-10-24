@@ -1,0 +1,221 @@
+{
+  "schema_version": 1,
+  "report_date_bangkok": "2026-10-25",
+  "evidence_source": "User-forwarded VPS assistant terminal outputs and follow-up report in this conversation. Work did not connect to the VPS; this JSON is a curated evidence summary, not a raw execution log.",
+  "status": "deployed_to_existing_production_service_and_configured_enabled; runtime review instrumentation and savings not yet observed",
+  "authorization": {
+    "scope": "User-approved bounded production trial: fresh backup, fixed minimal image, two dedup config keys, necessary ziwei-hermes recreation and rollback. No main merge or unrelated service changes.",
+    "scope_reported_by": "User-forwarded deployment transcript"
+  },
+  "candidate_source_commit": "7d2dc458bc8c4ab7e6afb3039b448045127d51c8",
+  "tested_code_workflow_commit": "fbaa280592639a92e4b4b56a2aac124535750504",
+  "production": {
+    "container_name": "ziwei-hermes",
+    "container_id": "830077e7cdf04c77b3079d11f6f82539abb0b0f38fc60209dbc94ae3e6576a98",
+    "image_id": "sha256:863179914770d2c6da8b9610c75cd25ece25d98ca909578c3b60c654292a231e",
+    "previous_image_id": "sha256:14bafd8ffa578c4ccd5a0537305e2fded5d632e89ed8c0566dd7e4bb41023d5b",
+    "source_revision_label": null,
+    "whole_running_source_commit": "unknown; candidate source commit is not the whole production image revision",
+    "mounts": [
+      {
+        "source": "/opt/hermes-data",
+        "destination": "/opt/data"
+      },
+      {
+        "source": "/opt/ziwei-runtime",
+        "destination": "/opt/ziwei-runtime"
+      }
+    ],
+    "port": "127.0.0.1:8642->8642/tcp",
+    "restart_policy": "unless-stopped",
+    "command_reported_preserved": [
+      "python",
+      "/opt/ziwei-native/bootstrap.py"
+    ],
+    "entrypoint_reported_preserved": [
+      "python",
+      "/opt/ziwei-native/entrypoint.py"
+    ],
+    "environment_preservation": "Existing env file reused. Equal item counts do not prove byte-for-byte equality with the prior container environment; values not collected here.",
+    "switch_exit_code": 0,
+    "production_container_recreated": true,
+    "other_services_restarted_reported": false,
+    "rollback_performed": false
+  },
+  "minimal_package": {
+    "changed_files": [
+      "/opt/ziwei-native/bg_review_dedup.py",
+      "/opt/ziwei-native/web_bridge.py"
+    ],
+    "sha256": {
+      "/opt/ziwei-native/bg_review_dedup.py": "08661eb89ea386d8350849d833c6e102ce5adb69fda7dce87b2b3810ca574927",
+      "/opt/ziwei-native/web_bridge.py": "b420bfead50b969b44aa58cb0cb2a776800f8fcb8d568ca768b5da12c7445a30"
+    },
+    "baseline_web_bridge_sha256": "4001a1a356d3f4d3c105bb9ea376e8ab4d48ecdd786f966973efc4e2f0a5efa9",
+    "scope": "Base production image plus module and four-line install hook only; no whole-branch deployment or CI fixes bundled."
+  },
+  "disk_config": {
+    "path": "/opt/hermes-data/config.yaml",
+    "yaml_parse": "passed",
+    "changed_keys": {
+      "auxiliary.background_review.dedup_enabled": true,
+      "auxiliary.background_review.dedup_skill_scan_max_bytes": 100663296
+    },
+    "other_keys": "reported unchanged",
+    "runtime_worker_effective_settings": "not directly observed"
+  },
+  "previous_backup_restore": {
+    "source": "/opt/backups/20261024-0400",
+    "destination": "/tmp/restore-verify-20261024-0400",
+    "destination_mode": "0700 reported",
+    "copy_exit_code": 0,
+    "all_regular_file_source_copy_sha256": "matched at verification time; not an original creation-time manifest",
+    "python_readonly_sqlite_exit_code": 0,
+    "databases": [
+      {
+        "name": "state.db",
+        "bytes": 144568320,
+        "integrity_check": "ok",
+        "tables": 25
+      },
+      {
+        "name": "chat.sqlite",
+        "bytes": 55488512,
+        "integrity_check": "ok",
+        "tables": 9
+      },
+      {
+        "name": "moments.sqlite",
+        "bytes": 122880,
+        "integrity_check": "ok",
+        "tables": 10
+      },
+      {
+        "name": "work.sqlite",
+        "bytes": 81920,
+        "integrity_check": "ok",
+        "tables": 6
+      }
+    ],
+    "key_files_nonempty_and_hash_matched": [
+      "meta/SOUL.md",
+      "meta/memories/MEMORY.md",
+      "meta/memories/USER.md",
+      "meta/config.yaml",
+      "meta/ziwei-hermes.env",
+      "meta/ziwei-web.env"
+    ],
+    "empty_file": "meta/memories/state.db is zero bytes in source and copy; not accepted as a restored database and not confused with root state.db",
+    "original_checksum_manifest_available": false,
+    "application_boot_tested": false,
+    "backup_time_row_count_comparison_completed": false,
+    "limitations": [
+      "Only database readability/integrity and specified file copy fidelity demonstrated, not full-site or application restore.",
+      "Data newer than this backup is outside this restore proof.",
+      "Earlier backup log includes row-count summaries; drill did not compare them. No claim that all historical metadata is absent.",
+      "SQLite CLI attempt failed with exit 127; Python sqlite3 completed without package installation."
+    ]
+  },
+  "prechange_backup": {
+    "path": "/opt/backups/pre-dedup-v1-20261025-0101",
+    "snapshot_method": "SQLite backup API with read-only sources; separate per-database consistent snapshots, not a cross-database atomic snapshot",
+    "script_exit_code": 0,
+    "databases": [
+      {
+        "name": "state.db",
+        "bytes": 149082112,
+        "integrity_check": "ok"
+      },
+      {
+        "name": "chat.sqlite",
+        "bytes": 60096512,
+        "integrity_check": "ok"
+      },
+      {
+        "name": "moments.sqlite",
+        "bytes": 122880,
+        "integrity_check": "ok"
+      },
+      {
+        "name": "work.sqlite",
+        "bytes": 81920,
+        "integrity_check": "ok"
+      }
+    ],
+    "verified_copy_files": [
+      "meta/config.yaml",
+      "meta/SOUL.md",
+      "meta/jobs.json",
+      "meta/ziwei-web.env",
+      "meta/ziwei-hermes.env",
+      "meta/memories/MEMORY.md",
+      "meta/memories/USER.md"
+    ],
+    "copy_sha256": "all shown source-copy comparisons matched",
+    "permissions": "Backup root, meta and meta/memories tightened from 0755 to root-owned 0700 per follow-up report; copied env files 0600.",
+    "original_script_caveats": [
+      "Memory-file hash mismatch prints MISMATCH but does not set rc; actual reported comparisons all matched.",
+      "Uses exist_ok for a fixed output directory; successful transcript is evidence for this run, not an endorsement of script reuse."
+    ],
+    "no_cleanup_or_cos_upload_reported": true,
+    "post_backup_data_not_covered": true
+  },
+  "post_switch_checks": {
+    "health": {
+      "route": "/health",
+      "http_status": 200
+    },
+    "model_list_unauthenticated": {
+      "route": "/v1/models",
+      "http_status": 401
+    },
+    "model_list_authenticated": {
+      "route": "/v1/models",
+      "http_status": 200,
+      "model_count": 1,
+      "model": "hermes-agent",
+      "model_invocation": false
+    },
+    "natural_chat": {
+      "full_request_reply_roundtrip": "not yet observed; earlier keyword counts withdrawn as proof"
+    },
+    "wecom": "Connection reported; dropped empty/ping records alone do not prove message delivery.",
+    "cron": "Follow-up report describes a completed natural cron agent round with 24 API calls. This is not a dedup review measurement or paid-cost test.",
+    "startup": "Initial connection failure and gateway restart/SIGTERM seen; subsequently listening and health/auth passed. Prior UNCLEAN lifecycle warning not independently diagnosed; no claim all warnings proven benign.",
+    "runtime_install": "pending positive evidence; module presence, hook, missing warnings and a marker queried in a new process do not prove live gateway instrumentation. install_on_class also has silent false returns."
+  },
+  "audit": {
+    "resolved_path_reported": "/opt/data/bg_review_dedup_log.jsonl",
+    "present": false,
+    "trigger_count": null,
+    "run_count": null,
+    "skip_count": null,
+    "complete_count": null,
+    "failure_count": null,
+    "reason_counts": null,
+    "actual_api_calls": null,
+    "savings": null,
+    "semantics": "No file or observed triggers means unknown, not zero and not proof no reviews occurred. Resolve per actual profile home if later evidence differs."
+  },
+  "costs": {
+    "isolated_duplicate_fixture": "Two identical eligible triggers produced one loopback HTTP call; new inputs still ran. Existing test evidence only.",
+    "production_hit_rate": null,
+    "production_bill_saving": null,
+    "cron_calls_not_capped_by_dedup": true,
+    "no_paid_test_loop_reported": true
+  },
+  "boundaries": {
+    "main_merged": false,
+    "frontend_changes_reported": false,
+    "private_memory_edits_reported": false,
+    "skills_link_changes_reported": false,
+    "cos_upload_or_restore_executed_reported": false,
+    "old_images_deleted_reported": false
+  },
+  "web_container_identity": {
+    "name": "ziwei-web",
+    "image_id": "sha256:0d96e0bf59adf2a2d9101b0ebefba6afb89d863b955cae6b6081bc4d316e73c2",
+    "upstream_to_this_hermes": "not established by image/mount inventory; no frontend reroute claimed"
+  },
+  "remaining": "Normal use and passive observation only. No re-deployment or paid test loops solely to obtain audit rows; apply already approved rollback on confirmed service/chat/necessary-review fault, retaining current data."
+}

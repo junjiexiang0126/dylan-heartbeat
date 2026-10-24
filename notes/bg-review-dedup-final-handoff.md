@@ -1,12 +1,14 @@
 # 后台审查去重 V1 · 最终开发交付
 
-2026-10-24（Asia/Bangkok）。原分支 feature/bg-review-dedup-v1；PR #96 保持草稿，未合并 main。
+2026-10-25 更新（Asia/Bangkok）。原分支 feature/bg-review-dedup-v1；PR #96 保持草稿，未合并 main。
 
 ## 结论
 
 开发、自动化及独立镜像验收完成，本轮三个远程 CI 全部通过。已测试代码/工作流提交 fbaa280592639a92e4b4b56a2aac124535750504；核心实现为其父提交 3795d94ead01d310f4c679abf260096b25eaf43c。后续交付提交仅补报告。
 
-未访问/部署/重启生产，未修改生产配置、技能链接、记忆、前端或持久化数据。默认 dedup_enabled=false 保持。开发验收通过不等于已在正式知微省费。
+用户另行批准后，VPS 助手已把最小候选部署到原有正式 ziwei-hermes 容器并开启两个去重配置键，继续挂载原生产数据；不是另开的隔离服务。当前镜像 sha256:863179914770d2c6da8b9610c75cd25ece25d98ca909578c3b60c654292a231e，容器 830077e7cdf0。Work 未直连生产，本节部署依据为用户转交的实际终端输出及收尾报告。代码默认 dedup_enabled=false 不变，正式磁盘配置明确设为 true。
+
+/health 200，无认证 /v1/models 401、有认证 200（1 项），新备份校验及权限收紧已报告完成。完整自然聊天回合、生产审查接线与去重命中尚无正面运行样本；不能由接线文件、无警告、进程外模块标记或关键词计数代替。审计未创建，数量和收益记为未知，不记零。开发/部署完成不等于已实测省费。
 
 ## 本轮修复
 
@@ -52,13 +54,18 @@
 
 隔离单次扫描为 1.83 秒、Python traced peak 1610284 字节；不是 VPS 性能/进程 RSS。每次校验需要读取内容，存在 I/O/CPU 成本。没有付费模型、生产账单、真实命中率或月费数据，不推算人民币节省。
 
-## 生产边界与下一步
+## 正式部署、恢复证据与剩余观察
 
-不再反复采集环境变量/日志来宣称 RetainDB 或凭证池未启用；这些运行态仍未知，由实际对象的保守 guard 判断，不满足证明条件就正常审查。已收到的生产目录检查不能证明准确内容字节数或无循环，也不能等同于整个运行源码树。
+截至本次用户转交报告，正式 ziwei-hermes 已从 14bafd8f… 镜像切至 86317991…，切换退出码 0，继续使用 /opt/hermes-data:/opt/data 与 /opt/ziwei-runtime:/opt/ziwei-runtime；端口仍 127.0.0.1:8642、重启策略 unless-stopped。生产候选仅模块及原 web_bridge 的四行安装调用；未按同名分支整套覆盖 b28ca45 工作树，CI 修复与前端未随包部署。镜像 revision 标签为空，候选源码 SHA 不是整个运行源码 SHA。
 
-实际 VPS 镜像隔离验收已由用户转交证据：87 项、37.031 秒、unittest OK；Docker 原始退出码因 tail 管道未独立捕获。下一阶段是最小发布包准备及另行批准的受控试运行；不需要先删链接、整理技能或改记忆。正式启用前须确认当前可恢复备份及回滚方式，并单独批准生产配置/服务操作。96 MiB 候选配置差异已在完整报告第 13 节写明，尚未执行；超过预算仍放行，不能保证正式环境命中率。
+生产仅合并 auxiliary.background_review.dedup_enabled=true 和 dedup_skill_scan_max_bytes=100663296，YAML 验证通过。已有 provider/model/enabled 等报告保持；不通过修改记忆或技能链接配合缓存。RetainDB、凭证池等未知状态仍由运行时 guard 保守处理。
 
-缓存与显式等待为进程内 best effort，不保证重启后排队请求恢复或跨进程去重；卡死原生线程不会被伪装成已结束。真实模型审查质量与费用需在获准试运行后观察。目前仅交付代码和验收证据，生产保持原样。
+既有 /opt/backups/20261024-0400 已在私有隔离副本验证：四库可读、integrity_check 均 ok（表数 25/9/10/6），源/副本普通文件 SHA256 一致，指定 SOUL/MEMORY/USER/配置/env 文件非空。它没有原始 checksum manifest，不是整站启动恢复或跨库原子一致性证明；meta/memories/state.db 为源端既有空文件，不计作数据库恢复通过。备份时点之后数据不在该证明范围。
 
+部署前另新增 /opt/backups/pre-dedup-v1-20261025-0101：四库通过 SQLite backup API 分别形成一致快照并校验 ok，关键配置/记忆副本摘要一致，脚本退出 0；备份根及 meta、meta/memories 已收紧至 root:root 0700，env 为 0600。没有清理历史备份、运行 COS 恢复或补做 v13 上传。逐库快照不能声称跨库同一时刻。
 
-最新外部证据：bg-review-dedup-evidence/vps-actual-image-acceptance.json。部署/回滚方案：bg-review-dedup-rollout-plan.md。隔离镜像兼容验收通过；最小候选发布包（仅模块及必要安装点）已由 VPS 助手报告准备完成，候选 ID 为 863179914770d2c6da8b9610c75cd25ece25d98ca909578c3b60c654292a231e；近期数据备份恢复证明仍待核实，不得将同名分支的 b28ca45 工作树整套覆盖上线。
+健康/认证检查已通过；完整自然聊天及首次后台审查的生产证据待后续正常使用获取。审计路径报告为 /opt/data/bg_review_dedup_log.jsonl，目前尚未创建，实际 trigger/decision/reason/complete/API 数均未知。自然 cron 完成的 24 API 调用不是后台审查去重测量，V1 不限制普通自主任务调用。无真实账单或节费数据。
+
+当前不需要重新部署或重复 87 项验收，不以人工付费循环制造命中；观察自然审查的枚举/数值统计即可。新旧镜像保留，已批准的故障回滚只恢复镜像和两个键，继续使用当前数据，禁止回滚整个数据卷覆盖新增聊天/记忆。缓存与 FIFO 仍仅进程内 best effort。
+
+本次 GitHub 同步仅更新文档及脱敏证据，未操作 VPS、合并 main、修改前端、原始备份或凭证。原始配置/env/inspect/聊天不入仓。完整部署摘要见 [生产试运行证据](bg-review-dedup-evidence/vps-production-trial-20261025.json)，范围及回滚见 [发布方案](bg-review-dedup-rollout-plan.md)。PR #96 仍开放待最终代码审核。
