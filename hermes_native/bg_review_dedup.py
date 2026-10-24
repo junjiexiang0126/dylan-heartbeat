@@ -244,7 +244,7 @@ def install_on_class(cls: Any, br_module: Any) -> bool:
                          "decision": "run", "reason": "dedup_disabled"})
                 return original_spawn(self, messages_snapshot, *args,
                                       review_memory=review_memory, review_skills=review_skills,
-                                      focus=focus, task_cfg=task_cfg, explicit=explicit, **kwargs)
+                                      focus=focus, explicit=explicit, **kwargs)
             fingerprint = _fingerprint(self)
             run, reason = state.acquire(
                 fingerprint, bool(explicit or (focus or "").strip()), time.time(),
@@ -259,7 +259,7 @@ def install_on_class(cls: Any, br_module: Any) -> bool:
             self._ziwei_bg_dedup_fp = fingerprint
             return original_spawn(self, messages_snapshot, *args,
                                   review_memory=review_memory, review_skills=review_skills,
-                                  focus=focus, task_cfg=task_cfg, explicit=explicit, **kwargs)
+                                  focus=focus, explicit=explicit, **kwargs)
         except Exception:
             # Never invoke original_spawn twice: it may already have launched
             # work before raising. Surface the original failure instead.
