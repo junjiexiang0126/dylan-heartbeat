@@ -1,297 +1,415 @@
-"""Tests for bg_review_dedup V1 — no network, no Hermes imports.
-
-Covers: duplicate-event dedup, changed-event trigger, concurrent trigger,
-bounded failure retry, forced periodic review floor, over-budget warning
-record (no interruption), and self-edit non-retrigger.
-"""
+"""Exact-input cache contract tests. Native integration is in the opt-in file."""
+import copy
 import json
 import sys
 import tempfile
 import threading
-import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import bg_review_dedup as d
 
-import bg_review_dedup as dedup
 
-
-class _FakeBR:
-    """Minimal stand-in for agent.background_review."""
-
+class FakeBR:
     def __init__(self):
-        self.spawn_calls = 0
-        self.log_calls = []
+        self.cfg = {"dedup_enabled": True}
+        self.calls = 0
+        self.logs = []
+        self.error = False
+        self.partial = False
+        self.tool = False
+        self.api_calls = 1
+        self.normalize_snapshot = False
+        self.mutate = lambda: None
 
-        def spawn_thread(agent, messages_snapshot, **kwargs):
-            self.spawn_calls += 1
-            return (lambda: None), "prompt"
+    def load_background_review_settings(self):
+        return True, self.cfg
 
-        self.spawn_background_review_thread = spawn_thread
+    def finish_background_review_run(self, agent, run):
+        if run is not None:
+            run.request_done.set()
 
-        def log_completion(usage, result):
-            self.log_calls.append((dict(usage), result))
+    def _log_review_completion(self, usage, result):
+        self.logs.append((usage, result))
 
-        self._log_review_completion = log_completion
+    def build_cache_parity_fork(self, agent, task_cfg=None, *, max_iterations=16):
+        def run_conversation(**kw):
+            self.calls += self.api_calls
+            self.mutate()
+            if self.error:
+                raise RuntimeError("private error text")
+            messages = copy.deepcopy(kw["conversation_history"])
+            if self.tool:
+                messages.append({"role": "assistant", "tool_calls": [{"id": "new"}]})
+            return {"completed": not self.partial, "partial": self.partial, "messages": messages}
+        return SimpleNamespace(run_conversation=run_conversation), {}, False
+
+    def spawn_background_review_thread(self, agent, messages_snapshot, review_memory=False,
+                                      review_skills=False, focus=None, task_cfg=None,
+                                      review_run=None, explicit=False):
+        prompt = "memory" if review_memory else "skill"
+        if focus:
+            prompt += focus
+        def target():
+            if review_run.cancel_requested.is_set():
+                return
+            if self.normalize_snapshot:
+                messages_snapshot[0]["content"] += " normalized by Hermes"
+            fork, _, _ = self.build_cache_parity_fork(agent, task_cfg)
+            try:
+                fork.run_conversation(conversation_history=messages_snapshot)
+                self._log_review_completion({"api_calls": self.api_calls, "input_tokens": 12}, "none")
+            except RuntimeError:
+                self._log_review_completion({"api_calls": self.api_calls}, "error")
+        return target, prompt
 
 
-class _FakeAgent:
-    session_id = "test-session"
-
-    def _spawn_background_review(self, messages_snapshot, *args, **kwargs):
-        self.spawned = True
-        return "spawned"
-
-
-class _FakeCls:
-    _spawn_background_review = _FakeAgent._spawn_background_review
-
-
-class DedupTestBase(unittest.TestCase):
+class Contract(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.home = Path(self.tmp.name)
-        self.mem = self.home / "memories"
-        self.mem.mkdir()
-        (self.mem / "MEMORY.md").write_text("# memory v1", encoding="utf-8")
-        (self.mem / "USER.md").write_text("# user v1", encoding="utf-8")
-        patcher = mock.patch.object(dedup, "_home", lambda: self.home)
-        patcher.start()
-        self.addCleanup(patcher.stop)
-        cfg_patcher = mock.patch.object(dedup, "_load_task_cfg",
-                                        lambda br: {"dedup_enabled": True})
-        cfg_patcher.start()
-        self.addCleanup(cfg_patcher.stop)
-        self.br = _FakeBR()
-        self.cls = _FakeCls()
-        self.assertTrue(dedup.install_on_class(self.cls, self.br))
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / "memories").mkdir()
+        (self.root / "memories/MEMORY.md").write_text("memory")
+        (self.root / "skills").mkdir()
+        (self.root / "skills/SKILL.md").write_text("skill")
+        patch = mock.patch.object(d, "_home", return_value=self.root)
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.br = FakeBR()
+        self.cls = type("Agent", (), {})
+        self.assertTrue(d.install_on_class(self.cls, self.br))
         self.state = self.cls._ziwei_bg_dedup_state
-        self.agent = _FakeAgent()
+        self.agent = SimpleNamespace(session_id="private-session", _cached_system_prompt="private-prefix",
+                                     tools=[], model="test", provider="test",
+                                     _current_main_runtime=lambda: {"api_mode": "chat_completions"})
+        self.messages = [{"role": "user", "content": "private-conversation"}]
 
-    def tearDown(self):
-        self.tmp.cleanup()
+    def factory(self, **kw):
+        run = SimpleNamespace(cancel_requested=threading.Event(), request_done=threading.Event())
+        target, prompt = self.br.spawn_background_review_thread(
+            kw.pop("agent", self.agent), copy.deepcopy(kw.pop("messages", self.messages)), review_run=run, **kw)
+        return target, run
 
-    def trigger(self, explicit=False, focus=None):
-        return self.cls._spawn_background_review(
-            self.agent, [], explicit=explicit, focus=focus)
+    def trigger(self, **kw):
+        target, run = self.factory(**kw)
+        target()
+        self.assertTrue(run.request_done.is_set())
+        return run
 
-    def complete(self, result="ok", usage=None):
-        self.br._log_review_completion(usage or {"api_calls": 2}, result)
-        dedup._fp_local.usage = usage or {"api_calls": 2}
-        dedup._fp_local.result = result
-        dedup._complete(self.state, dedup._fingerprint(self.agent))
+    def events(self):
+        return [json.loads(line) for line in (self.root / d.LOG_NAME).read_text().splitlines()]
 
-    def log_events(self):
-        path = self.home / dedup.LOG_NAME
-        if not path.exists():
-            return []
-        return [json.loads(line) for line in
-                path.read_text(encoding="utf-8").splitlines() if line]
+    def test_completed_identical_input_skips_api(self):
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 1)
+        self.assertEqual(self.events()[-1]["reason"], "completed_identical_input")
 
-    def edit_memory(self, text):
-        (self.mem / "MEMORY.md").write_text(text, encoding="utf-8")
+    def test_new_dialogue_is_reviewed(self):
+        self.trigger()
+        self.messages.append({"role": "user", "content": "new"})
+        self.trigger()
+        self.assertEqual(self.br.calls, 2)
 
+    def test_native_snapshot_normalization_does_not_defeat_cache(self):
+        self.br.normalize_snapshot = True
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 1)
+        self.assertEqual(self.messages[0]["content"], "private-conversation")
 
-class TestDuplicateEventDedup(DedupTestBase):
-    def test_unchanged_fingerprint_skipped(self):
-        self.assertIsNotNone(self.trigger())
-        self.complete("ok")
-        self.assertIsNone(self.trigger())
-        events = self.log_events()
-        self.assertEqual(events[-1]["decision"], "skip")
-        self.assertEqual(events[-1]["reason"], "unchanged_fingerprint")
+    def test_inherited_collector_cannot_capture_explicit_or_disabled_run(self):
+        for kw in ({"explicit": True}, {"task_cfg": {"dedup_enabled": False}}):
+            outer = d._Attempt()
+            token = d._attempt.set(outer)
+            try:
+                self.trigger(**kw)
+                self.assertIs(d._attempt.get(), outer)
+                self.assertIsNone(outer.result)
+                self.assertFalse(outer.returned_ok)
+            finally:
+                d._attempt.reset(token)
 
-    def test_self_edit_does_not_retrigger(self):
-        self.assertIsNotNone(self.trigger())
-        # The review itself edits memory; the post-fingerprint must absorb it.
-        self.edit_memory("# memory v1 (reviewed)")
-        self.complete("ok")
-        self.assertIsNone(self.trigger())
+    def test_external_memory_is_unproven(self):
+        self.agent._memory_manager = SimpleNamespace(_has_external=True)
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 2)
 
-
-class TestChangedEventTriggers(DedupTestBase):
-    def test_fingerprint_change_runs(self):
-        self.assertIsNotNone(self.trigger())
-        self.complete("ok")
-        self.edit_memory("# memory v2")
-        self.assertIsNotNone(self.trigger())
-        events = self.log_events()
-        self.assertEqual(events[-1]["decision"], "run")
-        self.assertEqual(events[-1]["reason"], "fingerprint_changed")
-
-    def test_explicit_review_always_runs(self):
-        self.assertIsNotNone(self.trigger())
-        self.complete("ok")
-        self.assertIsNotNone(self.trigger(explicit=True))
-        self.assertIsNotNone(self.trigger(explicit=True))
-
-
-class TestConcurrentTrigger(DedupTestBase):
-    def test_same_fingerprint_in_flight_skipped(self):
-        self.assertIsNotNone(self.trigger())
-        # No complete() yet: the review is still running.
-        self.assertIsNone(self.trigger())
-        events = self.log_events()
-        self.assertEqual(events[-1]["reason"], "already_in_flight")
-
-
-    def test_explicit_does_not_replace_background_reservation(self):
-        self.assertIsNotNone(self.trigger())
-        fingerprint = dedup._fingerprint(self.agent)
-        stamp = self.state.in_flight[fingerprint]
-        self.assertIsNotNone(self.trigger(explicit=True))
-        self.assertEqual(self.state.in_flight[fingerprint], stamp)
-
-    def test_threaded_triggers_single_run(self):
-        results = []
-
-        def worker():
-            results.append(self.trigger())
-
-        threads = [threading.Thread(target=worker) for _ in range(8)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-        self.assertEqual(sum(r is not None for r in results), 1)
-
-
-class TestFailureRetry(DedupTestBase):
-    def test_error_retries_bounded(self):
-        self.assertIsNotNone(self.trigger())
-        # Failures 1..MAX-1 each earn a retry; failure MAX exhausts the budget.
-        for i in range(dedup.MAX_CONSECUTIVE_FAILURES - 1):
-            self.complete("error")
-            self.assertIsNotNone(self.trigger(), f"retry {i} should run")
-        self.complete("error")
-        self.assertIsNone(self.trigger())
-        events = self.log_events()
-        self.assertEqual(events[-1]["reason"], "failure_retry_exhausted")
-
-
-    def test_force_interval_cannot_bypass_exhausted_retries(self):
-        self.assertIsNotNone(self.trigger())
-        for i in range(dedup.MAX_CONSECUTIVE_FAILURES - 1):
-            self.complete("error")
-            self.assertIsNotNone(self.trigger())
-        self.complete("error")
-        self.state.last_run_at -= dedup.DEFAULT_FORCE_INTERVAL_SECONDS + 1
-        self.assertIsNone(self.trigger())
-        self.assertEqual(self.log_events()[-1]["reason"], "failure_retry_exhausted")
-
-    def test_new_fingerprint_recovers_from_exhausted_retries(self):
-        self.assertIsNotNone(self.trigger())
-        for i in range(dedup.MAX_CONSECUTIVE_FAILURES - 1):
-            self.complete("error")
-            self.assertIsNotNone(self.trigger())
-        self.complete("error")
-        self.edit_memory("# changed after failed review")
-        self.assertIsNotNone(self.trigger())
-
-    def test_success_resets_failures(self):
-        self.assertIsNotNone(self.trigger())
-        self.complete("error")
-        self.assertIsNotNone(self.trigger())
-        self.complete("ok")
-        self.assertIsNone(self.trigger())  # dedup active again
-
-
-class TestForcedPeriodicReview(DedupTestBase):
-    def test_force_interval_overrides_unchanged_fingerprint(self):
-        self.assertIsNotNone(self.trigger())
-        self.complete("ok")
-        self.assertIsNone(self.trigger())
-        # Simulate the force interval elapsing with no changes at all.
-        self.state.last_run_at -= dedup.DEFAULT_FORCE_INTERVAL_SECONDS + 1
-        self.assertIsNotNone(self.trigger())
-        events = self.log_events()
-        self.assertEqual(events[-1]["reason"], "force_interval")
-
-
-class TestOverBudgetWarning(DedupTestBase):
-    def test_over_six_calls_recorded_not_interrupted(self):
-        self.assertIsNotNone(self.trigger())
-        usage = {"api_calls": 9, "input_tokens": 100, "output_tokens": 50,
-                 "cache_read_tokens": 10}
+    def test_over_budget_records_without_interruption(self):
+        self.br.api_calls = 9
         with self.assertLogs("ziwei.bg_review_dedup", level="WARNING") as logs:
-            self.complete("ok", usage=usage)
+            self.trigger()
+        self.assertEqual(self.br.calls, 9)
         self.assertTrue(any("9 API calls" in line for line in logs.output))
-        events = self.log_events()
-        complete = [e for e in events if e["event"] == "complete"]
-        self.assertEqual(complete[-1]["api_calls"], 9)
-        self.assertEqual(complete[-1]["result"], "ok")
 
+    def test_force_interval_validation(self):
+        self.assertEqual(d._force_interval({"dedup_force_interval_seconds": -1}), 1)
+        self.assertEqual(d._force_interval({"dedup_force_interval_seconds": "bad"}), d.DEFAULT_FORCE_INTERVAL_SECONDS)
 
-class TestScopedFingerprint(DedupTestBase):
-    def test_no_mutable_agent_fingerprint_slot(self):
-        self.assertIsNotNone(self.trigger())
+    def test_new_tool_result_is_reviewed(self):
+        self.trigger()
+        self.messages.append({"role": "tool", "content": "new result", "tool_call_id": "a"})
+        self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_prior_tool_usage_is_part_of_snapshot(self):
+        self.messages.append({"role": "assistant", "tool_calls": [{"id": "old", "function": {"name": "read_file"}}]})
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 1)
+        self.messages[-1]["tool_calls"][0]["function"]["name"] = "memory"
+        self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_memory_skill_combined_are_distinct(self):
+        self.trigger(review_memory=True)
+        self.trigger(review_skills=True)
+        self.trigger(review_memory=True, review_skills=True)
+        self.assertEqual(self.br.calls, 3)
+
+    def test_scope_flags_can_be_positional(self):
+        run = SimpleNamespace(cancel_requested=threading.Event(), request_done=threading.Event())
+        target, _ = self.br.spawn_background_review_thread(self.agent, self.messages, True, False, None, None, run, False)
+        target()
+        self.trigger(review_memory=True)
+        self.assertEqual(self.br.calls, 1)
+
+    def test_explicit_always_bypasses_cache(self):
+        self.trigger()
+        self.trigger(explicit=True)
+        self.trigger(explicit=True, focus="private-focus")
+        self.trigger(focus="")
+        self.assertEqual(self.br.calls, 4)
+
+    def test_disabled_and_default_are_compatible(self):
+        for cfg in ({}, {"dedup_enabled": False}):
+            self.br.cfg = cfg
+            self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 4)
+        self.assertFalse(self.state.in_flight)
+
+    def test_disable_between_factory_and_worker(self):
+        self.trigger()
+        target, _ = self.factory()
+        self.br.cfg = {"dedup_enabled": False}
+        target()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_unstarted_targets_create_no_reservations(self):
+        self.factory(); self.factory()
+        self.assertFalse(self.state.in_flight)
+        self.assertFalse(self.state.lanes)
+
+    def test_interleaved_explicit_cannot_settle_other_ticket(self):
+        target, _ = self.factory()
+        self.trigger(explicit=True)
+        target()
+        self.trigger()
+        self.assertEqual(self.br.calls, 2)
+        self.assertIsNone(d._attempt.get())
         self.assertFalse(hasattr(self.agent, "_ziwei_bg_dedup_fp"))
 
-    def test_untracked_thread_does_not_settle_background_reservation(self):
-        self.assertIsNotNone(self.trigger())
-        fp = dedup._fingerprint(self.agent)
-        stamp = self.state.in_flight[fp]
-        target, _ = self.br.spawn_background_review_thread(self.agent, [])
+    def test_multisession_same_content_does_not_collide(self):
+        self.trigger()
+        second = copy.copy(self.agent)
+        second.session_id = "second"
+        self.trigger(agent=second); self.trigger(agent=second)
+        self.assertEqual(self.br.calls, 2)
+
+    def test_profile_isolation(self):
+        self.trigger()
+        other = self.root / "profile"
+        other.mkdir()
+        with mock.patch.object(d, "_home", return_value=other):
+            self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_memory_change_even_equal_size_runs(self):
+        self.trigger()
+        (self.root / "memories/MEMORY.md").write_text("MEMORY")
+        self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_skill_reference_change_runs(self):
+        self.trigger()
+        (self.root / "skills/reference.txt").write_text("new")
+        self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_config_and_prefix_changes_run(self):
+        self.trigger()
+        self.br.cfg["max_input_tokens"] = 42
+        self.trigger()
+        self.agent._cached_system_prompt = "changed"
+        self.trigger()
+        self.assertEqual(self.br.calls, 3)
+
+    def test_review_write_not_absorbed(self):
+        self.br.mutate = lambda: (self.root / "memories/MEMORY.md").write_text("updated")
+        self.trigger()
+        self.br.mutate = lambda: None
+        self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_tool_read_cannot_be_cached(self):
+        self.br.tool = True
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_multicall_not_cached(self):
+        self.br.api_calls = 2
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 4)
+
+    def test_partial_none_is_not_success(self):
+        self.br.partial = True
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_failure_cooldown_then_recovery(self):
+        self.br.error = True
+        for _ in range(d.MAX_CONSECUTIVE_FAILURES):
+            self.trigger()
+        self.trigger()
+        self.assertEqual(self.br.calls, 3)
+        self.assertEqual(self.events()[-1]["reason"], "failure_cooldown")
+        self.br.error = False
+        with mock.patch.object(d.time, "monotonic", return_value=d.time.monotonic() + d.FAILURE_COOLDOWN_SECONDS + 1):
+            self.trigger()
+        self.assertEqual(self.br.calls, 4)
+
+    def test_changed_input_recovers_without_cooldown(self):
+        self.br.error = True
+        for _ in range(3):
+            self.trigger()
+        self.br.error = False
+        self.messages.append({"role": "user", "content": "new"})
+        self.trigger()
+        self.assertEqual(self.br.calls, 4)
+
+    def test_cancelled_run_never_cached(self):
+        target, run = self.factory()
+        run.cancel_requested.set()
         target()
-        self.assertEqual(self.state.in_flight[fp], stamp)
-        self.assertEqual(self.state.last_run_at, 0)
+        self.trigger()
+        self.assertEqual(self.br.calls, 1)
 
-    def test_scoped_binding_resets_after_spawn(self):
-        self.assertIsNotNone(self.trigger())
-        self.assertIsNone(dedup._review_fingerprint.get())
+    def test_force_interval_requires_real_review(self):
+        self.trigger()
+        with mock.patch.object(d.time, "monotonic", return_value=d.time.monotonic() + d.DEFAULT_FORCE_INTERVAL_SECONDS + 1):
+            self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_unknown_input_is_fail_open(self):
+        self.messages[0]["unknown"] = object()
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_unreadable_input_is_fail_open(self):
+        with mock.patch.object(Path, "read_bytes", side_effect=PermissionError):
+            self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_symlink_input_is_fail_open(self):
+        (self.root / "skills/link").symlink_to(self.root / "memories")
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_routed_and_extra_tools_are_unproven(self):
+        for cfg in ({"model": "other"}, {"extra_tools": ["external"]}):
+            self.br.cfg = {"dedup_enabled": True, **cfg}
+            self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 4)
+
+    def test_audit_contains_no_private_text(self):
+        self.trigger(); self.trigger(explicit=True, focus="private-focus")
+        audit = (self.root / d.LOG_NAME).read_text()
+        for word in ("private-conversation", "private-focus", "private-session", "private-prefix", "MEMORY.md"):
+            self.assertNotIn(word, audit)
+
+    def test_log_failure_does_not_run_target_twice(self):
+        with mock.patch.object(Path, "open", side_effect=PermissionError):
+            self.trigger()
+        self.assertEqual(self.br.calls, 1)
+
+    def test_incompatible_hermes_is_unchanged(self):
+        br = SimpleNamespace(spawn_background_review_thread=lambda: None)
+        before = br.spawn_background_review_thread
+        self.assertFalse(d.install_on_class(object, br))
+        self.assertIs(br.spawn_background_review_thread, before)
+
+    def test_idempotent_install(self):
+        before = self.br.spawn_background_review_thread
+        self.assertTrue(d.install_on_class(self.cls, self.br))
+        self.assertIs(before, self.br.spawn_background_review_thread)
 
 
-class TestHermesSignature(DedupTestBase):
-    def test_disabled_path_does_not_forward_task_cfg(self):
-        class StrictAgent:
-            def _spawn_background_review(self, messages_snapshot,
-                                         review_memory=False, review_skills=False,
-                                         focus=None, explicit=False):
-                return "strict-ok"
+class StateContract(unittest.TestCase):
+    def test_busy_explicit_queue_overflow_is_reported_not_dropped(self):
+        class Agent:
+            def _spawn_background_review_now(self, messages_snapshot, explicit=False):
+                raise AssertionError("busy Agent must not start another native run")
+        agent = Agent()
+        agent._background_review_run = SimpleNamespace(request_done=threading.Event())
+        wrapped = d._explicit_admission_wrapper(Agent._spawn_background_review_now)
+        with mock.patch.object(threading.Thread, "start"):
+            for _ in range(d.MAX_PENDING_EXPLICIT):
+                wrapped(agent, [], explicit=True)
+            with self.assertRaises(RuntimeError):
+                wrapped(agent, [], explicit=True)
+        self.assertFalse(agent._background_review_run.request_done.is_set())
 
-        class StrictCls:
-            _spawn_background_review = StrictAgent._spawn_background_review
+    def test_explicit_dispatcher_start_error_preserves_native_owner(self):
+        class Agent:
+            def _spawn_background_review_now(self, messages_snapshot, explicit=False):
+                raise AssertionError("must remain queued")
+        agent = Agent()
+        owner = agent._background_review_run = SimpleNamespace(request_done=threading.Event())
+        wrapped = d._explicit_admission_wrapper(Agent._spawn_background_review_now)
+        with mock.patch.object(threading.Thread, "start", side_effect=RuntimeError("thread failure")):
+            with self.assertRaises(RuntimeError):
+                wrapped(agent, [], explicit=True)
+        self.assertIs(agent._background_review_run, owner)
+        self.assertFalse(owner.request_done.is_set())
 
-        br = _FakeBR()
-        dedup.install_on_class(StrictCls, br)
-        with mock.patch.object(dedup, "_load_task_cfg",
-                               lambda _: {"dedup_enabled": False}):
-            self.assertEqual(StrictCls._spawn_background_review(StrictAgent(), []),
-                             "strict-ok")
+    def test_duplicate_completion_cannot_release_successor(self):
+        state = d._DedupState()
+        a, _ = state.acquire("lane", "a", 1, 100)
+        state.finish(a, reusable=True, failed=False, now=2)
+        b, _ = state.acquire("lane", "b", 3, 100)
+        self.assertFalse(state.finish(a, reusable=True, failed=False, now=4))
+        self.assertIn(b, state.in_flight)
 
-    def test_enabled_path_does_not_forward_task_cfg(self):
-        class StrictAgent:
-            def _spawn_background_review(self, messages_snapshot,
-                                         review_memory=False, review_skills=False,
-                                         focus=None, explicit=False):
-                return "strict-ok"
+    def test_timeout_and_late_aba_completion(self):
+        state = d._DedupState()
+        a, _ = state.acquire("lane", "a", 1, 100)
+        state.acquire("lane", "b", 2, 100)
+        newest, _ = state.acquire("lane", "a", d.IN_FLIGHT_TIMEOUT_SECONDS + 2, 100)
+        self.assertFalse(state.finish(a, reusable=True, failed=False, now=2000))
+        self.assertIn(newest, state.in_flight)
 
-        class StrictCls:
-            _spawn_background_review = StrictAgent._spawn_background_review
+    def test_active_work_is_not_assumed_successful(self):
+        state = d._DedupState()
+        a, _ = state.acquire("lane", "a", 1, 100)
+        b, reason = state.acquire("lane", "a", 2, 100)
+        self.assertIsNotNone(b)
+        self.assertEqual(reason, "concurrent_unproven")
+        state.finish(a, reusable=True, failed=False, now=3)
+        self.assertIsNone(state.lanes["lane"].completed_at)
 
-        br = _FakeBR()
-        dedup.install_on_class(StrictCls, br)
-        with mock.patch.object(dedup, "_load_task_cfg",
-                               lambda _: {"dedup_enabled": True}):
-            self.assertEqual(StrictCls._spawn_background_review(StrictAgent(), []),
-                             "strict-ok")
+    def test_restart_is_cold(self):
+        state = d._DedupState()
+        a, _ = state.acquire("lane", "a", 1, 100)
+        state.finish(a, reusable=True, failed=False, now=2)
+        self.assertIsNotNone(d._DedupState().acquire("lane", "a", 3, 100)[0])
 
-
-class TestDedupDisabled(DedupTestBase):
-    def test_default_is_disabled_until_integration_acceptance(self):
-        self.assertFalse(dedup._dedup_enabled({}))
-        self.assertFalse(dedup._dedup_enabled(None))
-
-    def test_invalid_force_interval_is_clamped(self):
-        self.assertEqual(dedup._force_interval({"dedup_force_interval_seconds": -5}), 1)
-
-    def test_disabled_bypasses_dedup(self):
-        with mock.patch.object(dedup, "_load_task_cfg",
-                               lambda br: {"dedup_enabled": False}):
-            self.assertIsNotNone(self.trigger())
-            self.assertIsNotNone(self.trigger())
+    def test_state_is_bounded(self):
+        state = d._DedupState()
+        for i in range(d.MAX_LANES + 20):
+            a, _ = state.acquire(str(i), str(i), i, 100)
+            state.finish(a, reusable=False, failed=False, now=i)
+        self.assertEqual(len(state.lanes), d.MAX_LANES)
 
 
 if __name__ == "__main__":

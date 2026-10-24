@@ -1,0 +1,44 @@
+{
+  "date_bangkok": "2026-10-24",
+  "baseline_commit": "f8edcc0816bcd529920ee7a5db4ebf977eb3e6a1",
+  "hermes_commit": "5894e750c3dba980d43b25aa29e3958149ba2c61",
+  "python": "3.12.14",
+  "targeted": {
+    "unit_pass": 44,
+    "native_http_pass": 19,
+    "fail": 0
+  },
+  "upstream_overlay": {
+    "pass": 87,
+    "fail": 0
+  },
+  "repository_suite": {
+    "run": 283,
+    "pass": 254,
+    "fail": 4,
+    "skip": 25
+  },
+  "baseline_suite": {
+    "run": 241,
+    "pass": 231,
+    "fail": 4,
+    "skip": 6
+  },
+  "production_access": false,
+  "paid_provider_calls": false,
+  "sha256": {
+    "hermes_native/bg_review_dedup.py": "e0cca176f9b98c3b76d14a583139331ea406809d283c9ea481d7503001364508",
+    "hermes_native/tests/test_bg_review_dedup.py": "d6cbd0323e63c070824737c3026ffe0ccb9046aea0d5f6513f2451e054f02d79",
+    "hermes_native/tests/test_bg_review_dedup_integration.py": "143fb320b96319f88234e91feffc30ed743c048b3722def1a3a04115b6c5ffd1",
+    "hermes_native/tests/bg_review_integration_requirements.txt": "f2d95722d80da151d4919115bec223d6f73ddd202110b500c409f8e5688d4ec5",
+    ".github/workflows/bg-review-dedup.yml": "0e450382bc5dbaf96334170fd5a2d654fb127a077ec82f692e33e24152fe5607",
+    "hermes_native/web_bridge.py": "090a1e76bbe8662f02578cf337772105784bde85dc4d722c7495c2e1363f2856",
+    "notes/bg-review-dedup-evidence/dedup-final.log": "f4c83ab409e15bd0b3aa5890f4c2b03b8d92b7d2a6931ae6a3bf06298abafe2b",
+    "notes/bg-review-dedup-evidence/upstream-overlay-tests.log": "0cf4cd71ef4d7af805b974fb072e827ac4ea1c776fbdaf0ff8d6688c4dca2bc3",
+    "notes/bg-review-dedup-evidence/native-tests-original.log": "639c1f99dc0685367c0e53a706c1c99b7d582879a338c1fcd88e806fb2347855",
+    "notes/bg-review-dedup-evidence/native-tests-final.log": "0a691e2f56ac85d57a82803c8d9c4ed83ed29e12310da1c9fd133499f0009383",
+    "hermes@5894e750/run_agent.py": "8c215df03f32493f72992db0c0ccaddb811436f9025451e3f1e8f535dc9cda5d",
+    "hermes@5894e750/agent/background_review.py": "b177b1cfe8b06f9e787e37920fd9a7b023a038ecbac951bde4e81535d88aa4dc",
+    "hermes@5894e750/agent/review_idle_queue.py": "d2a62f333ee5e69ec17b50bdd3f66f11ba61a12ba7ba8e1e0a562866450ea32b"
+  }
+}
