@@ -245,3 +245,10 @@ GitHub Actions 双版本矩阵已实际成功：实现提交 `85c5495d63408972f8
 | Ziwei unified regression | Node 33 项：32 pass、1 fail；后续步骤跳过 | [40073134073](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/40073134073) |
 
 Python 13 个 error 仍为临时合并树中的 autonomy_gate chown 权限问题；四个 failure 为两项通知、main 审计计数和 gate 摘要检查。Node 仍在 real gateway/worker 等待进程活动测试失败；未独立证实其基线根因。不能用本地三失败代替远程完整结果。上述无关代码未作修改。后续仅报告提交不改实现，已验证实现身份为 85c5495。
+
+
+## 12. 最新 VPS 补充证据的纠正
+
+详见 `bg-review-dedup-evidence/vps-readonly-followup.md`。10 个顶层技能链接均无法通过存在性检查，当前 V1 会保守放行；若实际 home 对应该目录，开启也不能取得完成缓存收益。RetainDB 与凭证池的变量/文件/日志缺项不能证明运行态未启用，继续保留未知。主模型磁盘段未设置 api_mode，先前空值来自辅助配置段，已纠正。
+
+2524 个普通文件不等于包含目录的 V1 项数；du 的 68M 不等于实际内容字节数，隐藏遍历错误也不能证明无循环。本次不要求重复取证或修改生产。只增量复跑三个现有链接/边界回归，3/3 通过；实现保持 85c5495 不变。生产适用性与省费验收仍未通过，不得将专项通过写成生产部署条件已满足。

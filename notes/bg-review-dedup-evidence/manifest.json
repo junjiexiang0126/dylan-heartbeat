@@ -48,7 +48,8 @@
     "hermes@b1a39a1b/run_agent.py": "73efa221f42be96a41a6b8a1ee144caf47041e06f5c7d32b3bbd898d8dc250b2",
     "hermes@b1a39a1b/agent/background_review.py": "53d91d369762c9c4c66b63c43a53684a79226846475eaa155dcd4ef175c32f12",
     "hermes@b1a39a1b/agent/review_idle_queue.py": "88d1d41ce95cbd6a282fa7e4ec5f22956742a9c53fdde8aa46989496eb872021",
-    "notes/bg-review-dedup-evidence/remote-ci-85c5495.json": "8dcc5ece4cfcf4eb0a114e0af9aea117a2fcb17c75b295444c1327a62e4db357"
+    "notes/bg-review-dedup-evidence/remote-ci-85c5495.json": "8dcc5ece4cfcf4eb0a114e0af9aea117a2fcb17c75b295444c1327a62e4db357",
+    "notes/bg-review-dedup-evidence/vps-readonly-followup.md": "a730abca2ca6d750a1ef9718546bac06e8b610a87de8ae7f46156f4b5ab67dfc"
   },
   "pull_request": "https://github.com/junjiexiang0126/dylan-heartbeat/pull/96",
   "previous_tested_code_commit": "286db9d6ceb1ddfb205e29621ed4eb1c218b5e89",
@@ -132,5 +133,17 @@
       "pass": 32,
       "fail": 1
     }
+  },
+  "vps_readonly_followup": {
+    "evidence": "vps-readonly-followup.md",
+    "external_memory_runtime": "unknown",
+    "credential_pool_runtime": "unknown",
+    "main_api_mode_runtime": "unknown",
+    "top_level_link_exists_check_failures": 10,
+    "reported_find_regular_files": 2524,
+    "reported_du_disk_usage": "68M; not fingerprint content bytes",
+    "production_benefit_validated": false,
+    "incremental_existing_regressions_pass": 3,
+    "implementation_changed": false
   }
 }
