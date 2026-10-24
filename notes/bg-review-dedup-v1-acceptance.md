@@ -234,4 +234,14 @@ Work 在该官方提交的独立 detached worktree 上、使用测试 home 和 l
 
 新增 11 项单元回归与 1 项原生 HTTP 集成：原生 `main`/空 model + 临时目录中的授权技能链接，两次重复只收到一次 HTTP；随后将链接目标改成等长内容并恢复 mtime，第三次收到第二次 HTTP。证明确实减少相同 no-op 调用，同时新技能内容不会被跳过。总计 61 单元 + 21 原生测试，在 5894e750 与三个生产核心文件匹配的 b1a39a1b 上均 **82/82 通过**。安装补丁后的上游相关回归 **87/87**；本仓库完整回归 **302 执行，272 pass、3 fail、27 skip**，详见第 3 节。
 
-GitHub Actions 已改为固定两套源码的矩阵验收；最终远程结果补录于本节。真实模型费用、生产命中率和日/月节省仍无实测，不能外推 loopback fixture 的 50%。生产仍未部署、未启用去重；外部记忆与凭证池运行态、其他依赖与全量回归失败尚未关闭，**不满足直接开启生产去重的条件**。
+GitHub Actions 双版本矩阵已实际成功：实现提交 `85c5495d63408972f803535f6fce37168f147734`，5894e750 为 **82/82、31.079 秒**，b1a39a1b 为 **82/82、21.574 秒**。原始远程依据：[run 40073134072](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/40073134072)。结构化摘要：`bg-review-dedup-evidence/remote-ci-85c5495.json`。真实模型费用、生产命中率和日/月节省仍无实测，不能外推 loopback fixture 的 50%。生产仍未部署、未启用去重；外部记忆与凭证池运行态、其他依赖与全量回归失败尚未关闭，**不满足直接开启生产去重的条件**。
+
+
+同一实现提交的原有远程流程仍失败：
+
+| 流程 | 实际结果 | 证据 |
+|---|---|---|
+| Official Hermes preparation | 302 run，4 failures、13 errors、27 skipped；未进入镜像构建/启动 | [40073134102](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/40073134102) |
+| Ziwei unified regression | Node 33 项：32 pass、1 fail；后续步骤跳过 | [40073134073](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/40073134073) |
+
+Python 13 个 error 仍为临时合并树中的 autonomy_gate chown 权限问题；四个 failure 为两项通知、main 审计计数和 gate 摘要检查。Node 仍在 real gateway/worker 等待进程活动测试失败；未独立证实其基线根因。不能用本地三失败代替远程完整结果。上述无关代码未作修改。后续仅报告提交不改实现，已验证实现身份为 85c5495。

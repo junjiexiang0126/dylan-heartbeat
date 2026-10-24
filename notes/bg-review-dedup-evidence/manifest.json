@@ -47,7 +47,8 @@
     "notes/bg-review-dedup-evidence/vps-adapted-tests.log": "17c7ae6e7ac881efd76093fbb0efcce52cfed98b75a0bc08641ed21780a05900",
     "hermes@b1a39a1b/run_agent.py": "73efa221f42be96a41a6b8a1ee144caf47041e06f5c7d32b3bbd898d8dc250b2",
     "hermes@b1a39a1b/agent/background_review.py": "53d91d369762c9c4c66b63c43a53684a79226846475eaa155dcd4ef175c32f12",
-    "hermes@b1a39a1b/agent/review_idle_queue.py": "88d1d41ce95cbd6a282fa7e4ec5f22956742a9c53fdde8aa46989496eb872021"
+    "hermes@b1a39a1b/agent/review_idle_queue.py": "88d1d41ce95cbd6a282fa7e4ec5f22956742a9c53fdde8aa46989496eb872021",
+    "notes/bg-review-dedup-evidence/remote-ci-85c5495.json": "8dcc5ece4cfcf4eb0a114e0af9aea117a2fcb17c75b295444c1327a62e4db357"
   },
   "pull_request": "https://github.com/junjiexiang0126/dylan-heartbeat/pull/96",
   "previous_tested_code_commit": "286db9d6ceb1ddfb205e29621ed4eb1c218b5e89",
@@ -89,5 +90,47 @@
     "production_dedup_benefit": "not established; main alias supported, external skill roots require explicit authorization; runtime memory/pool unconfirmed"
   },
   "pre_adaptation_code_commit": "1d792eeb5456b30857770f531d43eed2cf342ced",
-  "tested_code_version": "Implementation and tests identified by sha256 below; final commit in PR history"
+  "tested_code_version": "Implementation and tests identified by sha256 below; final commit in PR history",
+  "tested_code_commit": "85c5495d63408972f803535f6fce37168f147734",
+  "remote_ci": {
+    "implementation_commit": "85c5495d63408972f803535f6fce37168f147734",
+    "dedup": {
+      "run_id": 40073134072,
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 120810694039,
+          "hermes_sha": "5894e750c3dba980d43b25aa29e3958149ba2c61",
+          "pass": 82,
+          "fail": 0,
+          "seconds": 31.079
+        },
+        {
+          "id": 120810694188,
+          "hermes_sha": "b1a39a1b1bf135091ff3fd0020002bba35a9d456",
+          "pass": 82,
+          "fail": 0,
+          "seconds": 21.574
+        }
+      ]
+    },
+    "official_preparation": {
+      "run_id": 40073134102,
+      "job_id": 120810694026,
+      "conclusion": "failure",
+      "run": 302,
+      "failures": 4,
+      "errors": 13,
+      "skipped": 27,
+      "container_build_started": false
+    },
+    "unified_regression": {
+      "run_id": 40073134073,
+      "job_id": 120810694034,
+      "conclusion": "failure",
+      "run": 33,
+      "pass": 32,
+      "fail": 1
+    }
+  }
 }

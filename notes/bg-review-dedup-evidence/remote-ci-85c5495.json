@@ -1,0 +1,41 @@
+{
+  "implementation_commit": "85c5495d63408972f803535f6fce37168f147734",
+  "dedup": {
+    "run_id": 40073134072,
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 120810694039,
+        "hermes_sha": "5894e750c3dba980d43b25aa29e3958149ba2c61",
+        "pass": 82,
+        "fail": 0,
+        "seconds": 31.079
+      },
+      {
+        "id": 120810694188,
+        "hermes_sha": "b1a39a1b1bf135091ff3fd0020002bba35a9d456",
+        "pass": 82,
+        "fail": 0,
+        "seconds": 21.574
+      }
+    ]
+  },
+  "official_preparation": {
+    "run_id": 40073134102,
+    "job_id": 120810694026,
+    "conclusion": "failure",
+    "run": 302,
+    "failures": 4,
+    "errors": 13,
+    "skipped": 27,
+    "container_build_started": false
+  },
+  "unified_regression": {
+    "run_id": 40073134073,
+    "job_id": 120810694034,
+    "conclusion": "failure",
+    "run": 33,
+    "pass": 32,
+    "fail": 1
+  }
+}
