@@ -435,21 +435,25 @@ def install_on_class(cls: Any, br: Any) -> bool:
         def tracked_target():
             # Respect invocation overrides AND a subsequently disabled global
             # gate. Read in the worker's propagated profile context.
+            bypass_reason = None
             try:
                 current_cfg = _load_task_cfg(br)
                 enabled = _dedup_enabled(cfg) and _dedup_enabled(current_cfg)
                 if explicit or not enabled or run is None:
-                    _record({"event": "trigger", "decision": "run", "reason":
-                             "explicit" if explicit else "dedup_disabled_or_unbound"})
-                    return native_target()
-                # Hermes normalizes/merges messages in place during its fork.
-                # Retain the ORIGINAL input for post-run equivalence checks.
-                frozen_messages = copy.deepcopy(inputs["messages_snapshot"])
-                lane, fp = _fingerprint(agent, frozen_messages, prompt, cfg,
-                                        inputs["review_memory"], inputs["review_skills"])
-                ticket, reason = state.acquire(lane, fp, time.monotonic(), _force_interval(cfg))
+                    bypass_reason = "explicit" if explicit else "dedup_disabled_or_unbound"
+                else:
+                    # Hermes normalizes/merges messages in place during its fork.
+                    # Retain the ORIGINAL input for post-run equivalence checks.
+                    frozen_messages = copy.deepcopy(inputs["messages_snapshot"])
+                    lane, fp = _fingerprint(agent, frozen_messages, prompt, cfg,
+                                            inputs["review_memory"], inputs["review_skills"])
+                    ticket, reason = state.acquire(lane, fp, time.monotonic(), _force_interval(cfg))
             except Exception:
-                _record({"event": "trigger", "decision": "run", "reason": "unproven_input"})
+                bypass_reason = "unproven_input"
+            # Native execution must be outside the fail-open bookkeeping try:
+            # its exception is the caller's failure, never a reason to run twice.
+            if bypass_reason is not None:
+                _record({"event": "trigger", "decision": "run", "reason": bypass_reason})
                 return native_target()
             _record({"event": "trigger", "lane": lane, "fingerprint": fp,
                      "decision": "run" if ticket else "skip", "reason": reason})

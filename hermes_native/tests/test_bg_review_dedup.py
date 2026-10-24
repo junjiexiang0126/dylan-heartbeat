@@ -23,6 +23,8 @@ class FakeBR:
         self.tool = False
         self.api_calls = 1
         self.normalize_snapshot = False
+        self.target_calls = 0
+        self.target_error = None
         self.mutate = lambda: None
 
     def load_background_review_settings(self):
@@ -54,6 +56,9 @@ class FakeBR:
         if focus:
             prompt += focus
         def target():
+            self.target_calls += 1
+            if self.target_error is not None:
+                raise self.target_error
             if review_run.cancel_requested.is_set():
                 return
             if self.normalize_snapshot:
@@ -343,6 +348,45 @@ class Contract(unittest.TestCase):
         before = self.br.spawn_background_review_thread
         self.assertTrue(d.install_on_class(self.cls, self.br))
         self.assertIs(before, self.br.spawn_background_review_thread)
+
+    def assert_target_error_runs_once(self, **kw):
+        failure = RuntimeError("native worker failed")
+        self.br.target_error = failure
+        target, run = self.factory(**kw)
+        with self.assertRaises(RuntimeError) as raised:
+            target()
+        self.assertIs(raised.exception, failure)
+        self.assertEqual(self.br.target_calls, 1)
+        self.assertTrue(run.request_done.is_set())
+        self.assertFalse(self.state.in_flight)
+        self.assertIsNone(d._attempt.get())
+
+    def test_explicit_target_error_runs_once(self):
+        self.assert_target_error_runs_once(explicit=True)
+
+    def test_disabled_target_error_runs_once(self):
+        self.br.cfg = {"dedup_enabled": False}
+        self.assert_target_error_runs_once()
+
+    def test_default_target_error_runs_once(self):
+        self.br.cfg = {}
+        self.assert_target_error_runs_once()
+
+    def test_unproven_input_target_error_runs_once(self):
+        self.messages[0]["unknown"] = object()
+        self.assert_target_error_runs_once()
+
+    def test_tracked_target_error_runs_once(self):
+        self.assert_target_error_runs_once()
+
+    def test_unbound_target_error_runs_once(self):
+        self.br.target_error = RuntimeError("unbound native worker failed")
+        target, _ = self.br.spawn_background_review_thread(self.agent, self.messages)
+        with self.assertRaises(RuntimeError):
+            target()
+        self.assertEqual(self.br.target_calls, 1)
+        self.assertFalse(self.state.in_flight)
+        self.assertIsNone(d._attempt.get())
 
 
 class StateContract(unittest.TestCase):

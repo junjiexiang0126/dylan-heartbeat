@@ -357,6 +357,26 @@ class NativeHTTPIntegration(unittest.TestCase):
         self.wait_workers()
         self.assertEqual(len(self.requests), 2)
 
+    def test_20_native_startup_exception_is_never_reexecuted(self):
+        for enabled, explicit in ((True, True), (False, False), (True, False)):
+            with self.subTest(enabled=enabled, explicit=explicit):
+                self.write_config(enabled)
+                run = self.br.prepare_background_review_run(self.agent)
+                self.assertIsNotNone(run)
+                target, _ = self.br.spawn_background_review_thread(
+                    self.agent, copy.deepcopy(self.messages), review_memory=True,
+                    review_run=run, explicit=explicit)
+                failure = RuntimeError("isolated native startup failure")
+                with mock.patch.object(self.br, "_set_thread_approval_callback", side_effect=failure) as startup:
+                    with self.assertRaises(RuntimeError) as raised:
+                        target()
+                self.assertIs(raised.exception, failure)
+                self.assertEqual(startup.call_count, 1)
+                self.assertTrue(run.request_done.is_set())
+                self.assertIsNone(self.agent._background_review_run)
+                self.assertFalse(self.agent._ziwei_bg_dedup_state.in_flight)
+        self.assertEqual(len(self.requests), 0)
+
     def test_19_real_process_restart_is_cold_and_reviews_again(self):
         script = '''
 import threading

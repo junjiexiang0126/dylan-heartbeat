@@ -59,13 +59,13 @@ Hermes 会在 fork 内归一化、合并对话快照；补丁保留审查开始�
 
 | 测试 | 实际结果 | 证据 |
 |---|---:|---|
-| 本次专项：44 项单元 + 19 项原生 HTTP 集成 | **63 通过，0 失败** | `bg-review-dedup-evidence/dedup-final.log` |
+| 本次专项：50 项单元 + 20 项原生 HTTP 集成 | **70 通过，0 失败** | `bg-review-dedup-evidence/dedup-final.log` |
 | 安装最终补丁后的 Hermes 原生相关回归 | **87 通过，0 失败** | `bg-review-dedup-evidence/upstream-overlay-tests.log` |
-| 本仓库完整 Python 回归 | **283 执行：254 通过、4 失败、25 跳过** | `bg-review-dedup-evidence/native-tests-final.log` |
+| 本仓库完整 Python 回归 | **290 执行：260 通过、4 失败、26 跳过** | `bg-review-dedup-evidence/native-tests-final.log` |
 | 未修改 f8edcc0 的独立 detached checkout 完整回归 | **241 执行：231 通过、相同 4 失败、6 跳过** | `bg-review-dedup-evidence/native-tests-original.log` |
 | 语法编译、git diff --check | 通过 | 本地实际执行；代码/上游源码摘要在 manifest |
 
-25 个跳过包括：19 项需要显式提供 Hermes 源码的集成测试（已在单独专项运行中实际通过），以及基线上原有的 6 项环境条件跳过。不能把跳过算作通过，也不能把完整仓库说成全绿。
+26 个跳过包括：20 项需要显式提供 Hermes 源码的集成测试（已在单独专项运行中实际通过），以及基线上原有的 6 项环境条件跳过。不能把跳过算作通过，也不能把完整仓库说成全绿。
 
 四项基线既有失败：
 
@@ -78,7 +78,7 @@ Hermes 会在 fork 内归一化、合并对话快照；补丁保留审查开始�
 
 ### 原生集成的真实性与边界
 
-19 项测试导入完整 `run_agent.AIAgent`，使用临时 HERMES_HOME、实际文件配置、原生队列/运行令牌/Thread/Context 传播、真实 review fork、真实会话循环、SDK 和 loopback HTTP 服务。实际通过 memory 工具写入测试记忆，通过 skill_manage 在测试目录创建技能。
+20 项测试导入完整 `run_agent.AIAgent`，使用临时 HERMES_HOME、实际文件配置、原生队列/运行令牌/Thread/Context 传播、真实 review fork、真实会话循环、SDK 和 loopback HTTP 服务。实际通过 memory 工具写入测试记忆，通过 skill_manage 在测试目录创建技能。
 
 本地 HTTP 服务提供固定的 OpenAI 兼容响应，**不是付费模型、不是生产 Gateway/PWA 端到端或生产数据验收**。parent 进程禁止非 loopback socket；重启子进程仅提供隔离配置与本地测试凭证。没有真实 DeepSeek/OpenAI/其他厂商账单调用。
 
@@ -114,16 +114,17 @@ HTTP 超时测试确实让本地响应慢于配置的请求超时；为控制验
 | 文件 | 原因 |
 |---|---|
 | `hermes_native/bg_review_dedup.py` | worker 级安全去重、完整输入摘要、owned tickets、失败冷却、显式 FIFO、隐私日志 |
-| `hermes_native/tests/test_bg_review_dedup.py` | 44 项行为/故障/所有权单元测试，替换旧实现结构测试 |
-| `hermes_native/tests/test_bg_review_dedup_integration.py` | 19 项真实 Hermes + HTTP/文件/线程/独立进程验收 |
+| `hermes_native/tests/test_bg_review_dedup.py` | 50 项行为/故障/所有权单元测试，替换旧实现结构测试 |
+| `hermes_native/tests/test_bg_review_dedup_integration.py` | 20 项真实 Hermes + HTTP/文件/线程/独立进程验收 |
 | `hermes_native/tests/bg_review_integration_requirements.txt` | 锁定本次已跑通的隔离 Python 测试依赖；不安装到生产 |
 | `.github/workflows/bg-review-dedup.yml` | 固定上游 SHA，自动执行专项隔离验收；只读权限、无部署 |
 | `hermes_native/web_bridge.py` | 仅更新安装点说明注释；安装入口与路由未变 |
 | `notes/bg-review-dedup-v1-acceptance.md` | 本报告 |
-| `notes/bg-review-dedup-evidence/dedup-final.log` | 63 项专项输出与真实 HTTP 请求计数 |
+| `notes/bg-review-dedup-evidence/dedup-final.log` | 70 项专项输出与真实 HTTP 请求计数 |
 | `notes/bg-review-dedup-evidence/upstream-overlay-tests.log` | 87 项已安装补丁的原生回归输出 |
 | `notes/bg-review-dedup-evidence/native-tests-original.log` | 原提交完整回归，对照既有失败 |
 | `notes/bg-review-dedup-evidence/native-tests-final.log` | 最终完整仓库回归 |
+| `notes/bg-review-dedup-evidence/single-run-before-fix.log` | 在旧版 69a9838 上复现重复执行的 6 个回归用例输出 |
 | `notes/bg-review-dedup-evidence/manifest.json` | 测试环境、源文件与证据文件 SHA256 |
 
 ## 6. 复跑
@@ -136,7 +137,7 @@ HERMES_REVIEW_TEST_SOURCE=/path/to/isolated/hermes-agent python -m unittest disc
 python -m unittest discover -s hermes_native/tests -v
 ```
 
-新增 GitHub Actions 已在 PR #96 独立跑通第一组：63 项通过（30.971 秒）。完整 PR Checks 仍未全绿，具体远程结果如下。
+上一轮 GitHub Actions 曾通过 63 项（见第 8 节历史记录）；本轮新增异常回归后的 70 项已在本地通过，远程结果另记第 9 节。
 
 原生 87 项通过补丁 `install()` 后，在同一 Python 进程调用 `pytest.main`，目标文件为：
 `test_background_review.py`、`test_review_idle_queue.py`、`test_background_review_cost_controls.py`、`test_background_review_usage.py`、`test_background_review_summary.py`、`test_background_review_cache_parity.py`、`test_background_review_toolset_restriction.py`、`test_background_review_tool_call_guard.py`、`test_background_review_input_budget.py`（均在上游 `tests/agent/`）。
@@ -160,7 +161,7 @@ python -m unittest discover -s hermes_native/tests -v
 
 以上通过、既有安全门回归有明确处置并经过单独部署批准之前，继续保持生产配置原样。
 
-## 8. PR 与远程 CI 实际结果
+## 8. 上一轮代码 286db9d 的远程 CI 历史记录
 
 代码提交：`286db9d6ceb1ddfb205e29621ed4eb1c218b5e89`；后续提交仅补充本报告及 manifest 的远程结果。PR：[\#96](https://github.com/junjiexiang0126/dylan-heartbeat/pull/96)，草稿、未合并；GitHub 确认可无冲突合并，不代表检查通过或获准合并。
 
@@ -175,3 +176,15 @@ python -m unittest discover -s hermes_native/tests -v
 Node 失败是 `test/autonomous_integration.test.js` 的 “real gateway and worker wake without Kelivo, persist and inject activity into chat” 等待进程活动约 20 秒超时。该流程、JS 实现及测试均未被本补丁修改；未在其独立基线上复现，故不将其根因或既有性写成已确定结论。
 
 这些失败不是专项验收通过的替代条件，也没有为此改动无关功能。正式部署条件仍为第 7 节所列事项，PR 保持草稿。
+
+## 9. 本轮补充修复：原生执行异常不得触发第二次执行
+
+重新读取真实代码时发现上一轮漏测：`tracked_target` 的显式、关闭去重及无 native run 的分支在 bookkeeping 的 `try/except` 内直接调用 `native_target()`。如果原生执行函数抛错，就会被误当成 bookkeeping 失败，在 except 分支再次调用。
+
+现在把**所有实际执行移到 bookkeeping 异常捕获范围之外**；异常原样向调用方传播，不重新调用原生 target；仍在 finally 中按该任务自己的 native run 完成清理。
+
+验证依据：在原提交 `69a9838` 的真实模块上运行六个新回归用例，复现 **4 fail、2 pass**（见 `single-run-before-fix.log`）。最终版本六个均通过，逐项覆盖 explicit、disabled、default、unbound、unproven input、tracked，并断言执行计数等于 1、原异常对象保持不变（适用项）、运行结束标志与 Context 清理正确。
+
+新增原生测试 `test_20_native_startup_exception_is_never_reexecuted` 使用真实工厂、真实 native run，分别对显式/关闭/开启去重注入原生 startup 异常，断言原生 startup 调用一次、异常原样抛出、只清理自己的令牌；此故障发生在 HTTP 请求前，实际请求数为 0。
+
+当前专项 **70/70（50 单元 + 20 原生集成）**，安装补丁后的上游回归 **87/87**；完整本地回归 **290 执行、260 pass、4 fail、26 skip**，四项失败名单与原始基线相同。第 8 节的旧版 63 项远程通过不能代替本轮远程验收，最新代码提交及 CI 以 PR #96 的后续记录为准。生产边界与第 7 节的部署限制保持有效。

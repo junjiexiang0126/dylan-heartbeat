@@ -3,9 +3,12 @@ test_cancelled_run_never_cached (test_bg_review_dedup.Contract.test_cancelled_ru
 test_changed_input_recovers_without_cooldown (test_bg_review_dedup.Contract.test_changed_input_recovers_without_cooldown) ... ok
 test_completed_identical_input_skips_api (test_bg_review_dedup.Contract.test_completed_identical_input_skips_api) ... ok
 test_config_and_prefix_changes_run (test_bg_review_dedup.Contract.test_config_and_prefix_changes_run) ... ok
+test_default_target_error_runs_once (test_bg_review_dedup.Contract.test_default_target_error_runs_once) ... ok
 test_disable_between_factory_and_worker (test_bg_review_dedup.Contract.test_disable_between_factory_and_worker) ... ok
 test_disabled_and_default_are_compatible (test_bg_review_dedup.Contract.test_disabled_and_default_are_compatible) ... ok
+test_disabled_target_error_runs_once (test_bg_review_dedup.Contract.test_disabled_target_error_runs_once) ... ok
 test_explicit_always_bypasses_cache (test_bg_review_dedup.Contract.test_explicit_always_bypasses_cache) ... ok
+test_explicit_target_error_runs_once (test_bg_review_dedup.Contract.test_explicit_target_error_runs_once) ... ok
 test_external_memory_is_unproven (test_bg_review_dedup.Contract.test_external_memory_is_unproven) ... ok
 test_failure_cooldown_then_recovery (test_bg_review_dedup.Contract.test_failure_cooldown_then_recovery) ... ok
 test_force_interval_requires_real_review (test_bg_review_dedup.Contract.test_force_interval_requires_real_review) ... ok
@@ -32,7 +35,10 @@ test_scope_flags_can_be_positional (test_bg_review_dedup.Contract.test_scope_fla
 test_skill_reference_change_runs (test_bg_review_dedup.Contract.test_skill_reference_change_runs) ... ok
 test_symlink_input_is_fail_open (test_bg_review_dedup.Contract.test_symlink_input_is_fail_open) ... ok
 test_tool_read_cannot_be_cached (test_bg_review_dedup.Contract.test_tool_read_cannot_be_cached) ... ok
+test_tracked_target_error_runs_once (test_bg_review_dedup.Contract.test_tracked_target_error_runs_once) ... ok
+test_unbound_target_error_runs_once (test_bg_review_dedup.Contract.test_unbound_target_error_runs_once) ... ok
 test_unknown_input_is_fail_open (test_bg_review_dedup.Contract.test_unknown_input_is_fail_open) ... ok
+test_unproven_input_target_error_runs_once (test_bg_review_dedup.Contract.test_unproven_input_target_error_runs_once) ... ok
 test_unreadable_input_is_fail_open (test_bg_review_dedup.Contract.test_unreadable_input_is_fail_open) ... ok
 test_unstarted_targets_create_no_reservations (test_bg_review_dedup.Contract.test_unstarted_targets_create_no_reservations) ... ok
 test_active_work_is_not_assumed_successful (test_bg_review_dedup.StateContract.test_active_work_is_not_assumed_successful) ... ok
@@ -64,9 +70,10 @@ test_16_real_http_timeout_does_not_poison_next_review (test_bg_review_dedup_inte
 test_17_native_failed_retries_cool_down_and_recover (test_bg_review_dedup_integration.NativeHTTPIntegration.test_17_native_failed_retries_cool_down_and_recover) ... ok
 test_18_busy_explicit_queue_works_with_dedup_disabled (test_bg_review_dedup_integration.NativeHTTPIntegration.test_18_busy_explicit_queue_works_with_dedup_disabled) ... ok
 test_19_real_process_restart_is_cold_and_reviews_again (test_bg_review_dedup_integration.NativeHTTPIntegration.test_19_real_process_restart_is_cold_and_reviews_again) ... ok
-NATIVE_HTTP_COUNTS=[{"chat_requests": 2, "test": "test_01_foreground_chat_and_exact_duplicate_http_count"}, {"chat_requests": 3, "test": "test_02_new_dialogue_and_tool_usage_run"}, {"chat_requests": 3, "test": "test_03_explicit_and_bare_refine_bypass_completed_cache"}, {"chat_requests": 2, "test": "test_04_disabled_native_path_uses_http_each_time"}, {"chat_requests": 1, "test": "test_05_real_idle_queue_coalesces_then_dedups_dispatch"}, {"chat_requests": 0, "test": "test_06_native_queue_drop_has_no_reservation"}, {"chat_requests": 2, "test": "test_07_multisession_concurrent_native_threads"}, {"chat_requests": 2, "test": "test_08_native_http_error_then_recovery"}, {"chat_requests": 2, "test": "test_09_cancelled_native_worker_cannot_cache_success"}, {"chat_requests": 4, "test": "test_10_real_memory_tool_write_is_not_deduplicated"}, {"chat_requests": 1, "test": "test_11_native_thread_start_failure_leaves_no_ticket"}, {"chat_requests": 1, "test": "test_12_privacy_audit"}, {"chat_requests": 4, "test": "test_13_real_skill_write_and_repeat_are_reviewed"}, {"chat_requests": 1, "test": "test_14_queue_preserves_profile_context_into_native_worker"}, {"chat_requests": 4, "test": "test_15_busy_native_agent_preserves_explicit_fifo_requests"}, {"chat_requests": 2, "test": "test_16_real_http_timeout_does_not_poison_next_review"}, {"chat_requests": 4, "test": "test_17_native_failed_retries_cool_down_and_recover"}, {"chat_requests": 2, "test": "test_18_busy_explicit_queue_works_with_dedup_disabled"}, {"chat_requests": 2, "test": "test_19_real_process_restart_is_cold_and_reviews_again"}]
+test_20_native_startup_exception_is_never_reexecuted (test_bg_review_dedup_integration.NativeHTTPIntegration.test_20_native_startup_exception_is_never_reexecuted) ... ok
+NATIVE_HTTP_COUNTS=[{"chat_requests": 2, "test": "test_01_foreground_chat_and_exact_duplicate_http_count"}, {"chat_requests": 3, "test": "test_02_new_dialogue_and_tool_usage_run"}, {"chat_requests": 3, "test": "test_03_explicit_and_bare_refine_bypass_completed_cache"}, {"chat_requests": 2, "test": "test_04_disabled_native_path_uses_http_each_time"}, {"chat_requests": 1, "test": "test_05_real_idle_queue_coalesces_then_dedups_dispatch"}, {"chat_requests": 0, "test": "test_06_native_queue_drop_has_no_reservation"}, {"chat_requests": 2, "test": "test_07_multisession_concurrent_native_threads"}, {"chat_requests": 2, "test": "test_08_native_http_error_then_recovery"}, {"chat_requests": 2, "test": "test_09_cancelled_native_worker_cannot_cache_success"}, {"chat_requests": 4, "test": "test_10_real_memory_tool_write_is_not_deduplicated"}, {"chat_requests": 1, "test": "test_11_native_thread_start_failure_leaves_no_ticket"}, {"chat_requests": 1, "test": "test_12_privacy_audit"}, {"chat_requests": 4, "test": "test_13_real_skill_write_and_repeat_are_reviewed"}, {"chat_requests": 1, "test": "test_14_queue_preserves_profile_context_into_native_worker"}, {"chat_requests": 4, "test": "test_15_busy_native_agent_preserves_explicit_fifo_requests"}, {"chat_requests": 2, "test": "test_16_real_http_timeout_does_not_poison_next_review"}, {"chat_requests": 4, "test": "test_17_native_failed_retries_cool_down_and_recover"}, {"chat_requests": 2, "test": "test_18_busy_explicit_queue_works_with_dedup_disabled"}, {"chat_requests": 2, "test": "test_19_real_process_restart_is_cold_and_reviews_again"}, {"chat_requests": 0, "test": "test_20_native_startup_exception_is_never_reexecuted"}]
 
 ----------------------------------------------------------------------
-Ran 63 tests in 19.412s
+Ran 70 tests in 21.583s
 
 OK

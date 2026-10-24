@@ -1,0 +1,49 @@
+test_explicit_target_error_runs_once (test_bg_review_dedup.Contract.test_explicit_target_error_runs_once) ... FAIL
+test_disabled_target_error_runs_once (test_bg_review_dedup.Contract.test_disabled_target_error_runs_once) ... FAIL
+test_default_target_error_runs_once (test_bg_review_dedup.Contract.test_default_target_error_runs_once) ... FAIL
+test_unproven_input_target_error_runs_once (test_bg_review_dedup.Contract.test_unproven_input_target_error_runs_once) ... ok
+test_tracked_target_error_runs_once (test_bg_review_dedup.Contract.test_tracked_target_error_runs_once) ... ok
+test_unbound_target_error_runs_once (test_bg_review_dedup.Contract.test_unbound_target_error_runs_once) ... FAIL
+
+======================================================================
+FAIL: test_explicit_target_error_runs_once (test_bg_review_dedup.Contract.test_explicit_target_error_runs_once)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/hermes_native/tests/test_bg_review_dedup.py", line 365, in test_explicit_target_error_runs_once
+    self.assert_target_error_runs_once(explicit=True)
+  File "<repo>/hermes_native/tests/test_bg_review_dedup.py", line 359, in assert_target_error_runs_once
+    self.assertEqual(self.br.target_calls, 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_disabled_target_error_runs_once (test_bg_review_dedup.Contract.test_disabled_target_error_runs_once)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/hermes_native/tests/test_bg_review_dedup.py", line 369, in test_disabled_target_error_runs_once
+    self.assert_target_error_runs_once()
+  File "<repo>/hermes_native/tests/test_bg_review_dedup.py", line 359, in assert_target_error_runs_once
+    self.assertEqual(self.br.target_calls, 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_default_target_error_runs_once (test_bg_review_dedup.Contract.test_default_target_error_runs_once)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/hermes_native/tests/test_bg_review_dedup.py", line 373, in test_default_target_error_runs_once
+    self.assert_target_error_runs_once()
+  File "<repo>/hermes_native/tests/test_bg_review_dedup.py", line 359, in assert_target_error_runs_once
+    self.assertEqual(self.br.target_calls, 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_unbound_target_error_runs_once (test_bg_review_dedup.Contract.test_unbound_target_error_runs_once)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/hermes_native/tests/test_bg_review_dedup.py", line 387, in test_unbound_target_error_runs_once
+    self.assertEqual(self.br.target_calls, 1)
+AssertionError: 2 != 1
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.006s
+
+FAILED (failures=4)

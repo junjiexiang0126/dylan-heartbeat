@@ -15,9 +15,12 @@ test_cancelled_run_never_cached (test_bg_review_dedup.Contract.test_cancelled_ru
 test_changed_input_recovers_without_cooldown (test_bg_review_dedup.Contract.test_changed_input_recovers_without_cooldown) ... ok
 test_completed_identical_input_skips_api (test_bg_review_dedup.Contract.test_completed_identical_input_skips_api) ... ok
 test_config_and_prefix_changes_run (test_bg_review_dedup.Contract.test_config_and_prefix_changes_run) ... ok
+test_default_target_error_runs_once (test_bg_review_dedup.Contract.test_default_target_error_runs_once) ... ok
 test_disable_between_factory_and_worker (test_bg_review_dedup.Contract.test_disable_between_factory_and_worker) ... ok
 test_disabled_and_default_are_compatible (test_bg_review_dedup.Contract.test_disabled_and_default_are_compatible) ... ok
+test_disabled_target_error_runs_once (test_bg_review_dedup.Contract.test_disabled_target_error_runs_once) ... ok
 test_explicit_always_bypasses_cache (test_bg_review_dedup.Contract.test_explicit_always_bypasses_cache) ... ok
+test_explicit_target_error_runs_once (test_bg_review_dedup.Contract.test_explicit_target_error_runs_once) ... ok
 test_external_memory_is_unproven (test_bg_review_dedup.Contract.test_external_memory_is_unproven) ... ok
 test_failure_cooldown_then_recovery (test_bg_review_dedup.Contract.test_failure_cooldown_then_recovery) ... ok
 test_force_interval_requires_real_review (test_bg_review_dedup.Contract.test_force_interval_requires_real_review) ... ok
@@ -44,7 +47,10 @@ test_scope_flags_can_be_positional (test_bg_review_dedup.Contract.test_scope_fla
 test_skill_reference_change_runs (test_bg_review_dedup.Contract.test_skill_reference_change_runs) ... ok
 test_symlink_input_is_fail_open (test_bg_review_dedup.Contract.test_symlink_input_is_fail_open) ... ok
 test_tool_read_cannot_be_cached (test_bg_review_dedup.Contract.test_tool_read_cannot_be_cached) ... ok
+test_tracked_target_error_runs_once (test_bg_review_dedup.Contract.test_tracked_target_error_runs_once) ... ok
+test_unbound_target_error_runs_once (test_bg_review_dedup.Contract.test_unbound_target_error_runs_once) ... ok
 test_unknown_input_is_fail_open (test_bg_review_dedup.Contract.test_unknown_input_is_fail_open) ... ok
+test_unproven_input_target_error_runs_once (test_bg_review_dedup.Contract.test_unproven_input_target_error_runs_once) ... ok
 test_unreadable_input_is_fail_open (test_bg_review_dedup.Contract.test_unreadable_input_is_fail_open) ... ok
 test_unstarted_targets_create_no_reservations (test_bg_review_dedup.Contract.test_unstarted_targets_create_no_reservations) ... ok
 test_active_work_is_not_assumed_successful (test_bg_review_dedup.StateContract.test_active_work_is_not_assumed_successful) ... ok
@@ -73,6 +79,7 @@ test_16_real_http_timeout_does_not_poison_next_review (test_bg_review_dedup_inte
 test_17_native_failed_retries_cool_down_and_recover (test_bg_review_dedup_integration.NativeHTTPIntegration.test_17_native_failed_retries_cool_down_and_recover) ... skipped 'set HERMES_REVIEW_TEST_SOURCE for native integration'
 test_18_busy_explicit_queue_works_with_dedup_disabled (test_bg_review_dedup_integration.NativeHTTPIntegration.test_18_busy_explicit_queue_works_with_dedup_disabled) ... skipped 'set HERMES_REVIEW_TEST_SOURCE for native integration'
 test_19_real_process_restart_is_cold_and_reviews_again (test_bg_review_dedup_integration.NativeHTTPIntegration.test_19_real_process_restart_is_cold_and_reviews_again) ... skipped 'set HERMES_REVIEW_TEST_SOURCE for native integration'
+test_20_native_startup_exception_is_never_reexecuted (test_bg_review_dedup_integration.NativeHTTPIntegration.test_20_native_startup_exception_is_never_reexecuted) ... skipped 'set HERMES_REVIEW_TEST_SOURCE for native integration'
 test_default_terminal_cwd_uses_literal_persistent_absolute_path (test_bootstrap_seed.SeedTests.test_default_terminal_cwd_uses_literal_persistent_absolute_path) ... ok
 test_existing_private_config_and_reviewed_script_survive_seed (test_bootstrap_seed.SeedTests.test_existing_private_config_and_reviewed_script_survive_seed) ... ok
 test_symlinked_script_directory_refused (test_bootstrap_seed.SeedTests.test_symlinked_script_directory_refused) ... ok
@@ -327,6 +334,6 @@ AssertionError: '7a990621de0001deedd05b932028205c56a37f99060fc152fdc22dc9a976d83
 
 
 ----------------------------------------------------------------------
-Ran 283 tests in 2.269s
+Ran 290 tests in 2.829s
 
-FAILED (failures=4, skipped=25)
+FAILED (failures=4, skipped=26)
