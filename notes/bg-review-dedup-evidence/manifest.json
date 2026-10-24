@@ -1,0 +1,136 @@
+{
+  "date_bangkok": "2026-10-24",
+  "baseline_commit": "f8edcc0816bcd529920ee7a5db4ebf977eb3e6a1",
+  "hermes_commit": "5894e750c3dba980d43b25aa29e3958149ba2c61",
+  "python": "3.12.14",
+  "targeted": {
+    "unit_pass": 61,
+    "native_http_pass": 21,
+    "total_pass": 82,
+    "fail": 0
+  },
+  "upstream_overlay": {
+    "pass": 87,
+    "fail": 0
+  },
+  "repository_suite": {
+    "run": 302,
+    "pass": 272,
+    "fail": 3,
+    "skip": 27
+  },
+  "baseline_suite": {
+    "run": 241,
+    "pass": 231,
+    "fail": 4,
+    "skip": 6
+  },
+  "production_access": false,
+  "paid_provider_calls": false,
+  "sha256": {
+    "hermes_native/bg_review_dedup.py": "5e9989659ea4ba8ffacc81102f601b8e23323cf01e736276485ebb4236a1f22c",
+    "hermes_native/tests/test_bg_review_dedup.py": "a0322a469c53185771c1c6177a945575a90f2be372d37461e5c7c71a6ddee59f",
+    "hermes_native/tests/test_bg_review_dedup_integration.py": "7911836bacd0a8f1bf2bc3168f01993d8aef0697ec24a7ae1aa023d159b21cd1",
+    "hermes_native/tests/bg_review_integration_requirements.txt": "f2d95722d80da151d4919115bec223d6f73ddd202110b500c409f8e5688d4ec5",
+    ".github/workflows/bg-review-dedup.yml": "24cd52fa15a13b61b86bc528f00a4386d47c1b576bb29c93d553a6acebf54158",
+    "hermes_native/web_bridge.py": "090a1e76bbe8662f02578cf337772105784bde85dc4d722c7495c2e1363f2856",
+    "notes/bg-review-dedup-evidence/dedup-final.log": "ea317632b84d5a84da214b048516d9e53f980b2a5f1878d77a2371a73a631e77",
+    "notes/bg-review-dedup-evidence/upstream-overlay-tests.log": "23d4541275d0ddbf204ca74203923595907a2128de9910d95b00ad45ee8aee16",
+    "notes/bg-review-dedup-evidence/native-tests-original.log": "639c1f99dc0685367c0e53a706c1c99b7d582879a338c1fcd88e806fb2347855",
+    "notes/bg-review-dedup-evidence/native-tests-final.log": "d64c92b40eb28adae82ae1db86e9d9892142ef809ff357e32f00f55eaaf96558",
+    "hermes@5894e750/run_agent.py": "8c215df03f32493f72992db0c0ccaddb811436f9025451e3f1e8f535dc9cda5d",
+    "hermes@5894e750/agent/background_review.py": "b177b1cfe8b06f9e787e37920fd9a7b023a038ecbac951bde4e81535d88aa4dc",
+    "hermes@5894e750/agent/review_idle_queue.py": "d2a62f333ee5e69ec17b50bdd3f66f11ba61a12ba7ba8e1e0a562866450ea32b",
+    "notes/bg-review-dedup-evidence/single-run-before-fix.log": "3e19beed0cda16c7207d656e60a58fda73d5031d5526f374a65c34cb2914c4bd",
+    "notes/bg-review-dedup-evidence/vps-matched-integration.log": "3a43098548b396a626e101834617df42ab8fee359f825e65c535768493698907",
+    "notes/bg-review-dedup-evidence/vps-source-match.json": "63a24c742ff1e179baf4093e2aa80f3008dff17ee02117c93d07d22f51b440e5",
+    "notes/bg-review-dedup-evidence/vps-adapted-tests.log": "17c7ae6e7ac881efd76093fbb0efcce52cfed98b75a0bc08641ed21780a05900",
+    "hermes@b1a39a1b/run_agent.py": "73efa221f42be96a41a6b8a1ee144caf47041e06f5c7d32b3bbd898d8dc250b2",
+    "hermes@b1a39a1b/agent/background_review.py": "53d91d369762c9c4c66b63c43a53684a79226846475eaa155dcd4ef175c32f12",
+    "hermes@b1a39a1b/agent/review_idle_queue.py": "88d1d41ce95cbd6a282fa7e4ec5f22956742a9c53fdde8aa46989496eb872021",
+    "notes/bg-review-dedup-evidence/remote-ci-85c5495.json": "8dcc5ece4cfcf4eb0a114e0af9aea117a2fcb17c75b295444c1327a62e4db357"
+  },
+  "pull_request": "https://github.com/junjiexiang0126/dylan-heartbeat/pull/96",
+  "previous_tested_code_commit": "286db9d6ceb1ddfb205e29621ed4eb1c218b5e89",
+  "historical_remote_ci": {
+    "dedup_acceptance": {
+      "run_id": 40062530390,
+      "conclusion": "success",
+      "run": 63,
+      "fail": 0
+    },
+    "official_preparation": {
+      "run_id": 40062530345,
+      "conclusion": "failure",
+      "run": 283,
+      "failures": 4,
+      "errors": 13,
+      "skipped": 25
+    },
+    "unified_regression": {
+      "run_id": 40062530354,
+      "conclusion": "failure",
+      "run": 33,
+      "pass": 32,
+      "fail": 1
+    }
+  },
+  "followup_regression": {
+    "old_commit": "69a9838d393f1ff6246f05d40647e8a8066d0f96",
+    "run": 6,
+    "before_fix_failures": 4,
+    "before_fix_errors": 0,
+    "after_fix_failures": 0
+  },
+  "vps_core_matching_validation": {
+    "upstream_commit": "b1a39a1b1bf135091ff3fd0020002bba35a9d456",
+    "targeted_pass": 82,
+    "targeted_fail": 0,
+    "production_configuration_validated": false,
+    "production_dedup_benefit": "not established; main alias supported, external skill roots require explicit authorization; runtime memory/pool unconfirmed"
+  },
+  "pre_adaptation_code_commit": "1d792eeb5456b30857770f531d43eed2cf342ced",
+  "tested_code_version": "Implementation and tests identified by sha256 below; final commit in PR history",
+  "tested_code_commit": "85c5495d63408972f803535f6fce37168f147734",
+  "remote_ci": {
+    "implementation_commit": "85c5495d63408972f803535f6fce37168f147734",
+    "dedup": {
+      "run_id": 40073134072,
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 120810694039,
+          "hermes_sha": "5894e750c3dba980d43b25aa29e3958149ba2c61",
+          "pass": 82,
+          "fail": 0,
+          "seconds": 31.079
+        },
+        {
+          "id": 120810694188,
+          "hermes_sha": "b1a39a1b1bf135091ff3fd0020002bba35a9d456",
+          "pass": 82,
+          "fail": 0,
+          "seconds": 21.574
+        }
+      ]
+    },
+    "official_preparation": {
+      "run_id": 40073134102,
+      "job_id": 120810694026,
+      "conclusion": "failure",
+      "run": 302,
+      "failures": 4,
+      "errors": 13,
+      "skipped": 27,
+      "container_build_started": false
+    },
+    "unified_regression": {
+      "run_id": 40073134073,
+      "job_id": 120810694034,
+      "conclusion": "failure",
+      "run": 33,
+      "pass": 32,
+      "fail": 1
+    }
+  }
+}

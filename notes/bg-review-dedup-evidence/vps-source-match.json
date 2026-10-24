@@ -1,0 +1,67 @@
+{
+  "date_bangkok": "2026-10-24",
+  "production_evidence_source": "User-provided VPS assistant report; Work did not connect to production",
+  "original_test_upstream": "5894e750c3dba980d43b25aa29e3958149ba2c61",
+  "matching_core_files_at_official_commit": "b1a39a1b1bf135091ff3fd0020002bba35a9d456",
+  "sha256_matches_reported_vps": {
+    "run_agent.py": "73efa221f42be96a41a6b8a1ee144caf47041e06f5c7d32b3bbd898d8dc250b2",
+    "agent/background_review.py": "53d91d369762c9c4c66b63c43a53684a79226846475eaa155dcd4ef175c32f12",
+    "agent/review_idle_queue.py": "88d1d41ce95cbd6a282fa7e4ec5f22956742a9c53fdde8aa46989496eb872021"
+  },
+  "whole_production_commit_identified": false,
+  "reported_config": {
+    "background_review_enabled": true,
+    "provider": "main",
+    "model": "",
+    "dedup_enabled_present": false,
+    "defer_in_background_review_present": false,
+    "extra_tools_present": false,
+    "skills_symlinks_present": true,
+    "external_memory_runtime": "unconfirmed",
+    "dynamic_credential_pool_runtime": "unconfirmed"
+  },
+  "production_modified": false,
+  "pre_adaptation_code_commit": "1d792eeb5456b30857770f531d43eed2cf342ced",
+  "pre_adaptation_isolated_targeted_test": {
+    "pass": 70,
+    "fail": 0,
+    "native_integration_tests": 20,
+    "elapsed_seconds": 21.268,
+    "uses_actual_production_config": false
+  },
+  "pre_adaptation_dedup_applicability": {
+    "provider_main_empty_model": "runs normally with unproven_input; no cache lookup",
+    "skills_symlink": "runs normally with unproven_input; no cache lookup",
+    "local_contract_probe": {
+      "provider_main_two_triggers": {
+        "api_calls": 2,
+        "reasons": [
+          "unproven_input",
+          "unproven_input"
+        ]
+      },
+      "symlink_two_triggers": {
+        "api_calls": 2,
+        "reasons": [
+          "unproven_input",
+          "unproven_input"
+        ]
+      }
+    }
+  },
+  "adapted_validation": {
+    "targeted_pass": 82,
+    "targeted_fail": 0,
+    "unit_tests": 61,
+    "native_integration_tests": 21,
+    "elapsed_seconds": 19.782,
+    "main_alias_empty_model": "supported; parent runtime guards remain",
+    "external_skill_links": "require explicit dedup_skill_link_roots; invalid or out-of-scope inputs run normally",
+    "http_fixture": {
+      "same_input_two_triggers_requests": 1,
+      "same_size_linked_content_change_total_requests": 2
+    },
+    "production_config_modified": false,
+    "production_dedup_benefit": "not measured; runtime memory/pool and link policy remain unconfirmed"
+  }
+}

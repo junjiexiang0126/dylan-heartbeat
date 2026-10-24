@@ -1375,4 +1375,8 @@ def install():
     adapter._http_route_table = routes
     from work_bridge import install_work_route
     install_work_route(adapter)
+    # Background review dedup V1: opt-in exact-input cache at the native
+    # worker factory; preserve queued /refine requests on a busy Agent.
+    from bg_review_dedup import install as install_bg_review_dedup
+    install_bg_review_dedup()
     adapter._ziwei_web_installed = True
