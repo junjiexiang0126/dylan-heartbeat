@@ -245,6 +245,16 @@ def install_on_class(cls: Any, br_module: Any) -> bool:
                 return original_spawn(self, messages_snapshot, *args,
                                       review_memory=review_memory, review_skills=review_skills,
                                       focus=focus, explicit=explicit, **kwargs)
+            # Conservative safety gate: the current fingerprint omits
+            # conversation history and skill-use signals. Never skip a
+            # review whose input may contain new information. Deferred
+            # dispatch also bypasses this wrapper, so do not reserve it.
+            if messages_snapshot or review_memory or review_skills or explicit or focus:
+                _record({"event": "trigger", "session": getattr(self, "session_id", "?"),
+                         "decision": "run", "reason": "untracked_review_input"})
+                return original_spawn(self, messages_snapshot, *args,
+                                      review_memory=review_memory, review_skills=review_skills,
+                                      focus=focus, explicit=explicit, **kwargs)
             fingerprint = _fingerprint(self)
             run, reason = state.acquire(
                 fingerprint, bool(explicit or (focus or "").strip()), time.time(),
