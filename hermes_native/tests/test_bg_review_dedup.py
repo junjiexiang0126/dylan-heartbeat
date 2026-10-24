@@ -224,6 +224,42 @@ class TestOverBudgetWarning(DedupTestBase):
         self.assertEqual(complete[-1]["result"], "ok")
 
 
+class TestHermesSignature(DedupTestBase):
+    def test_disabled_path_does_not_forward_task_cfg(self):
+        class StrictAgent:
+            def _spawn_background_review(self, messages_snapshot,
+                                         review_memory=False, review_skills=False,
+                                         focus=None, explicit=False):
+                return "strict-ok"
+
+        class StrictCls:
+            _spawn_background_review = StrictAgent._spawn_background_review
+
+        br = _FakeBR()
+        dedup.install_on_class(StrictCls, br)
+        with mock.patch.object(dedup, "_load_task_cfg",
+                               lambda _: {"dedup_enabled": False}):
+            self.assertEqual(StrictCls._spawn_background_review(StrictAgent(), []),
+                             "strict-ok")
+
+    def test_enabled_path_does_not_forward_task_cfg(self):
+        class StrictAgent:
+            def _spawn_background_review(self, messages_snapshot,
+                                         review_memory=False, review_skills=False,
+                                         focus=None, explicit=False):
+                return "strict-ok"
+
+        class StrictCls:
+            _spawn_background_review = StrictAgent._spawn_background_review
+
+        br = _FakeBR()
+        dedup.install_on_class(StrictCls, br)
+        with mock.patch.object(dedup, "_load_task_cfg",
+                               lambda _: {"dedup_enabled": True}):
+            self.assertEqual(StrictCls._spawn_background_review(StrictAgent(), []),
+                             "strict-ok")
+
+
 class TestDedupDisabled(DedupTestBase):
     def test_default_is_disabled_until_integration_acceptance(self):
         self.assertFalse(dedup._dedup_enabled({}))
