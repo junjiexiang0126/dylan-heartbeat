@@ -1,0 +1,46 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> kelivo-gateway@1.0.0 test
+> node --test test/*.test.js
+
+✔ chat writes survive restart, replay is idempotent and both contexts read current memory (12.183197ms)
+✔ invalid batch and corrupt state never overwrite saved data; completion needs evidence (5.789485ms)
+✔ worker and chat serialize writes and a later cycle preserves chat memory and closed tasks (13.419482ms)
+✔ HTTP API is opt in, requires dedicated Bearer even locally, and returns verifiable state (172.416077ms)
+✔ missing configured key fails closed and authenticated reads are rate limited (50.849924ms)
+✔ empty chat still wakes, saves diary and restart respects next run (21.264713ms)
+✔ tasks persist across cycles and completion needs an actual artifact (13.736924ms)
+✔ invalid output records failure with backoff, never sends or mutates tasks (5.528368ms)
+✔ push is opt in, cooldown enforced and failed delivery preserves work (23.176861ms)
+✔ overlapping cycles call model once (4.151258ms)
+✔ memory files loaded and failed gateway does not erase activity (5.176346ms)
+✔ corrupt state is preserved and lock released (1.635258ms)
+✔ unknown tools, duplicate ids, phantom completion and reopen are rejected (0.886467ms)
+✔ real gateway and explicit retained cycle persist and inject activity into chat (1845.797098ms)
+✔ does not trust a Railway private proxy address as the end user (4.758516ms)
+✔ allows only localhost to call internal write routes (0.30828ms)
+✔ requires the gateway key when Railway public API is enabled (0.706427ms)
+✔ preserves trusted LAN access for non-Railway deployments (1.032892ms)
+✔ lets the legacy test route reach its own admin authentication (0.243229ms)
+✔ omits empty and default ntfy priorities (5.918907ms)
+✔ converts numeric ntfy priorities to JSON numbers (0.429073ms)
+✔ keeps supported named priorities and omits invalid values (0.289392ms)
+✔ builds compatible ntfy JSON payloads (2.36141ms)
+✔ DATA_DIR 优先于 Railway 自动挂载路径 (2.531666ms)
+✔ 原子写入在覆盖前保留上一版 JSON (8.816118ms)
+✔ shared reader loads Ziwei-home aliases, prefers authoritative files and never reads credentials (15.329082ms)
+✔ missing memory is optional and oversized files have bounded context (4.9839ms)
+✔ accepts real timestamped wake events (15.437312ms)
+✔ does not turn ordinary replies mentioning event words into events (0.38432ms)
+✔ parses Kelivo Beijing wall time independently of the server timezone (50.107459ms)
+✔ formats wake-up time and day/night hour in the configured timezone (1.326679ms)
+✔ parses official non-stream JSON response (4.949614ms)
+✔ joins SSE deltas when a compatible endpoint ignores stream=false (1.963809ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2189.617687

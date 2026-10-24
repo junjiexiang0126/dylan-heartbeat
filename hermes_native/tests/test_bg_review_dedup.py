@@ -376,10 +376,61 @@ class Contract(unittest.TestCase):
             self.trigger(); self.trigger()
             self.assertEqual(self.br.calls, 2)
 
-    def test_broken_skill_link_is_unproven(self):
-        (self.root / "skills/broken").symlink_to(self.root / "skills/missing")
+    def test_missing_skill_link_is_bound_and_restoration_runs(self):
+        target = self.root / "skills/missing"
+        (self.root / "skills/broken").symlink_to(target)
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 1)
+        target.write_text("restored target")
+        self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_missing_external_link_restoration_cannot_bypass_root_policy(self):
+        with tempfile.TemporaryDirectory() as outside:
+            target = Path(outside) / "missing"
+            (self.root / "skills/broken").symlink_to(target)
+            self.trigger(); self.trigger()
+            self.assertEqual(self.br.calls, 1)
+            target.write_text("external content")
+            self.trigger(); self.trigger()
+            self.assertEqual(self.br.calls, 3)
+
+    def test_link_permission_error_does_not_become_missing_state(self):
+        (self.root / "skills/link").symlink_to(self.root / "skills/SKILL.md")
+        resolve = Path.resolve
+        def denied(path, *a, **kw):
+            if path.name == "link":
+                raise PermissionError("private path")
+            return resolve(path, *a, **kw)
+        with mock.patch.object(Path, "resolve", denied):
+            self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_scan_budget_requires_explicit_bounded_integer(self):
+        for value in (True, "67108864", 0, d.MAX_SKILL_SCAN_BYTES + 1):
+            with self.subTest(value=value):
+                self.br.cfg['dedup_skill_scan_max_bytes'] = value
+                self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 8)
+
+    def test_streaming_covers_large_support_file_and_same_size_edits(self):
+        path = self.root / "skills/support.bin"
+        with path.open("wb") as stream:
+            for _ in range(33):
+                stream.write(b"x" * (1024 * 1024))
+        # Defaults retain the prior 32 MiB scan cap.
         self.trigger(); self.trigger()
         self.assertEqual(self.br.calls, 2)
+        self.br.cfg['dedup_skill_scan_max_bytes'] = 64 * 1024 * 1024
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 3)
+        before = path.stat()
+        with path.open("r+b") as stream:
+            stream.seek(-1, 2); stream.write(b"y")
+        import os
+        os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+        self.trigger()
+        self.assertEqual(self.br.calls, 4)
 
     def test_cyclic_skill_link_is_unproven(self):
         (self.root / "skills/cycle").symlink_to(self.root / "skills", target_is_directory=True)

@@ -3,7 +3,7 @@
 日期：2026-10-24（Asia/Bangkok）。接手基线：`f8edcc0816bcd529920ee7a5db4ebf977eb3e6a1`。
 分支：`feature/bg-review-dedup-v1`。最终提交见包含本报告的分支提交及 PR；未合并 main。
 
-**结论：本次修复的专项与隔离 Hermes 验收通过；不代表生产验收或允许开启生产去重。**
+**最新一轮结果见第 13 节；第 8–12 节保留历史阶段及当时限制。专项与隔离 Hermes 验收通过，不代表生产验收或允许开启生产去重。**
 默认 `dedup_enabled: false` 保留。没有访问、部署、重启正式 VPS，没有修改生产配置、前端、长期记忆或持久化数据。
 
 ## 1. 真实源码与接手基线
@@ -252,3 +252,50 @@ Python 13 个 error 仍为临时合并树中的 autonomy_gate chown 权限问题
 详见 `bg-review-dedup-evidence/vps-readonly-followup.md`。10 个顶层技能链接均无法通过存在性检查，当前 V1 会保守放行；若实际 home 对应该目录，开启也不能取得完成缓存收益。RetainDB 与凭证池的变量/文件/日志缺项不能证明运行态未启用，继续保留未知。主模型磁盘段未设置 api_mode，先前空值来自辅助配置段，已纠正。
 
 2524 个普通文件不等于包含目录的 V1 项数；du 的 68M 不等于实际内容字节数，隐藏遍历错误也不能证明无循环。本次不要求重复取证或修改生产。只增量复跑三个现有链接/边界回归，3/3 通过；实现保持 85c5495 不变。生产适用性与省费验收仍未通过，不得将专项通过写成生产部署条件已满足。
+
+
+## 13. 用户授权继续后的隔离适配与 CI 修复
+
+本轮不再缩小技能输入范围：两个匹配版本的原生 whitelist 都允许 read_file/search_files，仅哈希 SKILL.md 或略过 node_modules 无法证明等价。因此仍覆盖全部技能文件内容。
+
+### 技能输入适配
+
+- 确定缺失的链接目标作为明确的 missing_link 状态纳入摘要：包括逻辑路径、原始链接目标和解析路径，每次触发及完成时重新核对。并非无视链接。目标恢复、重定向或内容变化后不能命中旧指纹。只捕获 FileNotFoundError 且要求源链接仍存在；权限错误、循环、普通文件中途消失、未知输入仍放行。外部目标恢复后继续受允许根目录约束，不自动读取未授权内容。
+- 改为 64 KiB 分块 HMAC；默认累计扫描预算仍为 32 MiB。新增显式 auxiliary.background_review.dedup_skill_scan_max_bytes，必须是 1..134217728 的整数，不接受布尔值/字符串，硬上限 128 MiB。snapshot/config/memory 原有 32 MiB 限制和 10000 技能项限制不变，scandir 收集名称期间也执行项数界限。超限正常审查。
+- 隔离 HTTP 夹具实际创建 2524 个普通文件、10 个缺失目标链接、68 MiB 加小文件的全部内容，显式选择 96 MiB 扫描预算。前两次同输入仅 1 请求；等长修改末尾字节且恢复 mtime 后第 2 请求；链接目标恢复后第 3 请求；新增对话后第 4 请求。没有删除链接、遗漏文件或关闭必要审查。
+- 独立扫描测量：71320717 内容字节、2535 项，1.83 秒，Python tracemalloc 峰值 1610284 字节。只代表本 Work 隔离文件系统与一次扫描，非 VPS 性能或进程总 RSS。记录在 stream-scan-benchmark.json。
+
+### CI 失败根因与最小处置
+
+1. autonomy_gate.py 只补入 main 已有的 state_path chown 行，结果逐字节与 main 一致（74f0fb62…），没有改变机会额度、任务证据或唤醒策略。单元测试对特权 chown 做隔离；额外验证属主参数正确，以及 chown 抛 PermissionError 时 main 仍返回 wakeAgent=false。避免测试需要 root/CAP_CHOWN 或改真实文件属主。
+2. preflight_upgrade.NEW_SHA 同步至实际已核对的 main 安全门内容摘要，保留原先 7a990621… 作为有名的旧版本来源。镜像摘要校验、显式选择新摘要、旧文件白名单、备份与 root 门均保留，未关闭安全检查。
+3. Node 原生调度已在 a9c1b3b 明确移除，但保留的集成测试只启动 server.js 后等待旧 worker 自发运行。现由测试显式启动一次独立子进程，调用保留的 runAutonomousCycle，通过真实 loopback 模型 HTTP 和 wake-event HTTP 验证持久化、上下文回读与认证。原有断言保留，未恢复生产旧调度器，也不声称测试了 Hermes Cron。
+4. GitHub App 到期 UTC 字符串曾由本地 mktime 再减标准时差解析，夏令时会偏一小时，使近到期测试进入“已过期”的兜底分支。现用 calendar.timegm 按 UTC 解析；冻结时钟并验证 UTC、Asia/Bangkok、America/Los_Angeles 的冬夏两个日期，未访问真实 GitHub 凭证。
+
+### 本轮实际本地结果
+
+| 测试 | 结果 | 日志 |
+|---|---|---|
+| 原固定 5894e750 源码：65 单元 + 22 原生集成 | 87/87，58.443 秒 | stream-native-5894.log |
+| VPS 三核心匹配 b1a39a1b：同一专项 | 87/87，65.258 秒 | stream-native-b1.log |
+| 安装补丁后的上游相关回归 | 87/87 | upstream-stream.log |
+| 本仓库完整 Python | 311 run、283 pass、0 fail、28 skip | full-python-stream.log |
+| Node retained components | 33/33 | node-stream.log |
+| 保留的 Hermes prototype 合约 | 52/52 | prototype-stream.log |
+
+28 skip 为 22 项 opt-in 原生集成（在专项中均实际通过）和 6 项既有条件跳过。本轮远程结果另行实际核实，旧提交的红/绿结果都不替代本轮。
+
+### 待审核的生产候选差异（未执行）
+
+仅为未来审核提供增量配置，不是部署指令；不得覆盖整个 auxiliary 段或变更已有 provider/model/enabled/defer：
+
+```yaml
+auxiliary:
+  background_review:
+    dedup_enabled: true
+    dedup_skill_scan_max_bytes: 100663296  # 96 MiB，覆盖隔离夹具，不等于生产规模已证明
+```
+
+不需要为已确认不存在的链接目标设置允许根目录；恢复后的外部有效链接仍须独立允许，否则正常审查。默认未开启；不通过修改/删除生产技能配合缓存。RetainDB、凭证池、实际后端未知时现有运行时 guard 仍保守放行。正式激活前仍应在实际镜像/插件依赖的隔离副本验证兼容与 guard，不要求再次从生产日志/环境缺项“证明未启用”。
+
+当前代码可进入最终审核；真实模型账单、正式命中率及必要审查质量仍无实测。生产未部署、未重启、未改配置/记忆/前端/链接，PR 不合并 main。配置激活与服务操作仍需用户另行批准。

@@ -25,6 +25,7 @@ CLI：
 from __future__ import annotations
 
 import base64
+import calendar
 import json
 import os
 import threading
@@ -149,7 +150,7 @@ class InstallationToken:
             if not token or not expires:
                 raise GitHubAppError("安装令牌响应缺少 token/expires_at")
             # expires_at 形如 2026-10-17T23:00:00Z
-            self._expires_at = time.mktime(time.strptime(expires, "%Y-%m-%dT%H:%M:%SZ")) - time.timezone + 0
+            self._expires_at = calendar.timegm(time.strptime(expires, "%Y-%m-%dT%H:%M:%SZ"))
             if self._expires_at <= now:          # 时区兜底：至少按 1 小时算
                 self._expires_at = now + 3600
             self._token = token

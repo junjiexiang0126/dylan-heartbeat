@@ -401,6 +401,40 @@ class NativeHTTPIntegration(unittest.TestCase):
                 self.assertFalse(self.agent._ziwei_bg_dedup_state.in_flight)
         self.assertEqual(len(self.requests), 0)
 
+    def test_22_large_skill_tree_with_missing_links_tracks_all_inputs(self):
+        skills = self.home / "skills"
+        skills.mkdir(exist_ok=True)
+        block = b"x" * (4 * 1024 * 1024)
+        for i in range(17):
+            (skills / f"support-{i}.bin").write_bytes(block)
+        for i in range(2507):
+            (skills / f"entry-{i}.txt").write_text("support")
+        for i in range(10):
+            (skills / f"missing-{i}").symlink_to(skills / f"target-{i}")
+        self.write_config(True, review_options={"provider": "main", "model": "",
+                                          "dedup_skill_scan_max_bytes": 96 * 1024 * 1024})
+        try:
+            self.trigger(review_memory=True, review_skills=True)
+            self.trigger(review_memory=True, review_skills=True)
+            self.assertEqual(len(self.requests), 1)
+            path = skills / "support-16.bin"
+            before = path.stat()
+            with path.open("r+b") as stream:
+                stream.seek(-1, 2); stream.write(b"y")
+            os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+            self.trigger(review_memory=True, review_skills=True)
+            self.assertEqual(len(self.requests), 2)
+            (skills / "target-0").write_text("link restored")
+            self.trigger(review_memory=True, review_skills=True)
+            self.assertEqual(len(self.requests), 3)
+            self.messages.append({"role": "user", "content": "new private dialogue"})
+            self.trigger(review_memory=True, review_skills=True)
+            self.assertEqual(len(self.requests), 4)
+        finally:
+            for path in skills.iterdir():
+                if path.is_file() or path.is_symlink():
+                    path.unlink()
+
     def test_19_real_process_restart_is_cold_and_reviews_again(self):
         script = '''
 import threading

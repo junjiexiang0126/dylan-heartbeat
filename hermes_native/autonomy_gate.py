@@ -113,6 +113,7 @@ def evaluate(home: Path, now: datetime) -> dict:
     state["wakes"] += 1
     state["last_opportunity"] = now.isoformat()
     atomic_json(state_path, state)
+    os.chown(state_path, 10000, 10000)
     return {"wakeAgent": True, "time": now.isoformat(), "tasks": active,
             "waived_evidence": waived_evidence,
             "invalid_completions": invalid_completions,

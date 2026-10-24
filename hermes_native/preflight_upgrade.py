@@ -13,7 +13,8 @@ PREVIOUS_SHA = '2cba28d19ce9b47bd1e6420112f9dff2c3cd5b211410b637e5252a7b312d96c9
 PREVIOUS_IMAGE_SHA = '58d0b2fa916d866532a250fc566a99d121b0ea62f49344941a7c65eb73569340'
 PREVIOUS_REVIEWED_SHA = '653d393730dcacb0979e67130275af58390bc0faf48c90193ea3e5cb5e36093f'
 PREVIOUS_NOTIFY_SHA = '1d71190170c6e5531067a55f53cad6429099f64fd34f85a799eb7fcd9851f53f'
-NEW_SHA = '7a990621de0001deedd05b932028205c56a37f99060fc152fdc22dc9a976d836'
+PREVIOUS_HANDOFF_SHA = '7a990621de0001deedd05b932028205c56a37f99060fc152fdc22dc9a976d836'
+NEW_SHA = '74f0fb6211a9aa4d65b3a4d9593945bcc6871e883fe5389bb7afc4dd5c84c823'
 
 
 def digest(data):
@@ -86,7 +87,7 @@ def upgrade(home: Path, source=Path('/opt/ziwei-native/autonomy_gate.py')):
         scripts = os.open('scripts', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=home_fd)
         old = read_regular(scripts, 'autonomy_gate.py')
         current = digest(old)
-        if current not in (OLD_SHA, PREVIOUS_SHA, PREVIOUS_IMAGE_SHA, PREVIOUS_REVIEWED_SHA, PREVIOUS_NOTIFY_SHA, NEW_SHA):
+        if current not in (OLD_SHA, PREVIOUS_SHA, PREVIOUS_IMAGE_SHA, PREVIOUS_REVIEWED_SHA, PREVIOUS_NOTIFY_SHA, PREVIOUS_HANDOFF_SHA, NEW_SHA):
             raise RuntimeError('preflight_upgrade_unknown_previous_hash')
         if current != NEW_SHA:
             backup_name = 'autonomy_gate.before-' + current + '.py'

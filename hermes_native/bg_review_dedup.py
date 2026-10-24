@@ -39,6 +39,8 @@ MAX_LANES = 256
 MAX_PENDING_EXPLICIT = 32
 MAX_INPUT_BYTES = 32 * 1024 * 1024
 MAX_SKILL_ENTRIES = 10000
+MAX_SKILL_SCAN_BYTES = 128 * 1024 * 1024
+HASH_CHUNK_BYTES = 64 * 1024
 LOG_NAME = "bg_review_dedup_log.jsonl"
 LOG_ROTATE_BYTES = 5 * 1024 * 1024
 _HASH_KEY = os.urandom(32)  # prevent dictionary attacks on private input hashes
@@ -100,8 +102,10 @@ def _skill_inventory(root: Path, cfg: dict, bytes_used: int) -> dict:
 
     Ordinary files under <home>/skills are implicitly in scope. External link
     targets need dedup_skill_link_roots; a link cannot expand that allowlist.
-    All unproven inputs raise to run, including broken links, cycles, special
-    files, unreadable directories and bounds exceeded. No paths are logged.
+    Missing link targets are explicit states, checked again at completion and
+    every trigger. Permission errors, cycles and unknown inputs still run.
+    Content is streamed; scan budget defaults to 32 MiB and requires explicit
+    configuration to increase, with a hard 128 MiB ceiling. No paths are logged.
     """
     skills = root / "skills"
     configured = cfg.get("dedup_skill_link_roots", [])
@@ -126,13 +130,24 @@ def _skill_inventory(root: Path, cfg: dict, bytes_used: int) -> dict:
     result = {}
     budget = bytes_used
     entries = 0
+    scan_limit = cfg.get("dedup_skill_scan_max_bytes", MAX_INPUT_BYTES)
+    if type(scan_limit) is not int or not 1 <= scan_limit <= MAX_SKILL_SCAN_BYTES:
+        raise ValueError("unknown skill scan budget")
 
     def walk(path, logical, ancestors):
         nonlocal budget, entries
         entries += 1
         if entries > MAX_SKILL_ENTRIES:
             raise ValueError("too many skill entries")
-        resolved = path.resolve(strict=True)
+        try:
+            resolved = path.resolve(strict=True)
+        except FileNotFoundError:
+            # Only a present symlink may represent a missing target. A file
+            # disappearing mid-walk is an unstable scan and must run normally.
+            if not path.is_symlink():
+                raise
+            result[logical] = ["missing_link", os.readlink(path), str(path.resolve())]
+            return
         if not any(resolved.is_relative_to(parent) for parent in allowed):
             raise ValueError("unapproved skill link target")
         info = resolved.stat()
@@ -144,17 +159,25 @@ def _skill_inventory(root: Path, cfg: dict, bytes_used: int) -> dict:
                 raise ValueError("cyclic skill directory")
             result[logical] = [kind, str(resolved), link]
             with os.scandir(resolved) as iterator:
-                names = sorted(entry.name for entry in iterator)
+                names = []
+                for entry in iterator:
+                    names.append(entry.name)
+                    if entries + len(names) > MAX_SKILL_ENTRIES:
+                        raise ValueError("too many skill entries")
+                names.sort()
             for name in names:
                 walk(resolved / name, logical + "/" + name, ancestors | {identity})
         elif stat.S_ISREG(info.st_mode):
-            if info.st_size + budget > MAX_INPUT_BYTES:
+            if info.st_size + budget > scan_limit:
                 raise ValueError("input too large")
-            data = resolved.read_bytes()
-            budget += len(data)
-            if budget > MAX_INPUT_BYTES:
-                raise ValueError("input too large")
-            result[logical] = [kind, str(resolved), link, _hash(data)]
+            digest = hmac.new(_HASH_KEY, digestmod=hashlib.sha256)
+            with resolved.open("rb") as stream:
+                while chunk := stream.read(HASH_CHUNK_BYTES):
+                    budget += len(chunk)
+                    if budget > scan_limit:
+                        raise ValueError("input too large")
+                    digest.update(chunk)
+            result[logical] = [kind, str(resolved), link, digest.hexdigest()]
         else:
             raise ValueError("nonregular skill input")
 
