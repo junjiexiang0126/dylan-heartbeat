@@ -136,7 +136,7 @@ HERMES_REVIEW_TEST_SOURCE=/path/to/isolated/hermes-agent python -m unittest disc
 python -m unittest discover -s hermes_native/tests -v
 ```
 
-新增 GitHub Actions 会执行第一组；其远程结果应以 PR Checks 为准，不能用本地通过替代尚未完成的 CI。原有完整容器准备流程可能在既有四项回归处阻塞。
+新增 GitHub Actions 已在 PR #96 独立跑通第一组：63 项通过（30.971 秒）。完整 PR Checks 仍未全绿，具体远程结果如下。
 
 原生 87 项通过补丁 `install()` 后，在同一 Python 进程调用 `pytest.main`，目标文件为：
 `test_background_review.py`、`test_review_idle_queue.py`、`test_background_review_cost_controls.py`、`test_background_review_usage.py`、`test_background_review_summary.py`、`test_background_review_cache_parity.py`、`test_background_review_toolset_restriction.py`、`test_background_review_tool_call_guard.py`、`test_background_review_input_budget.py`（均在上游 `tests/agent/`）。
@@ -159,3 +159,19 @@ python -m unittest discover -s hermes_native/tests -v
 3. 若源码/路由与本次验证不同，在**该实际源码的隔离副本、测试 home** 上运行相同专项并回传退出码/测试摘要。这不需要重启或修改正在运行的知微。
 
 以上通过、既有安全门回归有明确处置并经过单独部署批准之前，继续保持生产配置原样。
+
+## 8. PR 与远程 CI 实际结果
+
+代码提交：`286db9d6ceb1ddfb205e29621ed4eb1c218b5e89`；后续提交仅补充本报告及 manifest 的远程结果。PR：[\#96](https://github.com/junjiexiang0126/dylan-heartbeat/pull/96)，草稿、未合并；GitHub 确认可无冲突合并，不代表检查通过或获准合并。
+
+| 远程流程 | 实际结果 | 依据 |
+|---|---|---|
+| 新增 Background review dedup acceptance | **SUCCESS：63 项通过**，Ubuntu runner 新装锁定依赖、固定上游源码 | [run 40062530390](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/40062530390) |
+| 原有 Official Hermes preparation | **FAILURE：283 项，4 failures、13 errors、25 skipped**；停止在 Python 测试，未进行容器构建/启动 | [run 40062530345](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/40062530345) |
+| 原有 Ziwei unified regression | **FAILURE：Node 33 项，32 pass、1 fail**；后续步骤跳过 | [run 40062530354](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/40062530354) |
+
+注意区分本地与远程完整回归：GitHub 测试的是与当前 main 的临时合并树，main 比功能分支另有 `def444e`（autonomy_gate 的 chown 修改）；Ubuntu runner 也不是本地 root 环境。远程新增的 13 个 error 都是 `autonomy_gate.py` 的 `os.chown(...,10000,10000)` 在非 root runner 上抛 PermissionError。远程 gate 摘要实际为 `74f0fb62…`，因此不能把远程结果错误写成本地的“仅四项失败”。
+
+Node 失败是 `test/autonomous_integration.test.js` 的 “real gateway and worker wake without Kelivo, persist and inject activity into chat” 等待进程活动约 20 秒超时。该流程、JS 实现及测试均未被本补丁修改；未在其独立基线上复现，故不将其根因或既有性写成已确定结论。
+
+这些失败不是专项验收通过的替代条件，也没有为此改动无关功能。正式部署条件仍为第 7 节所列事项，PR 保持草稿。

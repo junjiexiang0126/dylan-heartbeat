@@ -40,5 +40,30 @@
     "hermes@5894e750/run_agent.py": "8c215df03f32493f72992db0c0ccaddb811436f9025451e3f1e8f535dc9cda5d",
     "hermes@5894e750/agent/background_review.py": "b177b1cfe8b06f9e787e37920fd9a7b023a038ecbac951bde4e81535d88aa4dc",
     "hermes@5894e750/agent/review_idle_queue.py": "d2a62f333ee5e69ec17b50bdd3f66f11ba61a12ba7ba8e1e0a562866450ea32b"
+  },
+  "tested_code_commit": "286db9d6ceb1ddfb205e29621ed4eb1c218b5e89",
+  "pull_request": "https://github.com/junjiexiang0126/dylan-heartbeat/pull/96",
+  "remote_ci": {
+    "dedup_acceptance": {
+      "run_id": 40062530390,
+      "conclusion": "success",
+      "run": 63,
+      "fail": 0
+    },
+    "official_preparation": {
+      "run_id": 40062530345,
+      "conclusion": "failure",
+      "run": 283,
+      "failures": 4,
+      "errors": 13,
+      "skipped": 25
+    },
+    "unified_regression": {
+      "run_id": 40062530354,
+      "conclusion": "failure",
+      "run": 33,
+      "pass": 32,
+      "fail": 1
+    }
   }
 }
