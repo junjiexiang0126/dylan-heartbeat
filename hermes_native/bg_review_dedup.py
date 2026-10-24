@@ -18,6 +18,7 @@ import json
 import logging
 import math
 import os
+import stat
 import threading
 import time
 import uuid
@@ -37,6 +38,7 @@ IN_FLIGHT_TIMEOUT_SECONDS = 30 * 60
 MAX_LANES = 256
 MAX_PENDING_EXPLICIT = 32
 MAX_INPUT_BYTES = 32 * 1024 * 1024
+MAX_SKILL_ENTRIES = 10000
 LOG_NAME = "bg_review_dedup_log.jsonl"
 LOG_ROTATE_BYTES = 5 * 1024 * 1024
 _HASH_KEY = os.urandom(32)  # prevent dictionary attacks on private input hashes
@@ -93,6 +95,77 @@ def _load_task_cfg(br: Any) -> dict:
     return br.load_background_review_settings()[1] or {}
 
 
+def _skill_inventory(root: Path, cfg: dict, bytes_used: int) -> dict:
+    """Hash logical skill paths and content, including explicitly allowed links.
+
+    Ordinary files under <home>/skills are implicitly in scope. External link
+    targets need dedup_skill_link_roots; a link cannot expand that allowlist.
+    All unproven inputs raise to run, including broken links, cycles, special
+    files, unreadable directories and bounds exceeded. No paths are logged.
+    """
+    skills = root / "skills"
+    configured = cfg.get("dedup_skill_link_roots", [])
+    if not isinstance(configured, list) or any(not isinstance(p, str) or not p for p in configured):
+        raise ValueError("unknown skill link policy")
+    allowed = []
+    for raw in configured:
+        path = Path(raw)
+        if not path.is_absolute():
+            raise ValueError("relative skill link root")
+        resolved = path.resolve(strict=True)
+        if not resolved.is_dir():
+            raise ValueError("skill link root is not a directory")
+        # Do not silently authorize all files on the machine via '/'.
+        if resolved == Path(resolved.anchor):
+            raise ValueError("unbounded skill link root")
+        allowed.append(resolved)
+    # A linked skills root itself needs explicit authorization; resolving it
+    # must not implicitly expand the trusted scope to its arbitrary target.
+    if not skills.is_symlink():
+        allowed.append(skills.resolve())
+    result = {}
+    budget = bytes_used
+    entries = 0
+
+    def walk(path, logical, ancestors):
+        nonlocal budget, entries
+        entries += 1
+        if entries > MAX_SKILL_ENTRIES:
+            raise ValueError("too many skill entries")
+        resolved = path.resolve(strict=True)
+        if not any(resolved.is_relative_to(parent) for parent in allowed):
+            raise ValueError("unapproved skill link target")
+        info = resolved.stat()
+        kind = "directory" if stat.S_ISDIR(info.st_mode) else "file"
+        link = os.readlink(path) if path.is_symlink() else None
+        if stat.S_ISDIR(info.st_mode):
+            identity = (info.st_dev, info.st_ino)
+            if identity in ancestors:
+                raise ValueError("cyclic skill directory")
+            result[logical] = [kind, str(resolved), link]
+            with os.scandir(resolved) as iterator:
+                names = sorted(entry.name for entry in iterator)
+            for name in names:
+                walk(resolved / name, logical + "/" + name, ancestors | {identity})
+        elif stat.S_ISREG(info.st_mode):
+            if info.st_size + budget > MAX_INPUT_BYTES:
+                raise ValueError("input too large")
+            data = resolved.read_bytes()
+            budget += len(data)
+            if budget > MAX_INPUT_BYTES:
+                raise ValueError("input too large")
+            result[logical] = [kind, str(resolved), link, _hash(data)]
+        else:
+            raise ValueError("nonregular skill input")
+
+    try:
+        skills.lstat()
+    except FileNotFoundError:
+        return {"skills": None}
+    walk(skills, "skills", set())
+    return result
+
+
 def _fingerprint(agent: Any, messages: list, prompt: str, cfg: dict,
                  review_memory: bool, review_skills: bool) -> tuple[str, str]:
     """Return (profile/session/scope lane, exact input hash), or raise to run.
@@ -110,7 +183,10 @@ def _fingerprint(agent: Any, messages: list, prompt: str, cfg: dict,
         raise ValueError("unknown input shape")
     if cfg.get("extra_tools"):
         raise ValueError("external tool dependencies")
-    if any(cfg.get(k) not in (None, "", "auto") for k in ("provider", "model")):
+    # Both validated Hermes resolvers inherit the parent when provider='main'
+    # and model is unset/empty. A concrete model remains an unproven route.
+    main_alias = cfg.get("provider") == "main" and cfg.get("model") in (None, "")
+    if not main_alias and any(cfg.get(k) not in (None, "", "auto") for k in ("provider", "model")):
         raise ValueError("routed runtime")
     manager = getattr(agent, "_memory_manager", None)
     if manager is not None and getattr(manager, "_has_external", True):
@@ -145,16 +221,6 @@ def _fingerprint(agent: Any, messages: list, prompt: str, cfg: dict,
     # input bypasses optimization, never becomes an equivalent 'missing' value.
     files = {}
     paths = [root / rel for rel in ("memories/MEMORY.md", "memories/USER.md", "config.yaml")]
-    skills = root / "skills"
-    if skills.is_symlink():
-        raise ValueError("linked skill root")
-    if skills.exists():
-        def unreadable(error):
-            raise error
-        for current, dirs, names in os.walk(skills, followlinks=False, onerror=unreadable):
-            if any((Path(current) / d).is_symlink() for d in dirs):
-                raise ValueError("linked skill directory")
-            paths.extend(Path(current) / n for n in names)
     size = 0
     for path in sorted(paths):
         if path.is_symlink() or not path.resolve().is_relative_to(root):
@@ -171,9 +237,10 @@ def _fingerprint(agent: Any, messages: list, prompt: str, cfg: dict,
         if size > MAX_INPUT_BYTES:
             raise ValueError("input too large")
         files[str(path.relative_to(root))] = _hash(data)
+    skill_files = _skill_inventory(root, cfg, size)
     scope = [bool(review_memory), bool(review_skills)]
     lane = _hash(_json([str(root), session, scope]))
-    payload = _json([lane, messages, prompt, cfg, prefix, parent, memory, runtime, files])
+    payload = _json([lane, messages, prompt, cfg, prefix, parent, memory, runtime, files, skill_files])
     if len(payload) > MAX_INPUT_BYTES:
         raise ValueError("snapshot too large")
     return lane, _hash(payload)

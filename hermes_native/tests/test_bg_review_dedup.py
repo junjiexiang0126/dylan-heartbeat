@@ -321,6 +321,94 @@ class Contract(unittest.TestCase):
         self.trigger(); self.trigger()
         self.assertEqual(self.br.calls, 2)
 
+    def test_main_alias_without_model_reuses_completed_input(self):
+        self.br.cfg.update(provider="main", model="")
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 1)
+
+    def test_main_alias_with_concrete_model_is_unproven(self):
+        self.br.cfg.update(provider="main", model="another-model")
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_internal_skill_link_target_content_is_hashed(self):
+        path = self.root / "skills/SKILL.md"
+        (self.root / "skills/alias.md").symlink_to(path)
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 1)
+        before = path.stat()
+        path.write_text("SKILL")  # equal-size edit with the original mtime
+        import os
+        os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+        self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_external_skill_link_needs_explicit_root(self):
+        with tempfile.TemporaryDirectory() as outside:
+            target = Path(outside)
+            (target / "SKILL.md").write_text("linked skill")
+            (self.root / "skills/external").symlink_to(target, target_is_directory=True)
+            self.trigger(); self.trigger()
+            self.assertEqual(self.br.calls, 2)
+
+    def test_authorized_external_link_content_change_is_reviewed(self):
+        with tempfile.TemporaryDirectory() as outside:
+            target = Path(outside)
+            path = target / "SKILL.md"
+            path.write_text("linked skill")
+            (self.root / "skills/external").symlink_to(target, target_is_directory=True)
+            self.br.cfg['dedup_skill_link_roots'] = [str(target)]
+            self.trigger(); self.trigger()
+            self.assertEqual(self.br.calls, 1)
+            path.write_text("LINKED SKILL")
+            self.trigger()
+            self.assertEqual(self.br.calls, 2)
+
+    def test_authorized_link_cannot_escape_to_another_root(self):
+        with tempfile.TemporaryDirectory() as outside:
+            base = Path(outside)
+            allowed = base / "allowed"; allowed.mkdir()
+            other = base / "allowed-sibling"; other.mkdir()
+            (other / "SKILL.md").write_text("outside allowed root")
+            (allowed / "escape").symlink_to(other, target_is_directory=True)
+            (self.root / "skills/external").symlink_to(allowed, target_is_directory=True)
+            self.br.cfg['dedup_skill_link_roots'] = [str(allowed)]
+            self.trigger(); self.trigger()
+            self.assertEqual(self.br.calls, 2)
+
+    def test_broken_skill_link_is_unproven(self):
+        (self.root / "skills/broken").symlink_to(self.root / "skills/missing")
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_cyclic_skill_link_is_unproven(self):
+        (self.root / "skills/cycle").symlink_to(self.root / "skills", target_is_directory=True)
+        self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
+    def test_skill_link_policy_rejects_unknown_or_unbounded_roots(self):
+        for value in ("not-a-list", ["relative/path"], ["/"], [42]):
+            with self.subTest(value=value):
+                self.br.cfg['dedup_skill_link_roots'] = value
+                self.trigger()
+        self.assertEqual(self.br.calls, 4)
+
+    def test_linked_skill_root_itself_needs_explicit_authorization(self):
+        import shutil
+        shutil.rmtree(self.root / "skills")
+        with tempfile.TemporaryDirectory() as outside:
+            target = Path(outside)
+            (target / "SKILL.md").write_text("linked root")
+            (self.root / "skills").symlink_to(target, target_is_directory=True)
+            self.br.cfg['dedup_skill_link_roots'] = [str(target)]
+            self.trigger(); self.trigger()
+            self.assertEqual(self.br.calls, 1)
+
+    def test_skill_inventory_bound_fails_open(self):
+        with mock.patch.object(d, 'MAX_SKILL_ENTRIES', 1):
+            self.trigger(); self.trigger()
+        self.assertEqual(self.br.calls, 2)
+
     def test_routed_and_extra_tools_are_unproven(self):
         for cfg in ({"model": "other"}, {"extra_tools": ["external"]}):
             self.br.cfg = {"dedup_enabled": True, **cfg}

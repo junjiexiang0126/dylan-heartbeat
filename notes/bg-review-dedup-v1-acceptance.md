@@ -31,7 +31,7 @@
 
 Hermes 会在 fork 内归一化、合并对话快照；补丁保留审查开始前的独立副本用于完成校验。不会把这些原地变更误当作新的审查输入，也不会修改主聊天历史。
 
-以下情况不能证明等价，正常运行：未知/不可序列化输入、无法读取的文件或目录、技能软链接、超过 32 MiB 的输入、外部或未知记忆管理器、动态凭证池、尚未验证的后端、显式配置的辅助模型/路由、额外工具、尚未生成缓存系统提示等。
+以下情况不能证明等价，正常运行：未知/不可序列化输入、无法读取的文件或目录、未授权/失效/越界/循环的技能软链接、超过 32 MiB 的输入、外部或未知记忆管理器、动态凭证池、尚未验证的后端、显式配置的辅助模型/路由、额外工具、尚未生成缓存系统提示等。
 
 **只有已完整完成、未取消、未报错、无新增工具调用、实际用量为一次 API 调用、结果为 `none`，且审查前后相关状态相同的结果，才允许复用。**
 
@@ -59,26 +59,26 @@ Hermes 会在 fork 内归一化、合并对话快照；补丁保留审查开始�
 
 | 测试 | 实际结果 | 证据 |
 |---|---:|---|
-| 本次专项：50 项单元 + 20 项原生 HTTP 集成 | **70 通过，0 失败** | `bg-review-dedup-evidence/dedup-final.log` |
+| 本次专项：61 项单元 + 21 项原生 HTTP 集成 | **82 通过，0 失败** | `bg-review-dedup-evidence/dedup-final.log` |
+| VPS 三个核心文件匹配版本 b1a39a1b 专项 | **82 通过，0 失败** | `bg-review-dedup-evidence/vps-adapted-tests.log` |
 | 安装最终补丁后的 Hermes 原生相关回归 | **87 通过，0 失败** | `bg-review-dedup-evidence/upstream-overlay-tests.log` |
-| 本仓库完整 Python 回归 | **290 执行：260 通过、4 失败、26 跳过** | `bg-review-dedup-evidence/native-tests-final.log` |
-| 未修改 f8edcc0 的独立 detached checkout 完整回归 | **241 执行：231 通过、相同 4 失败、6 跳过** | `bg-review-dedup-evidence/native-tests-original.log` |
+| 本仓库完整 Python 回归 | **302 执行：272 通过、3 失败、27 跳过** | `bg-review-dedup-evidence/native-tests-final.log` |
+| 未修改 f8edcc0 的独立 detached checkout 完整回归 | **241 执行：231 通过、4 失败、6 跳过** | `bg-review-dedup-evidence/native-tests-original.log` |
 | 语法编译、git diff --check | 通过 | 本地实际执行；代码/上游源码摘要在 manifest |
 
-26 个跳过包括：20 项需要显式提供 Hermes 源码的集成测试（已在单独专项运行中实际通过），以及基线上原有的 6 项环境条件跳过。不能把跳过算作通过，也不能把完整仓库说成全绿。
+27 个跳过包括：21 项需要显式提供 Hermes 源码的集成测试（已在单独专项运行中实际通过），以及基线上原有的 6 项环境条件跳过。不能把跳过算作通过，也不能把完整仓库说成全绿。
 
-四项基线既有失败：
+本轮三项失败（均在原始基线失败名单内）：
 
 1. `test_gate_handoff.HandoffGateTests.test_cap_block_notifies_once_and_does_not_increment_counter`
 2. `test_gate_handoff.HandoffGateTests.test_notice_same_reason_is_throttled_but_different_reason_is_delivered`
-3. `test_github_app.TokenCacheTests.test_refreshes_when_expiring_soon`
-4. `test_preflight_upgrade.UpgradeTests.test_reviewed_image_hash_matches_the_shipped_gate`：声明的审查 gate 摘要 `7a990621…` 与实际 `be60b597…` 不一致。
+3. `test_preflight_upgrade.UpgradeTests.test_reviewed_image_hash_matches_the_shipped_gate`：声明的审查 gate 摘要 `7a990621…` 与实际 `be60b597…` 不一致。
 
-没有为让报表全绿修改这些无关功能或安全门。它们仍需主线负责人处置。
+原始基线还曾失败的 `TokenCacheTests.test_refreshes_when_expiring_soon` 本轮通过；未修改该功能，不能声称已修复其不稳定性。没有为让报表全绿修改这些无关功能或安全门。剩余失败仍需主线负责人处置。
 
 ### 原生集成的真实性与边界
 
-20 项测试导入完整 `run_agent.AIAgent`，使用临时 HERMES_HOME、实际文件配置、原生队列/运行令牌/Thread/Context 传播、真实 review fork、真实会话循环、SDK 和 loopback HTTP 服务。实际通过 memory 工具写入测试记忆，通过 skill_manage 在测试目录创建技能。
+21 项测试导入完整 `run_agent.AIAgent`，使用临时 HERMES_HOME、实际文件配置、原生队列/运行令牌/Thread/Context 传播、真实 review fork、真实会话循环、SDK 和 loopback HTTP 服务。实际通过 memory 工具写入测试记忆，通过 skill_manage 在测试目录创建技能。
 
 本地 HTTP 服务提供固定的 OpenAI 兼容响应，**不是付费模型、不是生产 Gateway/PWA 端到端或生产数据验收**。parent 进程禁止非 loopback socket；重启子进程仅提供隔离配置与本地测试凭证。没有真实 DeepSeek/OpenAI/其他厂商账单调用。
 
@@ -104,6 +104,7 @@ HTTP 超时测试确实让本地响应慢于配置的请求超时；为控制验
 | 自动运行中排入两条显式请求，再发一次显式 | 总共 4 次请求，focus 顺序断言通过 | 没丢 /refine、没替换当前令牌 |
 | 401 三次失败、冷却中重触发、恢复探测 | 总共 4 次请求 | 失败限流与恢复有效 |
 | 超时后恢复，再重复 | 总共 2 次请求 | 超时结果没有冒充成功缓存 |
+| main/空 model + 授权技能链接 | 重复两次 → 1 请求；目标等长改写且恢复 mtime → 新增 1 请求 | 内容变更不被跳过 |
 | 两个独立进程 | 各 1 次，共 2 次请求 | 重启冷启动 |
 
 **仅在这个重复 no-op fixture 中，请求由 2 减到 1（50%）；不能外推日常总费用减少 50%。**
@@ -113,18 +114,21 @@ HTTP 超时测试确实让本地响应慢于配置的请求超时；为控制验
 
 | 文件 | 原因 |
 |---|---|
-| `hermes_native/bg_review_dedup.py` | worker 级安全去重、完整输入摘要、owned tickets、失败冷却、显式 FIFO、隐私日志 |
-| `hermes_native/tests/test_bg_review_dedup.py` | 50 项行为/故障/所有权单元测试，替换旧实现结构测试 |
-| `hermes_native/tests/test_bg_review_dedup_integration.py` | 20 项真实 Hermes + HTTP/文件/线程/独立进程验收 |
+| `hermes_native/bg_review_dedup.py` | worker 级安全去重、完整输入摘要、owned tickets、失败冷却、显式 FIFO、隐私日志；main 别名与受限技能链接兼容 |
+| `hermes_native/tests/test_bg_review_dedup.py` | 61 项行为/故障/所有权单元测试，替换旧实现结构测试 |
+| `hermes_native/tests/test_bg_review_dedup_integration.py` | 21 项真实 Hermes + HTTP/文件/线程/独立进程验收 |
 | `hermes_native/tests/bg_review_integration_requirements.txt` | 锁定本次已跑通的隔离 Python 测试依赖；不安装到生产 |
-| `.github/workflows/bg-review-dedup.yml` | 固定上游 SHA，自动执行专项隔离验收；只读权限、无部署 |
+| `.github/workflows/bg-review-dedup.yml` | 固定两个上游 SHA（含 VPS 核心匹配版），自动执行专项隔离验收；只读权限、无部署 |
 | `hermes_native/web_bridge.py` | 仅更新安装点说明注释；安装入口与路由未变 |
 | `notes/bg-review-dedup-v1-acceptance.md` | 本报告 |
-| `notes/bg-review-dedup-evidence/dedup-final.log` | 70 项专项输出与真实 HTTP 请求计数 |
+| `notes/bg-review-dedup-evidence/dedup-final.log` | 82 项专项输出与真实 HTTP 请求计数 |
 | `notes/bg-review-dedup-evidence/upstream-overlay-tests.log` | 87 项已安装补丁的原生回归输出 |
 | `notes/bg-review-dedup-evidence/native-tests-original.log` | 原提交完整回归，对照既有失败 |
 | `notes/bg-review-dedup-evidence/native-tests-final.log` | 最终完整仓库回归 |
 | `notes/bg-review-dedup-evidence/single-run-before-fix.log` | 在旧版 69a9838 上复现重复执行的 6 个回归用例输出 |
+| `notes/bg-review-dedup-evidence/vps-source-match.json` | VPS 报告的三个核心文件匹配依据、适配前后适用性边界 |
+| `notes/bg-review-dedup-evidence/vps-matched-integration.log` | 适配前 70 项的匹配源码测试历史 |
+| `notes/bg-review-dedup-evidence/vps-adapted-tests.log` | 适配后 82 项的匹配源码测试 |
 | `notes/bg-review-dedup-evidence/manifest.json` | 测试环境、源文件与证据文件 SHA256 |
 
 ## 6. 复跑
@@ -137,7 +141,7 @@ HERMES_REVIEW_TEST_SOURCE=/path/to/isolated/hermes-agent python -m unittest disc
 python -m unittest discover -s hermes_native/tests -v
 ```
 
-上一轮 GitHub Actions 曾通过 63 项（见第 8 节历史记录）；本轮新增异常回归后的 70 项已在本地通过，远程结果另记第 9 节。
+前两轮分别为 63、70 项（历史见第 8、9 节）；本轮 82 项已在两套源码上分别通过，远程矩阵验收另记第 11 节。
 
 原生 87 项通过补丁 `install()` 后，在同一 Python 进程调用 `pytest.main`，目标文件为：
 `test_background_review.py`、`test_review_idle_queue.py`、`test_background_review_cost_controls.py`、`test_background_review_usage.py`、`test_background_review_summary.py`、`test_background_review_cache_parity.py`、`test_background_review_toolset_restriction.py`、`test_background_review_tool_call_guard.py`、`test_background_review_input_budget.py`（均在上游 `tests/agent/`）。
@@ -146,18 +150,18 @@ python -m unittest discover -s hermes_native/tests -v
 
 开发分支修复及上述隔离验收已完成。**尚不满足直接开启正式环境去重的条件**：
 
-- 没有正式 VPS 权限，未核实其实际 Hermes SHA 或本地补丁是否等于本次隔离源。Dockerfile 的镜像 digest 不是运行中代码身份的充分证据。
-- 完整仓库仍有基线既有四项失败，包括安全门摘要不一致。PR 保持待审核，不合并 main。
-- 显式辅助模型/路由、外部记忆、额外工具、软链接技能等会保守放行；若生产使用这些配置，当前去重节省可能为零，审查仍执行。必须核实适用性，不能仅看开关已开启。
+- 已据用户的只读报告匹配三个核心文件并完成隔离验收；仍未识别生产整个源码树、其他插件/依赖和运行时状态。镜像 digest 不能代替源码身份。
+- 完整仓库本轮仍有三项失败（均在基线失败名单内），包括安全门摘要不一致。PR 保持待审核，不合并 main。
+- main/空 model 已适配；外部技能链接须在 background_review.dedup_skill_link_roots 明确授权目标根目录。外部记忆、动态凭证池、未知路由、额外工具或未授权链接仍保守放行，节省可能为零。未修改生产配置或链接。
 - 完成缓存和显式 FIFO 均为进程内 best effort。重启后缓存丢弃并重新审查；尚未派发的请求不具备磁盘持久化恢复保证。32 条显式等待上限会明确报错。
 - 没有强杀原生卡死线程；等待中的显式请求可能受其影响。自动 busy admission、原生取消/重排策略继续由 Hermes 负责。
 - 未覆盖生产多进程协调、iPhone/PWA 端到端或真实付费模型质量/计费；本补丁没有承诺跨进程去重。保守放行会影响节省率，不影响必要审查执行。
 
-真正需要 VPS 助手提供的最小只读证据（无需重发已确认的队列结论或私人记录）：
+已收到核心文件哈希和磁盘脱敏配置，不需重复采集。仍需 VPS 助手提供的最小证据：
 
-1. 运行中 Hermes 源码 SHA（若无 .git 则版本标识），以及 `run_agent.py`、`agent/background_review.py`、`agent/review_idle_queue.py` 的 SHA256，用来识别本地修改。
-2. 去密钥的有效配置：background_review 的 enabled/dedup_enabled/provider/model/defer/extra_tools 是否非空；主模型 API 模式；是否外部记忆、动态凭证池或技能软链接。不要提供配置全文、环境变量值或对话/记忆内容。
-3. 若源码/路由与本次验证不同，在**该实际源码的隔离副本、测试 home** 上运行相同专项并回传退出码/测试摘要。这不需要重启或修改正在运行的知微。
+1. 仅返回布尔值/类型名，确认实际运行 Agent 的外部记忆是否激活、动态凭证池是否激活、实际 HTTP 模式。通过现有只读诊断取得；若无法在不打扰运行进程的条件下获取，明确标记未知，不注入代码、不重启。
+2. 后续若授权开启链接指纹，仅核实链接解析后的目标根目录、是否存在/可读、是否存在越界或失效链接；不要输出技能正文。生产报告含 node_modules 的链接，全部纳入时可能超过边界，届时正常审查但没有缓存命中。
+3. 正式激活前，由获准的部署流程在与生产其余依赖一致的**隔离副本和测试 home** 复跑专项；不使用长期记忆、私人对话或真实凭证。完整源码树若与官方副本不同，需指出相关补丁身份。
 
 以上通过、既有安全门回归有明确处置并经过单独部署批准之前，继续保持生产配置原样。
 
@@ -188,3 +192,46 @@ Node 失败是 `test/autonomous_integration.test.js` 的 “real gateway and wor
 新增原生测试 `test_20_native_startup_exception_is_never_reexecuted` 使用真实工厂、真实 native run，分别对显式/关闭/开启去重注入原生 startup 异常，断言原生 startup 调用一次、异常原样抛出、只清理自己的令牌；此故障发生在 HTTP 请求前，实际请求数为 0。
 
 当前专项 **70/70（50 单元 + 20 原生集成）**，安装补丁后的上游回归 **87/87**；完整本地回归 **290 执行、260 pass、4 fail、26 skip**，四项失败名单与原始基线相同。第 8 节的旧版 63 项远程通过不能代替本轮远程验收，最新代码提交及 CI 以 PR #96 的后续记录为准。生产边界与第 7 节的部署限制保持有效。
+
+## 10. VPS 证据核对与匹配源码的增量验收
+
+来源：用户转交 VPS 助手的只读报告，Work 未直连生产。用户提供的三个文件 SHA256 与最初测试的 `5894e750…` 均不同。随后从项目已有旧锁定版本的官方 Git 历史追溯，发现官方提交 **`b1a39a1b1bf135091ff3fd0020002bba35a9d456`** 下三个文件全部逐字节匹配 VPS 报告：
+
+| 文件 | VPS 报告与该官方版本共同的 SHA256 |
+|---|---|
+| run_agent.py | `73efa221f42be96a41a6b8a1ee144caf47041e06f5c7d32b3bbd898d8dc250b2` |
+| agent/background_review.py | `53d91d369762c9c4c66b63c43a53684a79226846475eaa155dcd4ef175c32f12` |
+| agent/review_idle_queue.py | `88d1d41ce95cbd6a282fa7e4ec5f22956742a9c53fdde8aa46989496eb872021` |
+
+这只证明这三个核心文件匹配；不能把整个运行中的 Hermes Git SHA 判定为 b1a39a1b，也不能通过时间戳证明其他文件未改动。无需再次要求用户导出这三个源码文件。
+
+Work 在该官方提交的独立 detached worktree 上、使用测试 home 和 loopback provider，对适配前的 `1d792ee` 代码实际复跑：**70/70 通过，含 20 项原生集成，21.268 秒**。测试没有使用生产配置、外部记忆、真实模型或生产数据；其意义是补上核心源码版本的兼容性证据，不能证明生产配置具有节流收益。证据：`vps-matched-integration.log`、`vps-source-match.json`。
+
+适配前版本的生产适用性有两个确定阻塞：
+
+1. 报告中的 `background_review.provider: main`、空 model，在匹配的 Hermes 原生 resolver 中走主模型；但该版 V1 指纹 guard 只接受空/auto，因而会保守放行。按该配置启用 V1 也不会使用完成缓存。
+2. 报告中的 skills 含软链接。该版 V1 明确检测链接并保守放行，并非 rglob 忽略目标内容后仍错误判断重复。它避免了错误跳过，但同样没有节流收益。
+
+分别在适配前本地行为测试夹具中验证上述两种条件：两次触发都调用两次模拟 API，日志原因均为 `unproven_input`。这只是 guard 行为验证，不是生产 API 实测。
+
+生产 provider 和现有技能链接保持不动；后续开发适配及测试结果见第 11 节。
+
+报告中另有三处需要保留不确定性：
+- YAML 无 RetainDB 段不能证明外部记忆未启用；插件文件或 SOUL 种子机制存在也不能证明服务已启用。
+- YAML 无 credential_pool/pool 段不能证明运行时没有凭证池，应记为“配置未见，运行态未确认”。
+- 磁盘 `api_mode: ''` 不能直接当成进程实际 HTTP 模式；仍需区分配置和运行态。
+
+工具延迟加载的 defer 列表已正确与 background_review.defer 区分。V1 尚未部署时，21600 等数值仅是待部署补丁的默认值，不能声称生产已加载这些 V1 设置。
+
+**第 10 节结论对应适配前 1d792ee；第 11 节记录本轮修复。两个版本均未部署，均不能承诺生产费用节省。**
+
+
+## 11. main 别名与技能链接的最终开发适配
+
+逐项核对两套官方源码的原生 resolver：`provider: main` 且 model 为空/未设时继承 parent。本轮允许这一个明确等价的别名；main 搭配具体 model 仍放行，不猜测路由。父 Agent 的路由、请求参数和凭证池 guard 继续生效。
+
+新增仅用于去重的配置 `background_review.dedup_skill_link_roots`，必须为绝对、存在的目录列表；默认空。普通 skills 内部链接可覆盖，外部链接只有解析后目标位于明确允许根目录内才纳入。根目录 `/`、相对路径、失效链接、目录循环、嵌套越界、不可读取和特殊文件均放行。技能根本身是链接时也须明确允许。递归覆盖逻辑路径、目标身份与全部文件内容 HMAC，限制总输入 32 MiB、技能项 10000；不记录真实路径或正文。完成时重新计算输入，变化不缓存。本轮没有向生产写入任何允许根目录。
+
+新增 11 项单元回归与 1 项原生 HTTP 集成：原生 `main`/空 model + 临时目录中的授权技能链接，两次重复只收到一次 HTTP；随后将链接目标改成等长内容并恢复 mtime，第三次收到第二次 HTTP。证明确实减少相同 no-op 调用，同时新技能内容不会被跳过。总计 61 单元 + 21 原生测试，在 5894e750 与三个生产核心文件匹配的 b1a39a1b 上均 **82/82 通过**。安装补丁后的上游相关回归 **87/87**；本仓库完整回归 **302 执行，272 pass、3 fail、27 skip**，详见第 3 节。
+
+GitHub Actions 已改为固定两套源码的矩阵验收；最终远程结果补录于本节。真实模型费用、生产命中率和日/月节省仍无实测，不能外推 loopback fixture 的 50%。生产仍未部署、未启用去重；外部记忆与凭证池运行态、其他依赖与全量回归失败尚未关闭，**不满足直接开启生产去重的条件**。

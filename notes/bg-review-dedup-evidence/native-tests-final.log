@@ -11,10 +11,14 @@ test_malformed_task_shape_fails_closed (test_autonomy_gate.GateTests.test_malfor
 test_missing_or_unscoped_evidence_is_flagged_without_blocking_wake (test_autonomy_gate.GateTests.test_missing_or_unscoped_evidence_is_flagged_without_blocking_wake) ... ok
 test_waiting_front_is_valid_but_not_runnable (test_autonomy_gate.GateTests.test_waiting_front_is_valid_but_not_runnable) ... ok
 test_audit_contains_no_private_text (test_bg_review_dedup.Contract.test_audit_contains_no_private_text) ... ok
+test_authorized_external_link_content_change_is_reviewed (test_bg_review_dedup.Contract.test_authorized_external_link_content_change_is_reviewed) ... ok
+test_authorized_link_cannot_escape_to_another_root (test_bg_review_dedup.Contract.test_authorized_link_cannot_escape_to_another_root) ... ok
+test_broken_skill_link_is_unproven (test_bg_review_dedup.Contract.test_broken_skill_link_is_unproven) ... ok
 test_cancelled_run_never_cached (test_bg_review_dedup.Contract.test_cancelled_run_never_cached) ... ok
 test_changed_input_recovers_without_cooldown (test_bg_review_dedup.Contract.test_changed_input_recovers_without_cooldown) ... ok
 test_completed_identical_input_skips_api (test_bg_review_dedup.Contract.test_completed_identical_input_skips_api) ... ok
 test_config_and_prefix_changes_run (test_bg_review_dedup.Contract.test_config_and_prefix_changes_run) ... ok
+test_cyclic_skill_link_is_unproven (test_bg_review_dedup.Contract.test_cyclic_skill_link_is_unproven) ... ok
 test_default_target_error_runs_once (test_bg_review_dedup.Contract.test_default_target_error_runs_once) ... ok
 test_disable_between_factory_and_worker (test_bg_review_dedup.Contract.test_disable_between_factory_and_worker) ... ok
 test_disabled_and_default_are_compatible (test_bg_review_dedup.Contract.test_disabled_and_default_are_compatible) ... ok
@@ -22,6 +26,7 @@ test_disabled_target_error_runs_once (test_bg_review_dedup.Contract.test_disable
 test_explicit_always_bypasses_cache (test_bg_review_dedup.Contract.test_explicit_always_bypasses_cache) ... ok
 test_explicit_target_error_runs_once (test_bg_review_dedup.Contract.test_explicit_target_error_runs_once) ... ok
 test_external_memory_is_unproven (test_bg_review_dedup.Contract.test_external_memory_is_unproven) ... ok
+test_external_skill_link_needs_explicit_root (test_bg_review_dedup.Contract.test_external_skill_link_needs_explicit_root) ... ok
 test_failure_cooldown_then_recovery (test_bg_review_dedup.Contract.test_failure_cooldown_then_recovery) ... ok
 test_force_interval_requires_real_review (test_bg_review_dedup.Contract.test_force_interval_requires_real_review) ... ok
 test_force_interval_validation (test_bg_review_dedup.Contract.test_force_interval_validation) ... ok
@@ -29,7 +34,11 @@ test_idempotent_install (test_bg_review_dedup.Contract.test_idempotent_install) 
 test_incompatible_hermes_is_unchanged (test_bg_review_dedup.Contract.test_incompatible_hermes_is_unchanged) ... ok
 test_inherited_collector_cannot_capture_explicit_or_disabled_run (test_bg_review_dedup.Contract.test_inherited_collector_cannot_capture_explicit_or_disabled_run) ... ok
 test_interleaved_explicit_cannot_settle_other_ticket (test_bg_review_dedup.Contract.test_interleaved_explicit_cannot_settle_other_ticket) ... ok
+test_internal_skill_link_target_content_is_hashed (test_bg_review_dedup.Contract.test_internal_skill_link_target_content_is_hashed) ... ok
+test_linked_skill_root_itself_needs_explicit_authorization (test_bg_review_dedup.Contract.test_linked_skill_root_itself_needs_explicit_authorization) ... ok
 test_log_failure_does_not_run_target_twice (test_bg_review_dedup.Contract.test_log_failure_does_not_run_target_twice) ... ok
+test_main_alias_with_concrete_model_is_unproven (test_bg_review_dedup.Contract.test_main_alias_with_concrete_model_is_unproven) ... ok
+test_main_alias_without_model_reuses_completed_input (test_bg_review_dedup.Contract.test_main_alias_without_model_reuses_completed_input) ... ok
 test_memory_change_even_equal_size_runs (test_bg_review_dedup.Contract.test_memory_change_even_equal_size_runs) ... ok
 test_memory_skill_combined_are_distinct (test_bg_review_dedup.Contract.test_memory_skill_combined_are_distinct) ... ok
 test_multicall_not_cached (test_bg_review_dedup.Contract.test_multicall_not_cached) ... ok
@@ -44,6 +53,8 @@ test_profile_isolation (test_bg_review_dedup.Contract.test_profile_isolation) ..
 test_review_write_not_absorbed (test_bg_review_dedup.Contract.test_review_write_not_absorbed) ... ok
 test_routed_and_extra_tools_are_unproven (test_bg_review_dedup.Contract.test_routed_and_extra_tools_are_unproven) ... ok
 test_scope_flags_can_be_positional (test_bg_review_dedup.Contract.test_scope_flags_can_be_positional) ... ok
+test_skill_inventory_bound_fails_open (test_bg_review_dedup.Contract.test_skill_inventory_bound_fails_open) ... ok
+test_skill_link_policy_rejects_unknown_or_unbounded_roots (test_bg_review_dedup.Contract.test_skill_link_policy_rejects_unknown_or_unbounded_roots) ... ok
 test_skill_reference_change_runs (test_bg_review_dedup.Contract.test_skill_reference_change_runs) ... ok
 test_symlink_input_is_fail_open (test_bg_review_dedup.Contract.test_symlink_input_is_fail_open) ... ok
 test_tool_read_cannot_be_cached (test_bg_review_dedup.Contract.test_tool_read_cannot_be_cached) ... ok
@@ -80,6 +91,7 @@ test_17_native_failed_retries_cool_down_and_recover (test_bg_review_dedup_integr
 test_18_busy_explicit_queue_works_with_dedup_disabled (test_bg_review_dedup_integration.NativeHTTPIntegration.test_18_busy_explicit_queue_works_with_dedup_disabled) ... skipped 'set HERMES_REVIEW_TEST_SOURCE for native integration'
 test_19_real_process_restart_is_cold_and_reviews_again (test_bg_review_dedup_integration.NativeHTTPIntegration.test_19_real_process_restart_is_cold_and_reviews_again) ... skipped 'set HERMES_REVIEW_TEST_SOURCE for native integration'
 test_20_native_startup_exception_is_never_reexecuted (test_bg_review_dedup_integration.NativeHTTPIntegration.test_20_native_startup_exception_is_never_reexecuted) ... skipped 'set HERMES_REVIEW_TEST_SOURCE for native integration'
+test_21_main_alias_and_authorized_skill_link_use_exact_inputs (test_bg_review_dedup_integration.NativeHTTPIntegration.test_21_main_alias_and_authorized_skill_link_use_exact_inputs) ... skipped 'set HERMES_REVIEW_TEST_SOURCE for native integration'
 test_default_terminal_cwd_uses_literal_persistent_absolute_path (test_bootstrap_seed.SeedTests.test_default_terminal_cwd_uses_literal_persistent_absolute_path) ... ok
 test_existing_private_config_and_reviewed_script_survive_seed (test_bootstrap_seed.SeedTests.test_existing_private_config_and_reviewed_script_survive_seed) ... ok
 test_symlinked_script_directory_refused (test_bootstrap_seed.SeedTests.test_symlinked_script_directory_refused) ... ok
@@ -161,7 +173,7 @@ test_no_credentials_raises (test_github_app.ResolveTests.test_no_credentials_rai
 test_prefers_app_token (test_github_app.ResolveTests.test_prefers_app_token) ... ok
 test_caches_until_near_expiry (test_github_app.TokenCacheTests.test_caches_until_near_expiry) ... ok
 test_force_refresh (test_github_app.TokenCacheTests.test_force_refresh) ... ok
-test_refreshes_when_expiring_soon (test_github_app.TokenCacheTests.test_refreshes_when_expiring_soon) ... FAIL
+test_refreshes_when_expiring_soon (test_github_app.TokenCacheTests.test_refreshes_when_expiring_soon) ... ok
 test_cursor_reaches_more_than_fifty_and_new_insert_does_not_duplicate (test_impressions.ImpressionsTests.test_cursor_reaches_more_than_fifty_and_new_insert_does_not_duplicate) ... ok
 test_deferred_tool_and_incomplete_run (test_impressions.ImpressionsTests.test_deferred_tool_and_incomplete_run) ... ok
 test_failures_pending_and_unknown_never_become_success (test_impressions.ImpressionsTests.test_failures_pending_and_unknown_never_become_success) ... ok
@@ -315,14 +327,6 @@ Traceback (most recent call last):
 AssertionError: 3 != 2
 
 ======================================================================
-FAIL: test_refreshes_when_expiring_soon (test_github_app.TokenCacheTests.test_refreshes_when_expiring_soon)
-----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "<repo>/hermes_native/tests/test_github_app.py", line 127, in test_refreshes_when_expiring_soon
-    self.assertEqual(len(self.calls), 2)
-AssertionError: 1 != 2
-
-======================================================================
 FAIL: test_reviewed_image_hash_matches_the_shipped_gate (test_preflight_upgrade.UpgradeTests.test_reviewed_image_hash_matches_the_shipped_gate)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
@@ -334,6 +338,6 @@ AssertionError: '7a990621de0001deedd05b932028205c56a37f99060fc152fdc22dc9a976d83
 
 
 ----------------------------------------------------------------------
-Ran 290 tests in 2.829s
+Ran 302 tests in 2.450s
 
-FAILED (failures=4, skipped=26)
+FAILED (failures=3, skipped=27)

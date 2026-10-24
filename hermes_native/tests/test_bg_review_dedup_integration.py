@@ -145,10 +145,12 @@ class NativeHTTPIntegration(unittest.TestCase):
     def tearDown(self):
         self.http_counts.append({"test": self._testMethodName, "chat_requests": len(self.requests)})
 
-    def write_config(self, enabled, review_enabled=True, request_timeout=120):
+    def write_config(self, enabled, review_enabled=True, request_timeout=120, review_options=None):
         # JSON is valid YAML; native config loaders read this real isolated file.
+        review = {"enabled": review_enabled, "dedup_enabled": enabled, "defer": "never"}
+        review.update(review_options or {})
         (self.home / "config.yaml").write_text(json.dumps({
-            "auxiliary": {"background_review": {"enabled": review_enabled, "dedup_enabled": enabled, "defer": "never"}},
+            "auxiliary": {"background_review": review},
             "providers": {"custom": {"request_timeout_seconds": request_timeout}},
             "terminal": {"cwd": str(self.home)}, "memory": {"memory_enabled": True, "user_profile_enabled": True}}))
 
@@ -356,6 +358,28 @@ class NativeHTTPIntegration(unittest.TestCase):
         self.release.set()
         self.wait_workers()
         self.assertEqual(len(self.requests), 2)
+
+    def test_21_main_alias_and_authorized_skill_link_use_exact_inputs(self):
+        with tempfile.TemporaryDirectory(prefix="external-skill-root-") as outside:
+            target = Path(outside)
+            path = target / "SKILL.md"
+            path.write_text("---\nname: isolated-linked-skill\ndescription: Isolated skill\n---\n# Old skill\n")
+            link = self.home / "skills/isolated-linked-skill"
+            link.parent.mkdir(exist_ok=True)
+            link.symlink_to(target, target_is_directory=True)
+            try:
+                self.write_config(True, review_options={"provider": "main", "model": "",
+                                                       "dedup_skill_link_roots": [str(target)]})
+                self.trigger(review_skills=True)
+                self.trigger(review_skills=True)
+                self.assertEqual(len(self.requests), 1)
+                before = path.stat()
+                path.write_text(path.read_text().replace("Old", "New"))
+                os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+                self.trigger(review_skills=True)
+                self.assertEqual(len(self.requests), 2)
+            finally:
+                link.unlink()
 
     def test_20_native_startup_exception_is_never_reexecuted(self):
         for enabled, explicit in ((True, True), (False, False), (True, False)):

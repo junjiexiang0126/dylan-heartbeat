@@ -14,12 +14,18 @@ jobs:
   isolated-native-http:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        hermes_sha:
+          - 5894e750c3dba980d43b25aa29e3958149ba2c61
+          - b1a39a1b1bf135091ff3fd0020002bba35a9d456
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
           repository: NousResearch/hermes-agent
-          ref: 5894e750c3dba980d43b25aa29e3958149ba2c61
+          ref: ${{ matrix.hermes_sha }}
           path: .native-hermes-test-source
       - uses: actions/setup-python@v5
         with:
