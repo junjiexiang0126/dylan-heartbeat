@@ -64,7 +64,11 @@
     "hermes_native/autonomy_gate.py": "74f0fb6211a9aa4d65b3a4d9593945bcc6871e883fe5389bb7afc4dd5c84c823",
     "hermes_native/tests/test_github_app.py": "c6e74f1b860ec53a141e3f72208d7e0839cecbba61c7f749532453661b60b124",
     "notes/bg-review-dedup-evidence/stream-scan-benchmark.json": "de0b995d8fdbc21608c92eca1ffc5b3906479ae6a2a4ab24c80326fcf5770e4f",
-    "notes/bg-review-dedup-evidence/full-python-stream.log": "56615a70b8d752078361a8a38c3e919dc0e5e3b09bd2223a7815e5e64a5d0473"
+    "notes/bg-review-dedup-evidence/full-python-stream.log": "56615a70b8d752078361a8a38c3e919dc0e5e3b09bd2223a7815e5e64a5d0473",
+    ".github/workflows/hermes-native.yml": "55fe28a4eab8bb0785781392812d3633acdcf5b383d87ad7f6b1935297044aec",
+    "notes/bg-review-dedup-evidence/remote-ci-fbaa280.json": "6ace92a5e45e442c2b282f1b03c45fb835a3af5aa4ca8cf74ed9bcf9669af2f8",
+    "notes/bg-review-dedup-final-handoff.md": "3f97c67be4c6fc8bb1ba459e788c44b2f5b68c1087dc2d20e424ba93a35bb3d5",
+    "notes/bg-review-dedup-v1-acceptance.md": "81fbde6df66199d0a46b273b015dd78018fac5d8093ab230b508a3b862a28f23"
   },
   "pull_request": "https://github.com/junjiexiang0126/dylan-heartbeat/pull/96",
   "previous_tested_code_commit": "85c5495d63408972f803535f6fce37168f147734",
@@ -169,5 +173,72 @@
       "pass": 32,
       "fail": 1
     }
+  },
+  "tested_code_commit": "fbaa280592639a92e4b4b56a2aac124535750504",
+  "implementation_commit": "3795d94ead01d310f4c679abf260096b25eaf43c",
+  "remote_ci": {
+    "tested_commit": "fbaa280592639a92e4b4b56a2aac124535750504",
+    "implementation_commit": "3795d94ead01d310f4c679abf260096b25eaf43c",
+    "dedup": {
+      "run_id": 40102613528,
+      "conclusion": "success",
+      "jobs": [
+        {
+          "job_id": 120897683983,
+          "hermes_sha": "b1a39a1b1bf135091ff3fd0020002bba35a9d456",
+          "pass": 87,
+          "fail": 0,
+          "seconds": 23.681
+        },
+        {
+          "job_id": 120897685158,
+          "hermes_sha": "5894e750c3dba980d43b25aa29e3958149ba2c61",
+          "pass": 87,
+          "fail": 0,
+          "seconds": 36.13
+        }
+      ]
+    },
+    "unified": {
+      "run_id": 40102613667,
+      "job_id": 120897684762,
+      "conclusion": "success",
+      "node": {
+        "pass": 33,
+        "fail": 0
+      },
+      "python": {
+        "run": 311,
+        "pass": 283,
+        "fail": 0,
+        "skip": 28
+      },
+      "prototype": {
+        "pass": 52,
+        "fail": 0
+      }
+    },
+    "official": {
+      "run_id": 40102613511,
+      "job_id": 120897683894,
+      "conclusion": "success",
+      "base_image": "nousresearch/hermes-agent@sha256:9774f4f39a9bb8c2f68ce728ed5e99ddbad282163be56764afacf88ed952b784",
+      "image_build": "pass",
+      "image_native_dedup": {
+        "pass": 87,
+        "fail": 0,
+        "seconds": 28.731,
+        "network": "none",
+        "production_volumes": false
+      },
+      "gateway_auth_health": "pass",
+      "gateway_restart": "pass",
+      "guardian_independence_s6_restart": "pass",
+      "browser_write_restart_read": "pass",
+      "persistent_marker": "pass"
+    },
+    "production_access": false,
+    "production_modified": false,
+    "paid_model_calls": false
   }
 }

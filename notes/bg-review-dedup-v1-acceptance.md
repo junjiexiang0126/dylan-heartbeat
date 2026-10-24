@@ -299,3 +299,14 @@ auxiliary:
 不需要为已确认不存在的链接目标设置允许根目录；恢复后的外部有效链接仍须独立允许，否则正常审查。默认未开启；不通过修改/删除生产技能配合缓存。RetainDB、凭证池、实际后端未知时现有运行时 guard 仍保守放行。正式激活前仍应在实际镜像/插件依赖的隔离副本验证兼容与 guard，不要求再次从生产日志/环境缺项“证明未启用”。
 
 当前代码可进入最终审核；真实模型账单、正式命中率及必要审查质量仍无实测。生产未部署、未重启、未改配置/记忆/前端/链接，PR 不合并 main。配置激活与服务操作仍需用户另行批准。
+
+
+### 第 13 节远程最终结果（已实际核对）
+
+已验证提交 fbaa280592639a92e4b4b56a2aac124535750504（实现 3795d94 不变，仅加实际镜像专项）。三个流程全部 SUCCESS：
+
+- [双源码专项 40102613528](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/40102613528)：b1a39a1b 87/87、23.681 秒；5894e750 87/87、36.130 秒。
+- [统一回归 40102613667](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/40102613667)：Node 33/33，Python 311 run、283 pass、28 skip、无失败，prototype 52/52。
+- [实际官方镜像 40102613511](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/40102613511)：构建成功；额外在镜像内、--network none、无生产挂载的独立容器运行 87/87 去重专项（28.731 秒）；Gateway 健康与认证、重启和卷标记保留、Guardian 独立监督/s6 重启、浏览器 Cookie/localStorage 写入后重启读回全部通过。该镜像由仓库 Dockerfile 的固定官方 digest 构建，仍不代表所有 VPS 私有插件和实际进程配置已被复制。
+
+结构化证据：bg-review-dedup-evidence/remote-ci-fbaa280.json。最新简明交付说明为 bg-review-dedup-final-handoff.md。本轮之后仅补录报告，不改已验证实现。此前红色流程均保留为历史，本轮已解决上述 GitHub 范围内阻塞。生产启用、付费模型与真实命中率仍未验收，也未获部署授权。

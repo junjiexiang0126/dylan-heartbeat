@@ -1,0 +1,65 @@
+{
+  "tested_commit": "fbaa280592639a92e4b4b56a2aac124535750504",
+  "implementation_commit": "3795d94ead01d310f4c679abf260096b25eaf43c",
+  "dedup": {
+    "run_id": 40102613528,
+    "conclusion": "success",
+    "jobs": [
+      {
+        "job_id": 120897683983,
+        "hermes_sha": "b1a39a1b1bf135091ff3fd0020002bba35a9d456",
+        "pass": 87,
+        "fail": 0,
+        "seconds": 23.681
+      },
+      {
+        "job_id": 120897685158,
+        "hermes_sha": "5894e750c3dba980d43b25aa29e3958149ba2c61",
+        "pass": 87,
+        "fail": 0,
+        "seconds": 36.13
+      }
+    ]
+  },
+  "unified": {
+    "run_id": 40102613667,
+    "job_id": 120897684762,
+    "conclusion": "success",
+    "node": {
+      "pass": 33,
+      "fail": 0
+    },
+    "python": {
+      "run": 311,
+      "pass": 283,
+      "fail": 0,
+      "skip": 28
+    },
+    "prototype": {
+      "pass": 52,
+      "fail": 0
+    }
+  },
+  "official": {
+    "run_id": 40102613511,
+    "job_id": 120897683894,
+    "conclusion": "success",
+    "base_image": "nousresearch/hermes-agent@sha256:9774f4f39a9bb8c2f68ce728ed5e99ddbad282163be56764afacf88ed952b784",
+    "image_build": "pass",
+    "image_native_dedup": {
+      "pass": 87,
+      "fail": 0,
+      "seconds": 28.731,
+      "network": "none",
+      "production_volumes": false
+    },
+    "gateway_auth_health": "pass",
+    "gateway_restart": "pass",
+    "guardian_independence_s6_restart": "pass",
+    "browser_write_restart_read": "pass",
+    "persistent_marker": "pass"
+  },
+  "production_access": false,
+  "production_modified": false,
+  "paid_model_calls": false
+}
