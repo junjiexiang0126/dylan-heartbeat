@@ -310,3 +310,10 @@ auxiliary:
 - [实际官方镜像 40102613511](https://github.com/junjiexiang0126/dylan-heartbeat/actions/runs/40102613511)：构建成功；额外在镜像内、--network none、无生产挂载的独立容器运行 87/87 去重专项（28.731 秒）；Gateway 健康与认证、重启和卷标记保留、Guardian 独立监督/s6 重启、浏览器 Cookie/localStorage 写入后重启读回全部通过。该镜像由仓库 Dockerfile 的固定官方 digest 构建，仍不代表所有 VPS 私有插件和实际进程配置已被复制。
 
 结构化证据：bg-review-dedup-evidence/remote-ci-fbaa280.json。最新简明交付说明为 bg-review-dedup-final-handoff.md。本轮之后仅补录报告，不改已验证实现。此前红色流程均保留为历史，本轮已解决上述 GitHub 范围内阻塞。生产启用、付费模型与真实命中率仍未验收，也未获部署授权。
+
+
+## 14. 用户转交的实际 VPS 镜像验收
+
+实际镜像 sha256:14bafd8ffa578c4ccd5a0537305e2fded5d632e89ed8c0566dd7e4bb41023d5b，固定候选 7d2dc45，独立容器资源限制 1 CPU/1 GiB/256 pids、network none、候选代码只读挂载、无生产卷或生产 Env 复制。终端显示 Ran 87 tests in 37.031s / OK，没有 failures/skips 摘要；接受为 87 项通过的外部证据。该命令的 $? 是 tail 状态，不能当作 Docker 原始退出码；留存日志由 printf 重建，是摘要而非原始完整输出。无需为修正统计口径重跑。
+
+这是候选模块与实际镜像内 Hermes/依赖的隔离兼容验证，不是正式进程已安装或使用生产配置验收。VPS 正式工作树另报 b28ca45，不能按同名分支覆盖上线。后续最小发布包及回滚方案见 bg-review-dedup-rollout-plan.md；此轮只提交文档，未执行任何生产操作。
