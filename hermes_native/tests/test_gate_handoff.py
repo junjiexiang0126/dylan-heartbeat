@@ -16,6 +16,10 @@ spec.loader.exec_module(gate)
 
 class HandoffGateTests(unittest.TestCase):
     def setUp(self):
+        # The container UID/GID handoff is privileged; temp-home unit tests
+        # must not depend on root/CAP_CHOWN or change real file ownership.
+        owner = patch.object(gate.os, "chown")
+        self.chown = owner.start(); self.addCleanup(owner.stop)
         tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
         self.home = Path(tmp.name)
         (self.home / 'workspace').mkdir()
@@ -110,6 +114,20 @@ class HandoffGateTests(unittest.TestCase):
         import uuid
         self.assertEqual(str(uuid.UUID(records[0]['id'])),records[0]['id'])
         self.assertEqual(json.loads((self.home/'autonomy_gate_state.json').read_text())['wakes'],10)
+
+    def test_owner_handoff_failure_keeps_main_fail_closed(self):
+        self.chown.side_effect = PermissionError("isolated ownership failure")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            gate.main()
+        result = json.loads(out.getvalue())
+        self.assertFalse(result['wakeAgent'])
+        self.assertEqual(result['error_type'], 'PermissionError')
+        self.assertEqual(json.loads((self.home/'autonomy_gate_state.json').read_text())['wakes'], 1)
+
+    def test_successful_state_save_requests_container_owner(self):
+        gate.evaluate(self.home, self.now)
+        self.chown.assert_called_with(self.home/'autonomy_gate_state.json', 10000, 10000)
 
     def test_three_failures_notify_without_consuming_opportunity(self):
         (self.home/'cron').mkdir()

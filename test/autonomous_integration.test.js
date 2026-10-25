@@ -7,7 +7,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { setTimeout: delay } = require('timers/promises');
 
-test('real gateway and worker wake without Kelivo, persist and inject activity into chat', { timeout: 30000 }, async t => {
+test('real gateway and explicit retained cycle persist and inject activity into chat', { timeout: 30000 }, async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ziwei-integration-'));
   fs.writeFileSync(path.join(dir, 'memory.md'), '共享核心记忆：关系与经历');
   fs.writeFileSync(path.join(dir, 'system_prompt.txt'), '共享人格：直接表达');
@@ -57,7 +57,33 @@ test('real gateway and worker wake without Kelivo, persist and inject activity i
     assert.fail(`Timed out waiting for real processes: ${logs}`);
   }
   await waitFor(async () => { try { return (await fetch(`${base}/healthz`)).ok; } catch { return false; } });
+  // The legacy scheduled worker was intentionally removed in a9c1b3b. Test
+  // the retained cycle explicitly in a separate process, never restore a
+  // second production scheduler merely to satisfy an obsolete fixture.
+  const cycle = spawn(process.execPath, ['-e', `
+    const { runAutonomousCycle } = require('./autonomous_agent');
+    runAutonomousCycle({dir: process.env.DATA_DIR, env: process.env,
+      model: async messages => {
+        const response = await fetch(process.env.TARGET_API_URL, {method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({model:'mock', messages, response_format:{type:'json_object'}})});
+        if (!response.ok) throw Error('isolated model HTTP failure');
+        return (await response.json()).choices[0].message.content;
+      },
+      push: async () => { throw Error('push must remain disabled'); },
+      recordEvent: async content => {
+        const response = await fetch(process.env.GATEWAY_BASE_URL + '/internal/wake-event',
+          {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content})});
+        if (!response.ok) throw Error('isolated gateway HTTP failure');
+      }
+    }).catch(error => {console.error(error); process.exitCode=1;});
+  `], {cwd:path.join(__dirname, '..'), env, stdio:['ignore','pipe','pipe']});
+  children.push(cycle);
+  cycle.stdout.on('data', chunk => { logs += chunk; });
+  cycle.stderr.on('data', chunk => { logs += chunk; });
+  const cycleExit = new Promise(resolve => cycle.once('exit', resolve));
   await waitFor(async () => fs.existsSync(path.join(dir, 'autonomous_state.json')));
+  assert.equal(await cycleExit, 0, logs);
   assert.equal((await fetch(`${base}/admin/autonomy`)).status, 401);
   const status = await fetch(`${base}/admin/autonomy`, { headers: { Authorization: `Basic ${Buffer.from('test:test-only').toString('base64')}` } });
   const state = await status.json();

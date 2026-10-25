@@ -1,0 +1,38 @@
+name: Background review dedup acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - hermes_native/bg_review_dedup.py
+      - hermes_native/tests/test_bg_review_dedup*.py
+      - hermes_native/tests/bg_review_integration_requirements.txt
+      - .github/workflows/bg-review-dedup.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-native-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        hermes_sha:
+          - 5894e750c3dba980d43b25aa29e3958149ba2c61
+          - b1a39a1b1bf135091ff3fd0020002bba35a9d456
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: NousResearch/hermes-agent
+          ref: ${{ matrix.hermes_sha }}
+          path: .native-hermes-test-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the isolated test environment
+        run: python -m pip install -r hermes_native/tests/bg_review_integration_requirements.txt
+      - name: Exercise unit contracts and real Hermes over loopback HTTP
+        env:
+          HERMES_REVIEW_TEST_SOURCE: ${{ github.workspace }}/.native-hermes-test-source
+        run: python -m unittest discover -s hermes_native/tests -p 'test_bg_review_dedup*.py' -v

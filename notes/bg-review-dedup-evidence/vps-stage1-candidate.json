@@ -1,0 +1,33 @@
+{
+  "source": "user-forwarded VPS assistant stage-1 report; not directly inspected by Work",
+  "date_bangkok": "2026-10-24",
+  "candidate_source": "7d2dc458bc8c4ab7e6afb3039b448045127d51c8",
+  "base_image_id": "sha256:14bafd8ffa578c4ccd5a0537305e2fded5d632e89ed8c0566dd7e4bb41023d5b",
+  "candidate_image_id": "sha256:863179914770d2c6da8b9610c75cd25ece25d98ca909578c3b60c654292a231e",
+  "candidate_tag": "ziwei-hermes:dedup-v1-stage1",
+  "source_changes": {
+    "bg_review_dedup.py": {
+      "sha256": "08661eb89ea386d8350849d833c6e102ce5adb69fda7dce87b2b3810ca574927",
+      "change": "new module"
+    },
+    "web_bridge.py": {
+      "candidate_sha256": "b420bfead50b969b44aa58cb0cb2a776800f8fcb8d568ca768b5da12c7445a30",
+      "baseline_sha256_prefix_only": "4001a1a3",
+      "change": "four-line comment/import/install insertion before installed flag; no whole-file replacement"
+    }
+  },
+  "reported_isolated_checks": {
+    "install_marker": "background_review._ziwei_bg_dedup_installed",
+    "repeat_install_wrapper_and_state_identity": "pass",
+    "factory_signature": "pass",
+    "script_exit_code": 0,
+    "earlier_script_marker_mismatch": "corrected to current module-level marker; no candidate code change reported"
+  },
+  "reported_old_image_available": true,
+  "production_running_on_base_unchanged_reported": true,
+  "backup_recoverability": "not established; two empty directories do not establish global backup absence",
+  "raw_deploy_description": "kept VPS-local in /tmp/dedup-release-stage1; do not export because inspect may include credentials",
+  "stage2_authorized": false,
+  "production_deployed": false,
+  "private_data_modified_by_work": false
+}

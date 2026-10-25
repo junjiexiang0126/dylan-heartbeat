@@ -1,0 +1,43 @@
+{
+  "date_bangkok": "2026-10-24",
+  "source": "User-forwarded VPS assistant transcript; Work did not connect to VPS",
+  "candidate_commit": "7d2dc458bc8c4ab7e6afb3039b448045127d51c8",
+  "production_image_id_reported": "sha256:14bafd8ffa578c4ccd5a0537305e2fded5d632e89ed8c0566dd7e4bb41023d5b",
+  "test_output": {
+    "run": 87,
+    "unit": 65,
+    "native": 22,
+    "seconds": 37.031,
+    "unittest_summary": "OK",
+    "failures_reported": 0,
+    "skips_reported": 0
+  },
+  "docker_exit_code": null,
+  "displayed_pipeline_exit_code": 0,
+  "exit_code_caveat": "Without pipefail or PIPESTATUS, $? after docker run | tail is the tail status, not the docker status. Accept unittest OK as test evidence, not a verified docker exit code.",
+  "reported_limits": {
+    "cpus": 1,
+    "memory": "1g",
+    "pids": 256
+  },
+  "reported_isolation": {
+    "network": "none",
+    "source_mount": "candidate hermes_native at /opt/ziwei-native:ro",
+    "production_volumes": false,
+    "docker_socket": false,
+    "production_container_env_copied": false,
+    "entrypoint": "/opt/hermes/.venv/bin/python",
+    "home": "test-created temporary sandbox"
+  },
+  "reported_resources": {
+    "memory_available": "2.1Gi",
+    "disk_free": "25G",
+    "cpu_count": 2
+  },
+  "reported_retained_log": "/root/dedup-v1-acceptance-7d2dc45.log",
+  "retained_log_caveat": "printf-created summary, not captured original stdout/stderr; transcript contains terminal summary and per-test HTTP counts.",
+  "production_checkout_reported": "b28ca45 on feature/bg-review-dedup-v1; not the tested candidate; do not deploy by branch label or overwrite it",
+  "scope": "candidate module over actual-image Hermes and dependencies in an independent test container; not production home/config/plugins loaded from volumes or live startup installation",
+  "production_changed_by_work": false,
+  "deployment_authorized": false
+}

@@ -27,6 +27,14 @@ jobs:
         run: python3 -m unittest discover -s hermes_native/tests -v
       - name: Build the thin configuration layer on the exact official stable image
         run: docker build -f hermes_native/Dockerfile -t ziwei-native-preflight hermes_native
+      - name: Exercise review dedup inside the actual isolated image
+        run: |
+          docker run --rm --network none \
+            --entrypoint /opt/hermes/.venv/bin/python \
+            -e HERMES_REVIEW_TEST_SOURCE=/opt/hermes \
+            -e HERMES_SKIP_REGISTER_BUILTIN_SKILLS=1 \
+            ziwei-native-preflight -m unittest discover \
+            -s /opt/ziwei-native/tests -p 'test_bg_review_dedup*.py' -v
       - name: Start the actual official container and Gateway
         run: |
           docker volume create ziwei-native-preflight-data

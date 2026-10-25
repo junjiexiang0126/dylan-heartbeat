@@ -1,0 +1,11 @@
+{
+  "isolated_only": true,
+  "regular_files": 2524,
+  "missing_links": 10,
+  "content_bytes": 71320717,
+  "inventory_entries": 2535,
+  "scan_seconds": 1.83,
+  "python_traced_peak_bytes": 1610284,
+  "chunk_bytes": 65536,
+  "production_measurement": false
+}

@@ -15,6 +15,8 @@ spec.loader.exec_module(gate)
 
 class GateTests(unittest.TestCase):
     def setUp(self):
+        owner = patch.object(gate.os, "chown")
+        self.chown = owner.start(); self.addCleanup(owner.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.home = Path(self.tmp.name)

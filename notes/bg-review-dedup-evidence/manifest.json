@@ -1,0 +1,340 @@
+{
+  "date_bangkok": "2026-10-25",
+  "baseline_commit": "f8edcc0816bcd529920ee7a5db4ebf977eb3e6a1",
+  "hermes_commit": "5894e750c3dba980d43b25aa29e3958149ba2c61",
+  "python": "3.12.14",
+  "targeted": {
+    "unit_pass": 65,
+    "native_http_pass": 22,
+    "total_pass": 87,
+    "fail": 0
+  },
+  "upstream_overlay": {
+    "pass": 87,
+    "fail": 0
+  },
+  "repository_suite": {
+    "run": 311,
+    "pass": 283,
+    "fail": 0,
+    "skip": 28
+  },
+  "baseline_suite": {
+    "run": 241,
+    "pass": 231,
+    "fail": 4,
+    "skip": 6
+  },
+  "production_access": false,
+  "paid_provider_calls": false,
+  "sha256": {
+    "hermes_native/bg_review_dedup.py": "08661eb89ea386d8350849d833c6e102ce5adb69fda7dce87b2b3810ca574927",
+    "hermes_native/tests/test_bg_review_dedup.py": "e4fe44dc740d520f73eb9b20720d14853ef571192f0415c524f60b41ebca0392",
+    "hermes_native/tests/test_bg_review_dedup_integration.py": "52a2d9302c23274901a696f754f4967052db8c67a24e78b01dbab5f6c88058c5",
+    "hermes_native/tests/bg_review_integration_requirements.txt": "f2d95722d80da151d4919115bec223d6f73ddd202110b500c409f8e5688d4ec5",
+    ".github/workflows/bg-review-dedup.yml": "24cd52fa15a13b61b86bc528f00a4386d47c1b576bb29c93d553a6acebf54158",
+    "hermes_native/web_bridge.py": "090a1e76bbe8662f02578cf337772105784bde85dc4d722c7495c2e1363f2856",
+    "notes/bg-review-dedup-evidence/dedup-final.log": "ea317632b84d5a84da214b048516d9e53f980b2a5f1878d77a2371a73a631e77",
+    "notes/bg-review-dedup-evidence/upstream-overlay-tests.log": "23d4541275d0ddbf204ca74203923595907a2128de9910d95b00ad45ee8aee16",
+    "notes/bg-review-dedup-evidence/native-tests-original.log": "639c1f99dc0685367c0e53a706c1c99b7d582879a338c1fcd88e806fb2347855",
+    "notes/bg-review-dedup-evidence/native-tests-final.log": "d64c92b40eb28adae82ae1db86e9d9892142ef809ff357e32f00f55eaaf96558",
+    "hermes@5894e750/run_agent.py": "8c215df03f32493f72992db0c0ccaddb811436f9025451e3f1e8f535dc9cda5d",
+    "hermes@5894e750/agent/background_review.py": "b177b1cfe8b06f9e787e37920fd9a7b023a038ecbac951bde4e81535d88aa4dc",
+    "hermes@5894e750/agent/review_idle_queue.py": "d2a62f333ee5e69ec17b50bdd3f66f11ba61a12ba7ba8e1e0a562866450ea32b",
+    "notes/bg-review-dedup-evidence/single-run-before-fix.log": "3e19beed0cda16c7207d656e60a58fda73d5031d5526f374a65c34cb2914c4bd",
+    "notes/bg-review-dedup-evidence/vps-matched-integration.log": "3a43098548b396a626e101834617df42ab8fee359f825e65c535768493698907",
+    "notes/bg-review-dedup-evidence/vps-source-match.json": "63a24c742ff1e179baf4093e2aa80f3008dff17ee02117c93d07d22f51b440e5",
+    "notes/bg-review-dedup-evidence/vps-adapted-tests.log": "17c7ae6e7ac881efd76093fbb0efcce52cfed98b75a0bc08641ed21780a05900",
+    "hermes@b1a39a1b/run_agent.py": "73efa221f42be96a41a6b8a1ee144caf47041e06f5c7d32b3bbd898d8dc250b2",
+    "hermes@b1a39a1b/agent/background_review.py": "53d91d369762c9c4c66b63c43a53684a79226846475eaa155dcd4ef175c32f12",
+    "hermes@b1a39a1b/agent/review_idle_queue.py": "88d1d41ce95cbd6a282fa7e4ec5f22956742a9c53fdde8aa46989496eb872021",
+    "notes/bg-review-dedup-evidence/remote-ci-85c5495.json": "8dcc5ece4cfcf4eb0a114e0af9aea117a2fcb17c75b295444c1327a62e4db357",
+    "notes/bg-review-dedup-evidence/vps-readonly-followup.md": "a730abca2ca6d750a1ef9718546bac06e8b610a87de8ae7f46156f4b5ab67dfc",
+    "notes/bg-review-dedup-evidence/upstream-stream.log": "66cd257d6b900b05e3a92915fdfa6df367bae70d7f238fe114c3bd145f0c803b",
+    "hermes_native/tests/test_gate_handoff.py": "66b3c7f9e88494b8702bce6fb549dbe55e0ae83b4c1e9d1a24883bc3823b7910",
+    "hermes_native/tests/test_preflight_upgrade.py": "843b3e257d7015d91f876d61be1ad6282e2775f1a998fa9d30fcc4def7236d0f",
+    "hermes_native/tests/test_autonomy_gate.py": "ddc2fcecc329c1906f7386c1fa48f6b5a93a3d4e670c8576618dc30a2b563a21",
+    "notes/bg-review-dedup-evidence/node-stream.log": "06c62f1cf34e91daaef20308505832fc3189c37db90d18188d672f4f43dc5346",
+    "test/autonomous_integration.test.js": "e7a0394de85fce70d244f7a27dc3d88509427728c7d2e80f13f264977037c9be",
+    "hermes_native/preflight_upgrade.py": "c2be6a117e2718680f6b47352f681fda7fd7621b0ed6a24690e0270c18d93c84",
+    "notes/bg-review-dedup-evidence/stream-native-5894.log": "69afc3f868da14134483c3e92a5bc08ff6581500fdf6f59f8900bf12841be90c",
+    "notes/bg-review-dedup-evidence/stream-native-b1.log": "65469d8a33f0e1ef861977ef3e75350cc23172bb9aaf1f9622988e5b609b85bc",
+    "hermes_native/github_app.py": "1eaf154442cbed449357e2bf0943912203072204122888d6c6423d94d3c5052a",
+    "notes/bg-review-dedup-evidence/prototype-stream.log": "36c794801aac70cf144fa0bd6c6cd9b7360d195560d239282929d61ac362adba",
+    "hermes_native/autonomy_gate.py": "74f0fb6211a9aa4d65b3a4d9593945bcc6871e883fe5389bb7afc4dd5c84c823",
+    "hermes_native/tests/test_github_app.py": "c6e74f1b860ec53a141e3f72208d7e0839cecbba61c7f749532453661b60b124",
+    "notes/bg-review-dedup-evidence/stream-scan-benchmark.json": "de0b995d8fdbc21608c92eca1ffc5b3906479ae6a2a4ab24c80326fcf5770e4f",
+    "notes/bg-review-dedup-evidence/full-python-stream.log": "56615a70b8d752078361a8a38c3e919dc0e5e3b09bd2223a7815e5e64a5d0473",
+    ".github/workflows/hermes-native.yml": "55fe28a4eab8bb0785781392812d3633acdcf5b383d87ad7f6b1935297044aec",
+    "notes/bg-review-dedup-evidence/remote-ci-fbaa280.json": "6ace92a5e45e442c2b282f1b03c45fb835a3af5aa4ca8cf74ed9bcf9669af2f8",
+    "notes/bg-review-dedup-final-handoff.md": "596cbdf05359b32d1250353ca2ec2dc11eae962605eb8a2350304b606cc6ee10",
+    "notes/bg-review-dedup-v1-acceptance.md": "00f88d7767edac4ed7892e4f4700d6cedbf4a6e2fc2faa1b1da7f78152388d55",
+    "notes/bg-review-dedup-rollout-plan.md": "fe9a0eac6a76c48995be3ec938b0e76d74e3bda6c8a960b0e2faa2c09b374b92",
+    "notes/bg-review-dedup-evidence/vps-actual-image-acceptance.json": "7016cffd47c406587dbdfbb76a8140b2052fb6f409ecb86441e9a9ccd53e7974",
+    "notes/bg-review-dedup-evidence/vps-stage1-candidate.json": "ab2296ee932d9a16504f468e412903eb162765bde28458587a9fb61f96abe54a",
+    "notes/bg-review-dedup-evidence/vps-production-trial-20261025.json": "f0fab020a94b45928e6a1ea7b1337fcb5c44936bf0369f94471837b33334f194"
+  },
+  "pull_request": "https://github.com/junjiexiang0126/dylan-heartbeat/pull/96",
+  "previous_tested_code_commit": "85c5495d63408972f803535f6fce37168f147734",
+  "historical_remote_ci": {
+    "dedup_acceptance": {
+      "run_id": 40062530390,
+      "conclusion": "success",
+      "run": 63,
+      "fail": 0
+    },
+    "official_preparation": {
+      "run_id": 40062530345,
+      "conclusion": "failure",
+      "run": 283,
+      "failures": 4,
+      "errors": 13,
+      "skipped": 25
+    },
+    "unified_regression": {
+      "run_id": 40062530354,
+      "conclusion": "failure",
+      "run": 33,
+      "pass": 32,
+      "fail": 1
+    }
+  },
+  "followup_regression": {
+    "old_commit": "69a9838d393f1ff6246f05d40647e8a8066d0f96",
+    "run": 6,
+    "before_fix_failures": 4,
+    "before_fix_errors": 0,
+    "after_fix_failures": 0
+  },
+  "vps_core_matching_validation": {
+    "upstream_commit": "b1a39a1b1bf135091ff3fd0020002bba35a9d456",
+    "targeted_pass": 87,
+    "targeted_fail": 0,
+    "production_configuration_validated": false,
+    "production_dedup_benefit": "not measured; isolated large tree plus missing links now validated with explicit scan budget"
+  },
+  "pre_adaptation_code_commit": "1d792eeb5456b30857770f531d43eed2cf342ced",
+  "tested_code_version": "Implementation unchanged since 3795d94; validated code/workflow fbaa280; subsequent commits only record evidence and rollout documentation.",
+  "vps_readonly_followup": {
+    "evidence": "vps-readonly-followup.md",
+    "external_memory_runtime": "unknown",
+    "credential_pool_runtime": "unknown",
+    "main_api_mode_runtime": "unknown",
+    "top_level_link_exists_check_failures": 10,
+    "reported_find_regular_files": 2524,
+    "reported_du_disk_usage": "68M; not fingerprint content bytes",
+    "production_benefit_validated": false,
+    "incremental_existing_regressions_pass": 3,
+    "implementation_changed": false
+  },
+  "node_suite": {
+    "run": 33,
+    "pass": 33,
+    "fail": 0
+  },
+  "prototype_suite": {
+    "run": 52,
+    "pass": 52,
+    "fail": 0
+  },
+  "historical_remote_ci_before_streaming": {
+    "implementation_commit": "85c5495d63408972f803535f6fce37168f147734",
+    "dedup": {
+      "run_id": 40073134072,
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 120810694039,
+          "hermes_sha": "5894e750c3dba980d43b25aa29e3958149ba2c61",
+          "pass": 82,
+          "fail": 0,
+          "seconds": 31.079
+        },
+        {
+          "id": 120810694188,
+          "hermes_sha": "b1a39a1b1bf135091ff3fd0020002bba35a9d456",
+          "pass": 82,
+          "fail": 0,
+          "seconds": 21.574
+        }
+      ]
+    },
+    "official_preparation": {
+      "run_id": 40073134102,
+      "job_id": 120810694026,
+      "conclusion": "failure",
+      "run": 302,
+      "failures": 4,
+      "errors": 13,
+      "skipped": 27,
+      "container_build_started": false
+    },
+    "unified_regression": {
+      "run_id": 40073134073,
+      "job_id": 120810694034,
+      "conclusion": "failure",
+      "run": 33,
+      "pass": 32,
+      "fail": 1
+    }
+  },
+  "tested_code_commit": "fbaa280592639a92e4b4b56a2aac124535750504",
+  "implementation_commit": "3795d94ead01d310f4c679abf260096b25eaf43c",
+  "remote_ci": {
+    "tested_commit": "fbaa280592639a92e4b4b56a2aac124535750504",
+    "implementation_commit": "3795d94ead01d310f4c679abf260096b25eaf43c",
+    "dedup": {
+      "run_id": 40102613528,
+      "conclusion": "success",
+      "jobs": [
+        {
+          "job_id": 120897683983,
+          "hermes_sha": "b1a39a1b1bf135091ff3fd0020002bba35a9d456",
+          "pass": 87,
+          "fail": 0,
+          "seconds": 23.681
+        },
+        {
+          "job_id": 120897685158,
+          "hermes_sha": "5894e750c3dba980d43b25aa29e3958149ba2c61",
+          "pass": 87,
+          "fail": 0,
+          "seconds": 36.13
+        }
+      ]
+    },
+    "unified": {
+      "run_id": 40102613667,
+      "job_id": 120897684762,
+      "conclusion": "success",
+      "node": {
+        "pass": 33,
+        "fail": 0
+      },
+      "python": {
+        "run": 311,
+        "pass": 283,
+        "fail": 0,
+        "skip": 28
+      },
+      "prototype": {
+        "pass": 52,
+        "fail": 0
+      }
+    },
+    "official": {
+      "run_id": 40102613511,
+      "job_id": 120897683894,
+      "conclusion": "success",
+      "base_image": "nousresearch/hermes-agent@sha256:9774f4f39a9bb8c2f68ce728ed5e99ddbad282163be56764afacf88ed952b784",
+      "image_build": "pass",
+      "image_native_dedup": {
+        "pass": 87,
+        "fail": 0,
+        "seconds": 28.731,
+        "network": "none",
+        "production_volumes": false
+      },
+      "gateway_auth_health": "pass",
+      "gateway_restart": "pass",
+      "guardian_independence_s6_restart": "pass",
+      "browser_write_restart_read": "pass",
+      "persistent_marker": "pass"
+    },
+    "production_access": false,
+    "production_modified": false,
+    "paid_model_calls": false
+  },
+  "vps_actual_image_acceptance": {
+    "date_bangkok": "2026-10-24",
+    "source": "User-forwarded VPS assistant transcript; Work did not connect to VPS",
+    "candidate_commit": "7d2dc458bc8c4ab7e6afb3039b448045127d51c8",
+    "production_image_id_reported": "sha256:14bafd8ffa578c4ccd5a0537305e2fded5d632e89ed8c0566dd7e4bb41023d5b",
+    "test_output": {
+      "run": 87,
+      "unit": 65,
+      "native": 22,
+      "seconds": 37.031,
+      "unittest_summary": "OK",
+      "failures_reported": 0,
+      "skips_reported": 0
+    },
+    "docker_exit_code": null,
+    "displayed_pipeline_exit_code": 0,
+    "exit_code_caveat": "Without pipefail or PIPESTATUS, $? after docker run | tail is the tail status, not the docker status. Accept unittest OK as test evidence, not a verified docker exit code.",
+    "reported_limits": {
+      "cpus": 1,
+      "memory": "1g",
+      "pids": 256
+    },
+    "reported_isolation": {
+      "network": "none",
+      "source_mount": "candidate hermes_native at /opt/ziwei-native:ro",
+      "production_volumes": false,
+      "docker_socket": false,
+      "production_container_env_copied": false,
+      "entrypoint": "/opt/hermes/.venv/bin/python",
+      "home": "test-created temporary sandbox"
+    },
+    "reported_resources": {
+      "memory_available": "2.1Gi",
+      "disk_free": "25G",
+      "cpu_count": 2
+    },
+    "reported_retained_log": "/root/dedup-v1-acceptance-7d2dc45.log",
+    "retained_log_caveat": "printf-created summary, not captured original stdout/stderr; transcript contains terminal summary and per-test HTTP counts.",
+    "production_checkout_reported": "b28ca45 on feature/bg-review-dedup-v1; not the tested candidate; do not deploy by branch label or overwrite it",
+    "scope": "candidate module over actual-image Hermes and dependencies in an independent test container; not production home/config/plugins loaded from volumes or live startup installation",
+    "production_changed_by_work": false,
+    "deployment_authorized": false
+  },
+  "vps_stage1_candidate": {
+    "source": "user-forwarded VPS assistant stage-1 report; not directly inspected by Work",
+    "date_bangkok": "2026-10-24",
+    "candidate_source": "7d2dc458bc8c4ab7e6afb3039b448045127d51c8",
+    "base_image_id": "sha256:14bafd8ffa578c4ccd5a0537305e2fded5d632e89ed8c0566dd7e4bb41023d5b",
+    "candidate_image_id": "sha256:863179914770d2c6da8b9610c75cd25ece25d98ca909578c3b60c654292a231e",
+    "candidate_tag": "ziwei-hermes:dedup-v1-stage1",
+    "source_changes": {
+      "bg_review_dedup.py": {
+        "sha256": "08661eb89ea386d8350849d833c6e102ce5adb69fda7dce87b2b3810ca574927",
+        "change": "new module"
+      },
+      "web_bridge.py": {
+        "candidate_sha256": "b420bfead50b969b44aa58cb0cb2a776800f8fcb8d568ca768b5da12c7445a30",
+        "baseline_sha256_prefix_only": "4001a1a3",
+        "change": "four-line comment/import/install insertion before installed flag; no whole-file replacement"
+      }
+    },
+    "reported_isolated_checks": {
+      "install_marker": "background_review._ziwei_bg_dedup_installed",
+      "repeat_install_wrapper_and_state_identity": "pass",
+      "factory_signature": "pass",
+      "script_exit_code": 0,
+      "earlier_script_marker_mismatch": "corrected to current module-level marker; no candidate code change reported"
+    },
+    "reported_old_image_available": true,
+    "production_running_on_base_unchanged_reported": true,
+    "backup_recoverability": "not established; two empty directories do not establish global backup absence",
+    "raw_deploy_description": "kept VPS-local in /tmp/dedup-release-stage1; do not export because inspect may include credentials",
+    "stage2_authorized": false,
+    "production_deployed": false,
+    "private_data_modified_by_work": false
+  },
+  "production_access_note": "production_access=false describes Work direct access only; externally executed authorized deployment is separately recorded below.",
+  "paid_provider_calls_note": "false describes isolated tests only; natural production cron activity occurred and is not a zero-cost claim.",
+  "production_trial": {
+    "evidence_file": "notes/bg-review-dedup-evidence/vps-production-trial-20261025.json",
+    "image_id": "sha256:863179914770d2c6da8b9610c75cd25ece25d98ca909578c3b60c654292a231e",
+    "candidate_source_commit": "7d2dc458bc8c4ab7e6afb3039b448045127d51c8",
+    "production_deployed_reported": true,
+    "disk_dedup_enabled": true,
+    "health_and_auth_reported": "passed",
+    "runtime_review_install_verified": false,
+    "natural_chat_roundtrip_verified": false,
+    "production_dedup_effect": "unknown",
+    "main_merged": false,
+    "evidence_source": "user-forwarded VPS reports; not Work direct execution"
+  },
+  "history_scope_note": "vps_actual_image_acceptance and vps_stage1_candidate describe their 2026-10-24 stages. Their deployment/authorization flags are historical snapshots, superseded for current status by production_trial."
+}

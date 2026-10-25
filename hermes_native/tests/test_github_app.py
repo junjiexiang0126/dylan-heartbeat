@@ -121,9 +121,13 @@ class TokenCacheTests(unittest.TestCase):
         self.assertEqual(len(self.calls), 1)
 
     def test_refreshes_when_expiring_soon(self):
-        soon = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + 10))
+        now = 1792800000.0
+        soon = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now + 10))
         t = ga.InstallationToken(self.creds, opener=self._opener(soon))
-        t.token(); t.token()
+        # Keep key generation/JWT work and scheduler pauses from turning the
+        # near-expiry fixture into an already-expired response (1h fallback).
+        with patch.object(ga.time, "time", return_value=now):
+            t.token(); t.token()
         self.assertEqual(len(self.calls), 2)
 
     def test_force_refresh(self):
@@ -131,6 +135,25 @@ class TokenCacheTests(unittest.TestCase):
         t = ga.InstallationToken(self.creds, opener=self._opener(future))
         t.token(); t.token(force=True)
         self.assertEqual(len(self.calls), 2)
+
+    @unittest.skipUnless(hasattr(time, 'tzset'), 'requires POSIX timezone support')
+    def test_utc_expiry_is_correct_in_dst_and_non_dst_timezones(self):
+        import calendar
+        for zone in ('UTC', 'Asia/Bangkok', 'America/Los_Angeles'):
+            for stamp in ('2026-01-24T00:00:10Z', '2026-10-24T00:00:10Z'):
+                with self.subTest(zone=zone, stamp=stamp):
+                    self.calls.clear()
+                    expected = calendar.timegm(time.strptime(stamp, '%Y-%m-%dT%H:%M:%SZ'))
+                    try:
+                        with patch.dict(os.environ, {'TZ': zone}):
+                            time.tzset()
+                            token = ga.InstallationToken(self.creds, opener=self._opener(stamp))
+                            with patch.object(ga.time, 'time', return_value=expected - 10):
+                                token.token(); token.token()
+                            self.assertEqual(token._expires_at, expected)
+                            self.assertEqual(len(self.calls), 2)
+                    finally:
+                        time.tzset()
 
 
 class ResolveTests(unittest.TestCase):

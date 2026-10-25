@@ -48,6 +48,12 @@ class UpgradeTests(unittest.TestCase):
                 upgrade.upgrade(self.home, self.source)
         self.assertEqual(self.target.read_bytes(), self.old)
 
+    def test_previous_handoff_gate_remains_a_known_backup_source(self):
+        with patch.object(upgrade, 'OLD_SHA', 'different'), \
+             patch.object(upgrade, 'PREVIOUS_HANDOFF_SHA', upgrade.digest(self.old)):
+            self.assertEqual(upgrade.upgrade(self.home, self.source)['state'], 'updated')
+        self.assertEqual((self.home/'scripts'/('autonomy_gate.before-'+upgrade.digest(self.old)+'.py')).read_bytes(), self.old)
+
     def test_unknown_previous_hash_and_wrong_image_refused(self):
         self.target.chmod(0o644);self.target.write_bytes(b'unknown');self.target.chmod(0o444)
         with self.assertRaisesRegex(RuntimeError,'unknown_previous_hash'):upgrade.upgrade(self.home,self.source)
