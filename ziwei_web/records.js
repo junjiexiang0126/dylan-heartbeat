@@ -73,6 +73,15 @@ function createRecords(){
     if(id){const row=rows.find(r=>r.id===id);return row?json(200,row):json(404,{error:'record_not_found'});}
     const counts=view.counts,protectedSources=view.protectedSources;
     const overview={files:value.files.map(f=>({name:f.name,chars:Number.isSafeInteger(f.chars)?f.chars:null,budget:Number.isSafeInteger(f.budget)?f.budget:null,updatedAt:date(f.updated_at)})),excerpt:view.rows.find(r=>r.sourceFile==='MEMORY.md')||null};
+    // 人格底稿也要出现在文件清单里，否则前端按文件分组时会漏掉它
+    try{
+     const fs2=require("node:fs"),path2=require("node:path");
+     const pp=path2.join(process.env.ZIWEI_WEB_DATA_DIR||"/webdata","persona.md");
+     if(fs2.existsSync(pp)&&!overview.files.some(f=>f.name==="SOUL.md")){
+      const t2=fs2.readFileSync(pp,"utf8");
+      overview.files.push({name:"SOUL.md",chars:[...t2].length,budget:null,updatedAt:fs2.statSync(pp).mtime.toISOString(),persona:true});
+     }
+    }catch(e){}
     rows=rows.filter(row=>category==='all'||category==='memory'&&row.sourceFile==='MEMORY.md'||row.categories.includes(category));
     if(q)rows=rows.filter(row=>[row.title,row.source,row.content].some(x=>x.toLocaleLowerCase().includes(q.toLocaleLowerCase())));
     rows.sort((a,b)=>(b.at||'').localeCompare(a.at||'')||a.sourceFile.localeCompare(b.sourceFile)||a.entryIndex-b.entryIndex);

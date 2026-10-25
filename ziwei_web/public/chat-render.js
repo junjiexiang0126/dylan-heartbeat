@@ -27,6 +27,7 @@ window.ZiweiChatRender=(()=>{
    if(code){const box=document.createElement('section'),label=document.createElement('small'),pre=document.createElement('pre'),body=document.createElement('code'),copy=document.createElement('button');box.className='chat-code';label.textContent=code[1]||'代码';body.textContent=code[2];copy.type='button';copy.textContent='复制代码';copy.onclick=async()=>{try{await navigator.clipboard.writeText(code[2]);copy.textContent='已复制';}catch{copy.textContent='请长按代码复制';}};pre.append(body);box.append(label,copy,pre);node.append(box);}
    else{const span=document.createElement('span');span.textContent=chunk;node.append(span);}
   }
+  if(window.ZiweiLinkCard)window.ZiweiLinkCard.decorate(node);
  }
  function actions(node){
   const paths={

@@ -125,7 +125,7 @@ function finish(id,o){
      await client.init();connected=true;lastError=null;
      if(r.state==='queued'){
       // Persist the exact transport before admission; a lost response reuses identical bytes.
-      const payload=JSON.parse(r.payload),transcripts=await files.transcripts(payload,voice),documents={};for(const id of payload.attachments){const a=files.get(id),d=await extract(path.join(files.dir,id),a.name);if(d?.text)documents[id]=d;}payload.transport=presentation.transport(files.input(payload,transcripts,documents));
+      const payload=JSON.parse(r.payload),transcripts=await files.transcripts(payload,voice),documents={};for(const id of payload.attachments){const a=files.get(id),d=await extract(path.join(files.dir,id),a.name);if(d?.text)documents[id]=d;}payload.transport=presentation.transport(files.input(payload,transcripts,documents));payload.transport=require('./now_hook').decorate(payload.transport);
       store.db.prepare('UPDATE requests SET payload=? WHERE id=?').run(JSON.stringify(payload),r.id);
       store.dispatched(r.id);r=store.request(r.id);
      }
