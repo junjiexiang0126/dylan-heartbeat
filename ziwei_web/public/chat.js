@@ -73,6 +73,7 @@ window.ZiweiChat=(()=>{
   const avatar=element('div','message-avatar'),body=element('div','message-body');avatar.dataset.role=m.role;paintMessageAvatar(avatar,m.role);card.append(avatar,body);
   body.append(element('p','message-label message-sender-label',messageLabel(m)));
   if(m.source_ref)body.append(element('p','message-label','来源：'+m.source_ref));
+  if(m.publicNotes?.length&&m.role==='assistant'&&m.kind==='final'&&m.source==='live'&&!m.deleted)window.ZiweiChatRender.publicNotes?.(body,m.publicNotes);
   const missingMedia=m.role==='assistant'&&(/MEDIA:|\/workspace\/outbox\//.test(m.content))&&m.mediaDelivery?.state!=='complete';
   const display=m.role==='assistant'?m.content.replace(/\[\[audio_as_voice\]\]/g,'').replace(/^\s*MEDIA:.*$/gm,'').trim():m.content;
   const bubble=element('div','message-bubble glass');if(m.kind==='summary'||m.kind==='commentary'){const detail=element('details','chat-process-details');const heading=element('summary','',m.kind==='summary'?'知微的回复摘要':'知微的执行进度');const bodyText=element('div','message-content');window.ZiweiChatRender.text(bodyText,m.content);detail.append(heading,bodyText);bubble.append(detail);body.append(bubble);rememberMessage(card,m);return card;}if(m.quote)bubble.append(element('blockquote','message-quote',m.quote.content));const content=element('div','message-content');window.ZiweiChatRender.text(content,display.slice(0,5000));bubble.append(content);if(display.length>5000)bubble.append(button('展开完整记录',()=>{window.ZiweiChatRender.text(content,display);}));body.append(bubble);

@@ -27,6 +27,7 @@ window.ZiweiChatRender=(()=>{
    if(code){const box=document.createElement('section'),label=document.createElement('small'),pre=document.createElement('pre'),body=document.createElement('code'),copy=document.createElement('button');box.className='chat-code';label.textContent=code[1]||'代码';body.textContent=code[2];copy.type='button';copy.textContent='复制代码';copy.onclick=async()=>{try{await navigator.clipboard.writeText(code[2]);copy.textContent='已复制';}catch{copy.textContent='请长按代码复制';}};pre.append(body);box.append(label,copy,pre);node.append(box);}
    else{const span=document.createElement('span');span.textContent=chunk;node.append(span);}
   }
+  if(window.ZiweiLinkCard)window.ZiweiLinkCard.decorate(node);
  }
  function actions(node){
   const paths={
@@ -41,5 +42,18 @@ window.ZiweiChatRender=(()=>{
   };
   for(const button of node.querySelectorAll('button')){const label=button.textContent,key=label==='取消收藏'?'收藏':label;if(!paths[key])continue;button.setAttribute('aria-label',label);button.title=label;button.classList.add('message-action-icon');if(key==='收藏')button.setAttribute('aria-pressed',String(label==='取消收藏'));const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS(svg.namespaceURI,'path');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');path.setAttribute('d',paths[key]);svg.append(path);button.replaceChildren(svg);}
  }
- return {text,actions};
+ function publicNotes(host,notes){
+  if(!Array.isArray(notes))return;
+  const labels={role_monologue:'角色内心独白',response_summary:'回复思路摘要'};
+  for(const note of notes.slice(0,2)){
+   if(!note||!Object.hasOwn(labels,note.kind)||note.source!=='model_public_output'||typeof note.text!=='string'||!note.text.trim()||note.text.length>1200)continue;
+   const box=document.createElement('details'),heading=document.createElement('summary'),body=document.createElement('div'),caption=document.createElement('small');
+   box.className='chat-public-note';box.dataset.noteId=note.id;heading.textContent='知微 · '+labels[note.kind];
+   body.className='message-content';body.textContent=note.text;
+   caption.className='chat-public-note-source';caption.textContent=(note.kind==='role_monologue'?'面向你表达的角色独白':'本轮生成的公开摘要')+' · 非隐藏推理';
+   if(Number.isFinite(Date.parse(note.createdAt))){const time=document.createElement('time');time.dateTime=note.createdAt;time.textContent=new Intl.DateTimeFormat('zh-CN',{dateStyle:'short',timeStyle:'medium',hour12:false,timeZone:'Asia/Bangkok'}).format(new Date(note.createdAt));caption.append(document.createTextNode(' · '),time);}
+   box.append(heading,body,caption);host.append(box);
+  }
+ }
+ return {text,actions,publicNotes};
 })();

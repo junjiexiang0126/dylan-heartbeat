@@ -39,3 +39,11 @@ body.work-view #work.work-panel{--work-safe-top:env(safe-area-inset-top,0px);mar
 
 /* iPhone standalone mode can report a zero top inset; scope fallback to mobile Work only. */
 @media(max-width:550px){body.work-view #work.work-panel{--work-safe-top:max(env(safe-area-inset-top,0px),47px)}}
+
+/* 工作台 · 等你拍板（2026-10-26 加） */
+.home-workbench-button{display:inline-flex;align-items:center;gap:.4em;margin-left:.6em;padding:.45em .9em;border-radius:999px;border:1px solid color-mix(in srgb, currentColor 18%, transparent);background:color-mix(in srgb, currentColor 6%, transparent);font:inherit;font-size:.84em;cursor:pointer;color:inherit}
+.home-workbench-button:hover{background:color-mix(in srgb, currentColor 11%, transparent)}
+.wb-approval{display:grid;gap:.35em;padding:.75em .9em;border-radius:14px;border:1px solid color-mix(in srgb, currentColor 14%, transparent);background:color-mix(in srgb, currentColor 5%, transparent)}
+.wb-approval strong{font-size:.95em}
+.wb-approval span{opacity:.78;font-size:.86em;line-height:1.5}
+.wb-approval .settings-inline-actions{margin-top:.2em;display:flex;gap:.5em}

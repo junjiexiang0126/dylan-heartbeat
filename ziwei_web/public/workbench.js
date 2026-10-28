@@ -11,5 +11,94 @@
  async function poke(target='ziwei'){if(!csrf||pokeBusy)return;if(!pokeId&&Date.now()-pokeTime<3000){$('#pokeNotice').textContent='刚刚拍过，稍等一下。';return;}if(pokeId&&pokeTarget!==target){$('#pokeNotice').textContent='上一条拍一拍待核对，请先重试原来的头像。';return;}pokeBusy=true;pokeId=pokeId||crypto.randomUUID();pokeTarget=target;try{const r=await get('/api/chat/poke','POST',{id:pokeId,target});if(!csrf)return;pokeId=null;pokeTime=Date.now();$('#pokeNotice').textContent=r.notified?'已拍一拍；知微可以自行决定是否回应。':'已保存，连接恢复后会通知知微。';const avatar=target==='ziwei'?$('#chatAvatar'):$('#userAvatar');avatar?.classList.remove('poke-shake');requestAnimationFrame(()=>avatar?.classList.add('poke-shake'));window.dispatchEvent(new Event('ziwei-poke-saved'));}catch(e){$('#pokeNotice').textContent=e.message==='poke_cooldown'?'拍得有点快，稍等一下再试。':'拍一拍结果待核对，再次点击会核对同一条事件。';if(e.message==='poke_cooldown')pokeId=null;}finally{pokeBusy=false;}}
  document.addEventListener('dblclick',e=>{const a=e.target.closest('.message-avatar,#chatAvatar');if(!a||a.closest('.archive'))return;e.preventDefault();void poke(a.dataset.role==='user'?'user':'ziwei');});
  for(const id of ['pokeNotice','momentNotificationToast']){const element=$('#'+id);let timer;new MutationObserver(()=>{clearTimeout(timer);if(element.textContent)timer=setTimeout(()=>{element.textContent='';},6500);}).observe(element,{childList:true,characterData:true,subtree:true});}
- window.ZiweiPoke={send:poke,configure(token){csrf=token;},stop(){csrf=null;pokeId=null;pokeBusy=false;$('#pokeNotice').textContent='';if($('#workbench').open)$('#workbench').close();for(const id of ['workbenchOverview','workbenchUsage','workbenchWakes','workbenchTasks'])$('#'+id).replaceChildren();$('#workbenchBalanceText').textContent='';$('#workbenchStatus').textContent='';$('#workbenchError').textContent='';}};
+ window.ZiweiPoke={send:poke,configure(token){csrf=token;window.__ziweiCsrf=token;},stop(){csrf=null;pokeId=null;pokeBusy=false;$('#pokeNotice').textContent='';if($('#workbench').open)$('#workbench').close();for(const id of ['workbenchOverview','workbenchUsage','workbenchWakes','workbenchTasks'])$('#'+id).replaceChildren();$('#workbenchBalanceText').textContent='';$('#workbenchStatus').textContent='';$('#workbenchError').textContent='';}};
+})();
+
+// ---- 工作台：等你拍板（2026-10-26 加）----
+(()=>{
+  const box=()=>document.getElementById('workbenchApprovals');
+  const csrf=()=>window.__ziweiCsrf||'';
+  async function renderApprovals(){
+    const host=box(); if(!host) return;
+    host.replaceChildren();
+    let data;
+    try{
+      const r=await fetch('/api/day',{credentials:'same-origin',cache:'no-store'});
+      if(!r.ok) throw Error('read');
+      data=await r.json();
+    }catch(e){
+      const p=document.createElement('div');p.textContent='暂时读不到待批清单';host.append(p);return;
+    }
+    const items=Array.isArray(data.approvals)?data.approvals:[];
+    if(!items.length){const p=document.createElement('div');p.textContent='现在没有要你拍板的事';host.append(p);return;}
+    for(const item of items){
+      const row=document.createElement('div');row.className='wb-approval';
+      const t=document.createElement('strong');t.textContent=item.title||'待确认';
+      const d=document.createElement('span');d.textContent=item.detail||'';
+      const acts=document.createElement('div');acts.className='settings-inline-actions';
+      for(const [decision,label] of [['approved','同意'],['rejected','不同意']]){
+        const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent=label;
+        b.addEventListener('click',async()=>{
+          for(const x of acts.children)x.disabled=true;
+          try{
+            const r=await fetch('/api/day/approve',{method:'POST',credentials:'same-origin',
+              headers:{'Content-Type':'application/json','X-Ziwei-CSRF':csrf()},
+              body:JSON.stringify({id:item.id,decision})});
+            if(!r.ok) throw Error('save');
+            acts.replaceChildren();
+            const done=document.createElement('span');done.textContent=decision==='approved'?'已同意':'已不同意';acts.append(done);
+          }catch(e){
+            for(const x of acts.children)x.disabled=false;
+            const err=document.getElementById('workbenchError');if(err)err.textContent='没保存上，请重试';
+          }
+        });
+        acts.append(b);
+      }
+      row.append(t,d,acts);
+      host.append(row);
+    }
+  }
+  const hook=(id)=>{const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{setTimeout(renderApprovals,350);});};
+  hook('openWorkbench');hook('workbenchRefresh');
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.getElementById('workbench')?.open)renderApprovals();});
+})();
+
+
+// ---- 主界面入口：把工作台搬出设置 ----
+(()=>{
+  const home=document.getElementById('homeWorkbench');
+  if(!home) return;
+  home.addEventListener('click',()=>{
+    const opener=document.getElementById('openWorkbench');
+    if(opener){opener.click();setTimeout(()=>{const f=document.getElementById('workbenchApprovals');if(f&&!f.children.length)document.getElementById('workbenchRefresh')?.click();},400);}
+  });
+})();
+
+// ---- 工作台：今天做了什么（归拢后的印记，2026-10-26 加）----
+(()=>{
+  const host=()=>document.getElementById('workbenchDigest');
+  const hhmm=ts=>{const d=new Date(ts);return Number.isNaN(d.getTime())?'':d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Bangkok'});};
+  async function renderDigest(){
+    const box=host(); if(!box||box.dataset.loaded==='1') return;
+    box.dataset.loaded='1';
+    box.replaceChildren();
+    let items=[];
+    try{
+      const r=await fetch('/api/day/digest',{credentials:'same-origin',cache:'no-store'});
+      if(r.ok) items=(await r.json()).items||[];
+    }catch(e){}
+    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date());
+    const todays=items.filter(x=>String(x.ts||'').startsWith(today));
+    const show=(todays.length?todays:items).slice(0,8);
+    if(!show.length){const p=document.createElement('div');p.textContent='今天还没有记录';box.append(p);return;}
+    for(const it of show){
+      const row=document.createElement('div');row.className='wb-approval';
+      const t=document.createElement('strong');t.textContent=(hhmm(it.ts)+'  '+(it.title||''));
+      const s=document.createElement('span');s.textContent=it.summary||'';
+      row.append(t,s);
+      box.append(row);
+    }
+  }
+  const hook=id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{const b=host();if(b)b.dataset.loaded='0';setTimeout(renderDigest,350);});};
+  hook('openWorkbench');hook('workbenchRefresh');hook('homeWorkbench');
 })();
