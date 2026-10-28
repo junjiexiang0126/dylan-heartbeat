@@ -4,11 +4,11 @@
  const row=(box,label,value)=>{const d=document.createElement('div'),s=document.createElement('span'),b=document.createElement('strong');s.textContent=label;b.textContent=value===null||value===undefined?'待同步':typeof value==='number'?value.toLocaleString('zh-CN'):typeof value==='object'?JSON.stringify(value):String(value);d.append(s,b);box.append(d);};
  const time=v=>v?new Date(v).toLocaleString('zh-CN',{timeZone:'Asia/Bangkok'}):'待同步';
  async function get(url,method='GET',body){const r=await fetch(url,{method,cache:'no-store',headers:{'X-Ziwei-CSRF':csrf,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const value=await r.json();if(r.status===401)window.dispatchEvent(new Event('ziwei-session-expired'));if(!r.ok)throw Error(value.error);return value;}
- async function refresh(){const b=$('#workbenchRefresh');b.disabled=true;$('#workbenchError').textContent='';try{const value=await get('/api/workbench');if(!csrf)return;const n=value.native;for(const id of ['workbenchOverview','workbenchUsage','workbenchWakes','workbenchTasks'])$('#'+id).replaceChildren();$('#workbenchOverview').parentElement.querySelector('.wb-overview-meta')?.remove();const status={online:'在线',offline:'离线',unknown:'未核实'};const overview=$('#workbenchOverview');overview.classList.add('wb-status-grid');
+ async function refresh(){const b=$('#workbenchRefresh');b.disabled=true;$('#workbenchError').textContent='';try{const value=await get('/api/workbench');if(!csrf)return;const n=value.native||{};for(const id of ['workbenchOverview','workbenchUsage','workbenchWakes','workbenchTasks'])$('#'+id).replaceChildren();$('#workbenchOverview').parentElement.querySelector('.wb-overview-meta')?.remove();const status={online:'在线',running:'运行中',healthy:'正常',offline:'离线',stopped:'已停止',exited:'已停止',restarting:'重启中',unhealthy:'异常',degraded:'异常',stale:'数据停滞',unknown:'未核实'};const overview=$('#workbenchOverview');overview.classList.add('wb-status-grid');
  const statuses=[['Hermes',n.services?.hermes],['Gateway',n.services?.gateway],['Guardian',n.services?.guardian]];
  const mind=value.xinchao||n.xinchao||value.moments?.xinchao||value.moments?.heartTide||n.heartTide||null;
  const mindStatus=mind&&typeof mind==='object'?(mind.status||mind.state||null):null;
- statuses.push(['心潮',mindStatus]);
+ statuses.push(['心潮',mind?.dataStale===true?'stale':mindStatus]);
  for(const [label,raw] of statuses){const tile=document.createElement('div');tile.className='wb-status-tile';const icon=document.createElement('span');icon.className='wb-status-icon';icon.textContent=label==='心潮'?'◌':label==='Hermes'?'♡':label==='Gateway'?'⌘':'♧';const state=document.createElement('strong');state.textContent=status[raw]||'待核实';const name=document.createElement('span');name.textContent=label;tile.append(icon,state,name);overview.append(tile);}
  const mindBox=$('#workbenchMindDetails');mindBox.replaceChildren();
  if(mind&&typeof mind==='object'){
@@ -18,7 +18,7 @@
  }else row(mindBox,'心潮详情','后端尚未提供可验证的状态数据');
  const containers=$('#workbenchContainers');containers.replaceChildren();
  const allContainers=value.containers||n.containers||value.infrastructure?.containers;
- if(Array.isArray(allContainers)&&allContainers.length){for(const item of allContainers){const name=item.name||item.id||'未命名容器';const state=item.health||item.health_status||item.status||item.state||'待核实';row(containers,String(name),String(state));}}else row(containers,'容器清单','后端尚未提供完整实时容器列表');
+ if(Array.isArray(allContainers)&&allContainers.length){for(const item of allContainers){const name=item.name||item.id||'未命名容器';const state=item.health||item.health_status||item.status||item.state||'待核实';const restart=item.restartCount??item.restart_count;row(containers,String(name),String(state)+(restart===undefined?'':' · 重启 '+restart+' 次'));}}else row(containers,'容器清单','后端尚未提供完整实时容器列表');
  const metadata=document.createElement('div');metadata.className='wb-overview-meta';
  row(metadata,'最近检查',time(value.checkedAt));row(metadata,'网页版本',value.web?.commit?.slice(0,8)||'未提供');row(metadata,'原生版本',n.deployment?.commit?.slice(0,8)||'未提供');
  const wake=n.wakeCounter;row(metadata,'今日已用唤醒机会',wake?.wakes===undefined?null:wake.isCurrentDate===true?wake.wakes+' 次（上限待核实）':'待核对（'+(wake.date||'日期未知')+'）');
