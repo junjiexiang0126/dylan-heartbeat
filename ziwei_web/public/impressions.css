@@ -175,3 +175,42 @@ body.impressions-open .record-page-header h1::after{ content: '' }
 #impressionsPage .imp-state[data-state="failed"]{color:#a33947}
 #impressionsPage .imp-state[data-state="in_progress"]{color:var(--accent)}
 #impressionsMore{margin:16px 0 24px;min-height:44px}
+
+/* Dark theme · 今日印记 only. Preserve the light theme and existing layout. */
+:root[data-theme=dark] #impressionsPage{
+  --imp-card-fill-a:rgba(46,51,48,.88);
+  --imp-card-fill-b:rgba(32,39,37,.80);
+  --imp-card-ring-a:rgba(203,165,183,.42);
+  --imp-card-ring-b:rgba(255,227,235,.12);
+  --imp-card-ring-c:rgba(153,194,171,.32);
+  --imp-shadow:0 8px 22px rgba(0,0,0,.24),0 1px 3px rgba(0,0,0,.16);
+}
+:root[data-theme=dark] #impressionsPage .imp-year::before,
+:root[data-theme=dark] #impressionsPage .imp-month::before,
+:root[data-theme=dark] #impressionsPage .imp-day::before{
+  background:transparent;
+}
+:root[data-theme=dark] #impressionsPage .imp-item::before{
+  box-shadow:0 0 0 4px #222c29,0 0 0 5px rgba(190,120,142,.42);
+}
+:root[data-theme=dark] #impressionsPage .imp-card{
+  color:var(--ink);
+}
+:root[data-theme=dark] #impressionsPage .imp-card .imp-cat,
+:root[data-theme=dark] #impressionsPage .imp-card .imp-open{
+  color:var(--accent);
+}
+:root[data-theme=dark] #impressionsPage .imp-card .imp-state[data-state="failed"]{
+  color:#ff9ca9;
+}
+:root[data-theme=dark] #impressionsDetail{
+  background:linear-gradient(165deg,rgba(46,51,48,.97),rgba(31,38,36,.96));
+  border:1px solid rgba(240,214,225,.17);
+  color:var(--ink);
+  box-shadow:0 14px 38px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.2);
+}
+:root[data-theme=dark] #impressionsDetail .imp-detail-link{
+  background:rgba(255,255,255,.07);
+  color:var(--accent);
+  border-color:rgba(232,169,197,.4);
+}
