@@ -94,12 +94,13 @@
     const items=Array.isArray(data.approvals)?data.approvals:[];
     if(!items.length){const p=document.createElement('div');p.textContent='现在没有要你拍板的事';host.append(p);return;}
     for(const item of items){
-      const row=document.createElement('div');row.className='wb-approval';
-      const t=document.createElement('strong');t.textContent=item.title||'待确认';
-      const d=document.createElement('span');d.textContent=item.detail||'';
-      const acts=document.createElement('div');acts.className='settings-inline-actions';
+      const row=document.createElement('article');row.className='wb-approval-card';
+      const badge=document.createElement('span');badge.className='wb-approval-badge';badge.textContent='待你决定';
+      const t=document.createElement('strong');t.className='wb-approval-title';t.textContent=item.title||'待确认';
+      const d=document.createElement('p');d.className='wb-approval-detail';d.textContent=item.detail||'';
+      const acts=document.createElement('div');acts.className='wb-approval-actions';
       for(const [decision,label] of [['approved','同意'],['rejected','不同意']]){
-        const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent=label;
+        const b=document.createElement('button');b.type='button';b.className='secondary wb-decision-button '+(decision==='approved'?'wb-decision-approve':'wb-decision-reject');b.textContent=label;
         b.addEventListener('click',async()=>{
           for(const x of acts.children)x.disabled=true;
           try{
@@ -108,7 +109,7 @@
               body:JSON.stringify({id:item.id,decision})});
             if(!r.ok) throw Error('save');
             acts.replaceChildren();
-            const done=document.createElement('span');done.textContent=decision==='approved'?'已同意':'已不同意';acts.append(done);
+            const done=document.createElement('span');done.className='wb-decision-done';done.textContent=decision==='approved'?'✓ 已同意':'已不同意';acts.append(done);badge.textContent='已处理';row.classList.add('wb-approval-resolved');
           }catch(e){
             for(const x of acts.children)x.disabled=false;
             const err=document.getElementById('workbenchError');if(err)err.textContent='没保存上，请重试';
@@ -116,7 +117,7 @@
         });
         acts.append(b);
       }
-      row.append(t,d,acts);
+      row.append(badge,t,d,acts);
       host.append(row);
     }
   }
@@ -154,10 +155,12 @@
     const show=(todays.length?todays:items).slice(0,8);
     if(!show.length){const p=document.createElement('div');p.textContent='今天还没有记录';box.append(p);return;}
     for(const it of show){
-      const row=document.createElement('div');row.className='wb-approval';
-      const t=document.createElement('strong');t.textContent=(hhmm(it.ts)+'  '+(it.title||''));
-      const s=document.createElement('span');s.textContent=it.summary||'';
-      row.append(t,s);
+      const row=document.createElement('article');row.className='wb-daily-card';
+      const stamp=document.createElement('span');stamp.className='wb-daily-time';stamp.textContent=hhmm(it.ts)||'今日';
+      const content=document.createElement('div');content.className='wb-daily-content';
+      const t=document.createElement('strong');t.textContent=it.title||'今日记录';
+      const s=document.createElement('p');s.textContent=it.summary||'';
+      content.append(t,s);row.append(stamp,content);
       box.append(row);
     }
   }
