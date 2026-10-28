@@ -9,22 +9,39 @@
  const mind=value.xinchao||n.xinchao||value.moments?.xinchao||value.moments?.heartTide||n.heartTide||null;
  const mindStatus=mind&&typeof mind==='object'?(mind.status||mind.state||null):null;
  statuses.push(['心潮',mind?.dataStale===true?'stale':mindStatus]);
- for(const [label,raw] of statuses){const tile=document.createElement('div');tile.className='wb-status-tile';const icon=document.createElement('span');icon.className='wb-status-icon';icon.textContent=label==='心潮'?'◌':label==='Hermes'?'♡':label==='Gateway'?'⌘':'♧';const state=document.createElement('strong');state.textContent=status[raw]||'待核实';const name=document.createElement('span');name.textContent=label;tile.append(icon,state,name);overview.append(tile);}
- const mindBox=$('#workbenchMindDetails');mindBox.replaceChildren();
- if(mind&&typeof mind==='object'){
-   const mindFields=[['同步状态',mind.sync?.status??mind.syncStatus],['最近同步',mind.sync?.lastSuccessAt??mind.lastSyncAt],['情绪数据更新',mind.emotion?.updatedAt??mind.emotionUpdatedAt],['意识状态',mind.consciousness?.state??mind.consciousnessState],['聊天状态注入',mind.chatInjection?.status??mind.chatInjectionStatus]];
-   for(const [label,val] of mindFields)row(mindBox,label,val??'待核实');
-   if(mind.dataStale===true)row(mindBox,'数据有效性','数据停滞');
- }else row(mindBox,'心潮详情','后端尚未提供可验证的状态数据');
- const containers=$('#workbenchContainers');containers.replaceChildren();
- const allContainers=value.containers||n.containers||value.infrastructure?.containers;
- if(Array.isArray(allContainers)&&allContainers.length){for(const item of allContainers){const name=item.name||item.id||'未命名容器';const state=item.health||item.health_status||item.status||item.state||'待核实';const restart=item.restartCount??item.restart_count;row(containers,String(name),String(state)+(restart===undefined?'':' · 重启 '+restart+' 次'));}}else row(containers,'容器清单','后端尚未提供完整实时容器列表');
- const metadata=document.createElement('div');metadata.className='wb-overview-meta';
- row(metadata,'最近检查',time(value.checkedAt));row(metadata,'网页版本',value.web?.commit?.slice(0,8)||'未提供');row(metadata,'原生版本',n.deployment?.commit?.slice(0,8)||'未提供');
- const wake=n.wakeCounter;row(metadata,'今日已用唤醒机会',wake?.wakes===undefined?null:wake.isCurrentDate===true?wake.wakes+' 次（上限待核实）':'待核对（'+(wake.date||'日期未知')+'）');
- for(const m of n.memoryStorage||[])row(metadata,'记忆保存 · '+m.name,time(m.savedAt));
- overview.after(metadata);
 
+ const panel=$('#workbenchServiceDetails');
+ const previous=panel?.dataset.service||'';
+ const allContainers=value.containers||n.containers||value.infrastructure?.containers;
+ const detailRows={
+  Hermes:[['运行状态',status[n.services?.hermes]||'待核实'],['当前模型',n.model?.name||n.model||'待同步'],['最近检查',time(value.checkedAt)],['原生版本',n.deployment?.commit?.slice(0,8)||'未提供']],
+  Gateway:[['连接状态',status[n.services?.gateway]||'待核实'],['最近检查',time(value.checkedAt)]],
+  Guardian:[['守护状态',status[n.services?.guardian]||'待核实'],['最近检查',time(value.checkedAt)]],
+  '心潮':mind&&typeof mind==='object'?[['当前情绪',mind.emotion?.state??mind.emotion?.label??'待同步'],['意识状态',mind.consciousness?.state??mind.consciousnessState??'待核实'],['最近心绪更新',mind.emotion?.updatedAt??mind.emotionUpdatedAt??'待同步'],['聊天状态注入',mind.chatInjection?.status??mind.chatInjectionStatus??'待核实'],['最近同步',mind.sync?.lastSuccessAt??mind.lastSyncAt??'待同步'],['数据有效性',mind.dataStale===true?'数据停滞':'待核实']]:[['状态数据','后端尚未提供可验证的心潮状态']]
+ };
+ if(Array.isArray(allContainers)&&allContainers.length)for(const item of allContainers){const name=item.name||item.id||'未命名容器';detailRows.Guardian.push([String(name),String(item.health||item.health_status||item.status||item.state||'待核实')]);}
+ function showDetails(label){
+  if(!panel)return;
+  panel.replaceChildren();
+  if(!label){panel.hidden=true;panel.dataset.service='';return;}
+  panel.hidden=false;panel.dataset.service=label;
+  const head=document.createElement('div');head.className='wb-service-head';
+  const title=document.createElement('strong');title.textContent=label+' · 详情';
+  const close=document.createElement('button');close.type='button';close.className='secondary wb-service-close';close.textContent='关闭';close.addEventListener('click',()=>showDetails(''));
+  head.append(title,close);panel.append(head);
+  const rows=document.createElement('div');rows.className='workbench-rows';
+  for(const [name,val] of detailRows[label]||[])row(rows,name,val);
+  panel.append(rows);
+  for(const tile of overview.children){tile.setAttribute('aria-expanded',String(tile.dataset.service===label));}
+ }
+ for(const [label,raw] of statuses){
+  const tile=document.createElement('button');tile.type='button';tile.className='wb-status-tile';tile.dataset.service=label;tile.setAttribute('aria-controls','workbenchServiceDetails');
+  const icon=document.createElement('span');icon.className='wb-status-icon';icon.setAttribute('aria-hidden','true');icon.textContent=label==='心潮'?'◌':label==='Hermes'?'♡':label==='Gateway'?'⌘':'♧';
+  const state=document.createElement('strong');state.textContent=status[raw]||'待核实';
+  const name=document.createElement('span');name.textContent=label;
+  tile.append(icon,name,state);tile.addEventListener('click',()=>showDetails(panel?.dataset.service===label?'':label));overview.append(tile);
+ }
+ showDetails(previous);
  const u=n.usage||{},totals=u.totals||{};
  const totalTokens=['input_tokens','output_tokens','cache_read_tokens'].every(k=>totals[k]!==undefined&&totals[k]!==null&&Number.isFinite(Number(totals[k])))?['input_tokens','output_tokens','cache_read_tokens'].reduce((sum,k)=>sum+Number(totals[k]),0):null;
  const providersBox=$('#workbenchProviders');providersBox.replaceChildren();
