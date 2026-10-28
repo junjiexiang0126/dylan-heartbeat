@@ -385,7 +385,7 @@ const server=http.createServer(async(req,res)=>{try{
     }
     if(pathname==='/api/photos'||pathname.startsWith('/api/photos/'))return photos(req,res,url);
     if(pathname.startsWith('/api/records/'))return records(req,res,url);
-    if(pathname.startsWith('/api/workbench'))return workbench(req,res,url,{live:()=>{try{return JSON.parse(fs.readFileSync(path.join(DATA_DIR,'workbench-live.json'),'utf8'));}catch(e){return null;}}});
+    if(pathname.startsWith('/api/workbench'))return workbench(req,res,url);
     if(pathname.startsWith('/api/work/'))return workService.handle(req,res,pathname,readBody,json);
     if(pathname==='/api/moments'||pathname.startsWith('/api/moments/'))return moments.proxy(req,res,pathname,url);
     return bridge.proxy(req,res,pathname,url);
