@@ -34,7 +34,7 @@ class RealtimeVoiceService {
     t.addGrant({roomJoin:true,room,canPublish:true,canSubscribe:true,canPublishData:isAgent,canPublishSources:[TrackSource.MICROPHONE]});return t.toJwt();};
    const token=await tokenFor(user,false),agentToken=await tokenFor('ziwei-'+id,true);
    if(c.closed)throw Error('voice_start_cancelled');
-   const onEvent=e=>{if(e.code==='voice_stop_unconfirmed')this.blocked=true;void c.participant?.sendEvent(e).catch(()=>{});if(e.type==='call.error'||e.type==='call.ended')void this.end(id,owner).catch(()=>{});};
+   const onEvent=e=>{if(e.type==='assistant.latency'){const {asrMs,firstTextMs,firstTtsMs,firstPcmMs,firstPublishMs,llmDoneMs,totalMs,ttsRequests,status,structured}=e;console.info('[voice.latency]',JSON.stringify({asrMs,firstTextMs,firstTtsMs,firstPcmMs,firstPublishMs,llmDoneMs,totalMs,ttsRequests,status,structured}));return;}if(e.code==='voice_stop_unconfirmed')this.blocked=true;void c.participant?.sendEvent(e).catch(()=>{});if(e.type==='call.error'||e.type==='call.ended')void this.end(id,owner).catch(()=>{});};
    if(this.createWorker)c.worker=await this.createWorker({onEvent,room,user});
    else{
     const quota=new VoiceQuota();
