@@ -240,3 +240,18 @@ html,body{margin:0;min-height:100%;background:transparent}
 .workbench-console .wb-usage-details{margin-top:12px;border-top:1px solid var(--border)}
 .workbench-console .wb-provider #workbenchBalance{margin-top:12px}
 :root[data-theme=dark] .workbench-console .wb-provider{background:var(--accent-soft)}
+
+/* Approved compact 2x2 service overview and collapsible read-only container inventory. */
+.workbench-console .wb-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.workbench-console .wb-status-grid>.wb-status-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:96px;padding:13px 8px;border:1px solid var(--border);border-radius:15px;background:var(--accent-soft);box-sizing:border-box}
+.workbench-console .wb-status-grid>.wb-status-tile:nth-child(n){margin:0}
+.workbench-console .wb-status-tile .wb-status-icon{font-size:22px;color:var(--accent);line-height:1.2}
+.workbench-console .wb-status-tile strong{font-size:14px;max-width:none}
+.workbench-console .wb-status-tile span:last-child{font-size:12px;color:var(--muted)}
+.workbench-console .wb-overview-meta{margin-top:12px}
+.workbench-console .wb-overview-meta>div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;font-size:11px;border-bottom:1px solid var(--border)}
+.workbench-console .wb-overview-meta span{color:var(--muted)}
+.workbench-console .wb-overview-meta strong{font-weight:500;text-align:right;color:var(--ink)}
+.workbench-console .wb-containers{margin-top:12px;border-top:1px solid var(--border);padding-top:2px}
+.workbench-console .wb-containers>summary{cursor:pointer;padding:11px 0;color:var(--accent);font-size:12px}
+.workbench-console .wb-containers .wb-description{margin:0 0 6px}
