@@ -2,10 +2,11 @@
 const {DatabaseSync}=require('node:sqlite');
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {checkedDirectory}=require('./data_directory');
+const {PublicNotes}=require('./public_notes');
 const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 const hash=v=>crypto.createHash('sha256').update(v).digest('hex');
 class ChatStore {
- constructor(dir,scope) {
+ constructor(dir,scope,{publicNotes=false}={}) {
   dir=checkedDirectory(dir);
   fs.mkdirSync(dir,{recursive:true,mode:0o700});
   if(fs.existsSync(path.join(dir,'chat.sqlite'))&&fs.lstatSync(path.join(dir,'chat.sqlite')).isSymbolicLink())throw Error('Symlinked chat database forbidden');
@@ -22,6 +23,7 @@ class ChatStore {
    CREATE INDEX IF NOT EXISTS message_order ON messages(source,seq);
    CREATE INDEX IF NOT EXISTS request_state ON requests(state,seq);`);
   try{const cols=this.db.prepare('PRAGMA table_info(messages)').all().map(c=>c.name);if(!cols.includes('tokens'))this.db.exec('ALTER TABLE messages ADD COLUMN tokens TEXT');}catch{}
+  if(publicNotes)this.publicNotes=new PublicNotes(this.db);
 
   const old=this.db.prepare('SELECT value FROM meta WHERE key=?').get('scope');
   if(old&&old.value!==scope){if(this.db.prepare('SELECT count(*) n FROM requests').get().n){this.db.close();throw Error('chat_scope_changed_review_migration');}this.db.prepare('UPDATE meta SET value=? WHERE key=?').run(scope,'scope');}
@@ -55,7 +57,7 @@ class ChatStore {
  }
  addMedia(id,ids){const m=this.message(id);if(!m)return;const attachments=[...new Set([...m.attachments,...ids])];this.db.prepare('UPDATE messages SET attachments=? WHERE id=?').run(JSON.stringify(attachments),id);this.event(null,'timeline.changed',{id});}
  message(id){const m=this.db.prepare('SELECT * FROM messages WHERE id=? AND deleted=0').get(id);return m?this.decode(m):null;}
- decode(m){const value={...m,attachments:JSON.parse(m.attachments),quote:m.quote?JSON.parse(m.quote):null,favorite:!!m.favorite,deleted:!!m.deleted,tokens:m.tokens?JSON.parse(m.tokens):null};if(m.role==='assistant'&&m.kind==='final'&&m.request_id){const row=this.db.prepare('SELECT value FROM meta WHERE key=?').get('media:'+m.request_id);if(row)try{value.mediaDelivery=JSON.parse(row.value);}catch{}}if(this.actions&&m.role==='assistant'&&m.id==='reply-'+m.request_id)value.toolActions=this.actions.list(m.request_id);else if(this.actions&&m.role==='user'&&!this.db.prepare('SELECT 1 FROM messages WHERE id=? AND deleted=0').get('reply-'+m.request_id))value.toolActions=this.actions.list(m.request_id);return value;}
+ decode(m){const value={...m,attachments:JSON.parse(m.attachments),quote:m.quote?JSON.parse(m.quote):null,favorite:!!m.favorite,deleted:!!m.deleted,tokens:m.tokens?JSON.parse(m.tokens):null};if(this.publicNotes&&m.role==='assistant'&&m.kind==='final'&&m.source==='live'&&!m.deleted){const notes=this.publicNotes.list(m.id);if(notes.length)value.publicNotes=notes;}if(m.role==='assistant'&&m.kind==='final'&&m.request_id){const row=this.db.prepare('SELECT value FROM meta WHERE key=?').get('media:'+m.request_id);if(row)try{value.mediaDelivery=JSON.parse(row.value);}catch{}}if(this.actions&&m.role==='assistant'&&m.id==='reply-'+m.request_id)value.toolActions=this.actions.list(m.request_id);else if(this.actions&&m.role==='user'&&!this.db.prepare('SELECT 1 FROM messages WHERE id=? AND deleted=0').get('reply-'+m.request_id))value.toolActions=this.actions.list(m.request_id);return value;}
  list({before=Number.MAX_SAFE_INTEGER,limit=50,q='',favorite=false,source='live',trash=false}={}){
   const cursor=before===Number.MAX_SAFE_INTEGER?null:this.db.prepare('SELECT created_at FROM messages WHERE source=? AND seq=?').get(source,before);
   if(before!==Number.MAX_SAFE_INTEGER&&!cursor)return [];

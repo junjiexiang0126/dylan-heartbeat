@@ -7,8 +7,8 @@ const {ActionLog}=require('./action_log');
 const stateText=(value,max)=>typeof value==='string'?[...value.replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim()].slice(0,max).join(''):'';
 const TERMINAL=['completed','failed','cancelled','interrupted'];
 const {VoiceTranscriber}=require('./voice_transcriber');
-function createChatService(dir,{authorized=()=>true}={}){
- const client=new HermesClient(),store=new ChatStore(dir,hash(client.base+'|ziwei-home|'+client.key))  /* 2026-10-20 本地库 scope 不再跟随会话号：切换对话时不该换库，否则 ChatStore 拒绝并崩溃 */,files=new Attachments(dir,store),voice=new VoiceTranscriber();
+function createChatService(dir,{authorized=()=>true,publicNotesEnabled=process.env.ZIWEI_PUBLIC_NOTES_ENABLED==='true'}={}){
+ const client=new HermesClient(),store=new ChatStore(dir,hash(client.base+'|ziwei-home|'+client.key),{publicNotes:publicNotesEnabled})  /* 2026-10-20 本地库 scope 不再跟随会话号：切换对话时不该换库，否则 ChatStore 拒绝并崩溃 */,files=new Attachments(dir,store),voice=new VoiceTranscriber();
  const actions=new ActionLog(store.db);store.actions=actions;
  const history=new NativeHistory(client,store),speech=new VoiceSynthesizer(files);
  let presenceCache=null,working=false,closing=false,connected=false,lastError=null,lastCheck=0,checking=null;
@@ -91,10 +91,11 @@ function finish(id,o){
   store.db.prepare('DELETE FROM meta WHERE key=?').run('approval:'+id);
   store.transaction(()=>{
    if(typeof o.output==='string'&&o.output){
-    const view=o.status==='completed'?presentation.parse(o.output):{messages:[o.output]};
+    const view=o.status==='completed'?presentation.parse(o.output,{publicNotes:publicNotesEnabled}):{messages:[o.output]};
     if(view.structured)store.db.prepare('INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run('presentation:'+id,JSON.stringify({raw:o.output,type:'ziwei.reply.v1'}));
     if(view.summary)store.assistant(id,'summary-'+id,view.summary,'summary',o.status);
     view.messages.forEach((text,index)=>store.assistant(id,index===view.messages.length-1?'reply-'+id:'reply-'+id+'-part-'+index,text,'final',o.status,index===view.messages.length-1?usageDelta:null));
+    if(view.publicNotes?.length)store.publicNotes.save(id,view.messages.length===1?'reply-'+id:'reply-'+id+'-part-0',view.publicNotes);
    }
    store.state(id,o.status,o.status==='completed'?null:'hermes_'+o.status);
   });return true;
@@ -125,7 +126,7 @@ function finish(id,o){
      await client.init();connected=true;lastError=null;
      if(r.state==='queued'){
       // Persist the exact transport before admission; a lost response reuses identical bytes.
-      const payload=JSON.parse(r.payload),transcripts=await files.transcripts(payload,voice),documents={};for(const id of payload.attachments){const a=files.get(id),d=await extract(path.join(files.dir,id),a.name);if(d?.text)documents[id]=d;}payload.transport=presentation.transport(files.input(payload,transcripts,documents));
+      const payload=JSON.parse(r.payload),transcripts=await files.transcripts(payload,voice),documents={};for(const id of payload.attachments){const a=files.get(id),d=await extract(path.join(files.dir,id),a.name);if(d?.text)documents[id]=d;}payload.transport=presentation.transport(files.input(payload,transcripts,documents),{publicNotes:publicNotesEnabled});payload.transport=require('./now_hook').decorate(payload.transport);
       store.db.prepare('UPDATE requests SET payload=? WHERE id=?').run(JSON.stringify(payload),r.id);
       store.dispatched(r.id);r=store.request(r.id);
      }
