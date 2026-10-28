@@ -2,7 +2,7 @@
 (()=>{
  const $=s=>document.querySelector(s);let csrf=null,pokeBusy=false,pokeId=null,pokeTarget=null,pokeTime=0;
  const row=(box,label,value)=>{const d=document.createElement('div'),s=document.createElement('span'),b=document.createElement('strong');s.textContent=label;b.textContent=value===null||value===undefined?'待同步':typeof value==='object'?JSON.stringify(value):String(value);d.append(s,b);box.append(d);};
- const time=v=>v?new Date(v).toLocaleString('zh-CN',{timeZone:'Asia/Bangkok'}):'待同步';
+ const time=v=>{if(!v)return '待同步';const d=new Date(v);return Number.isNaN(d.getTime())?'待核实':d.toLocaleString('zh-CN',{timeZone:'Asia/Bangkok'});};
  async function get(url,method='GET',body){const r=await fetch(url,{method,cache:'no-store',headers:{'X-Ziwei-CSRF':csrf,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const value=await r.json();if(r.status===401)window.dispatchEvent(new Event('ziwei-session-expired'));if(!r.ok)throw Error(value.error);return value;}
  async function refresh(){const b=$('#workbenchRefresh');b.disabled=true;$('#workbenchError').textContent='';try{const value=await get('/api/workbench');if(!csrf)return;const n=value.native||{};for(const id of ['workbenchOverview','workbenchUsage','workbenchWakes','workbenchTasks'])$('#'+id).replaceChildren();$('#workbenchOverview').parentElement.querySelector('.wb-overview-meta')?.remove();const status={online:'在线',running:'运行中',healthy:'正常',offline:'离线',stopped:'已停止',exited:'已停止',restarting:'重启中',unhealthy:'异常',degraded:'异常',stale:'数据停滞',unknown:'未核实'};const overview=$('#workbenchOverview');overview.classList.add('wb-status-grid');
  const statuses=[['Hermes',n.services?.hermes],['Gateway',n.services?.gateway],['Guardian',n.services?.guardian]];
@@ -14,16 +14,16 @@
  const previous=panel?.dataset.service||'';
  const allContainers=value.containers||n.containers||value.infrastructure?.containers;
  const detailRows={
-  Hermes:[['运行状态',status[n.services?.hermes]||'待核实'],['当前模型',n.model?.name||n.model||'待同步'],['最近检查',time(value.checkedAt)],['原生版本',n.deployment?.commit?.slice(0,8)||'未提供']],
+  Hermes:[['运行状态',status[n.services?.hermes]||'待核实'],['当前模型',typeof n.model==='string'?n.model:n.model?.name||'待同步'],['最近检查',time(value.checkedAt)],['原生版本',n.deployment?.commit?.slice(0,8)||'未提供']],
   Gateway:[['连接状态',status[n.services?.gateway]||'待核实'],['最近检查',time(value.checkedAt)]],
   Guardian:[['守护状态',status[n.services?.guardian]||'待核实'],['最近检查',time(value.checkedAt)]],
-  '心潮':mind&&typeof mind==='object'?[['当前情绪',mind.emotion?.state??mind.emotion?.label??'待同步'],['意识状态',mind.consciousness?.state??mind.consciousnessState??'待核实'],['最近心绪更新',mind.emotion?.updatedAt??mind.emotionUpdatedAt??'待同步'],['聊天状态注入',mind.chatInjection?.status??mind.chatInjectionStatus??'待核实'],['最近同步',mind.sync?.lastSuccessAt??mind.lastSyncAt??'待同步'],['数据有效性',mind.dataStale===true?'数据停滞':'待核实']]:[['状态数据','后端尚未提供可验证的心潮状态']]
+  '心潮':mind&&typeof mind==='object'?[['当前情绪',typeof mind.emotion==='string'?mind.emotion:mind.emotion?.state??mind.emotion?.label??'待同步'],['意识状态',mind.consciousness?.state??mind.consciousnessState??'待核实'],['最近心绪更新',mind.emotion?.updatedAt??mind.emotionUpdatedAt??'待同步'],['聊天状态注入',mind.chatInjection?.status??mind.chatInjectionStatus??'待核实'],['最近同步',mind.sync?.lastSuccessAt??mind.lastSyncAt??'待同步'],['数据有效性',mind.dataStale===true?'数据停滞':'待核实']]:[['状态数据','后端尚未提供可验证的心潮状态']]
  };
  if(Array.isArray(allContainers)&&allContainers.length)for(const item of allContainers){const name=item.name||item.id||'未命名容器';detailRows.Guardian.push([String(name),String(item.health||item.health_status||item.status||item.state||'待核实')]);}
  function showDetails(label){
   if(!panel)return;
   panel.replaceChildren();
-  if(!label){panel.hidden=true;panel.dataset.service='';return;}
+  if(!label){panel.hidden=true;panel.dataset.service='';for(const tile of overview.children)tile.setAttribute('aria-expanded','false');return;}
   panel.hidden=false;panel.dataset.service=label;
   const head=document.createElement('div');head.className='wb-service-head';
   const title=document.createElement('strong');title.textContent=label+' · 详情';
@@ -35,7 +35,7 @@
   for(const tile of overview.children){tile.setAttribute('aria-expanded',String(tile.dataset.service===label));}
  }
  for(const [label,raw] of statuses){
-  const tile=document.createElement('button');tile.type='button';tile.className='wb-status-tile';tile.dataset.service=label;tile.setAttribute('aria-controls','workbenchServiceDetails');
+  const tile=document.createElement('button');tile.type='button';tile.className='wb-status-tile';tile.dataset.service=label;tile.setAttribute('aria-controls','workbenchServiceDetails');tile.setAttribute('aria-expanded','false');
   const icon=document.createElement('span');icon.className='wb-status-icon';icon.setAttribute('aria-hidden','true');icon.textContent=label==='心潮'?'◌':label==='Hermes'?'♡':label==='Gateway'?'⌘':'♧';
   const state=document.createElement('strong');state.textContent=status[raw]||'待核实';
   const name=document.createElement('span');name.textContent=label;
@@ -90,7 +90,7 @@
  async function poke(target='ziwei'){if(!csrf||pokeBusy)return;if(!pokeId&&Date.now()-pokeTime<3000){$('#pokeNotice').textContent='刚刚拍过，稍等一下。';return;}if(pokeId&&pokeTarget!==target){$('#pokeNotice').textContent='上一条拍一拍待核对，请先重试原来的头像。';return;}pokeBusy=true;pokeId=pokeId||crypto.randomUUID();pokeTarget=target;try{const r=await get('/api/chat/poke','POST',{id:pokeId,target});if(!csrf)return;pokeId=null;pokeTime=Date.now();$('#pokeNotice').textContent=r.notified?'已拍一拍；知微可以自行决定是否回应。':'已保存，连接恢复后会通知知微。';const avatar=target==='ziwei'?$('#chatAvatar'):$('#userAvatar');avatar?.classList.remove('poke-shake');requestAnimationFrame(()=>avatar?.classList.add('poke-shake'));window.dispatchEvent(new Event('ziwei-poke-saved'));}catch(e){$('#pokeNotice').textContent=e.message==='poke_cooldown'?'拍得有点快，稍等一下再试。':'拍一拍结果待核对，再次点击会核对同一条事件。';if(e.message==='poke_cooldown')pokeId=null;}finally{pokeBusy=false;}}
  document.addEventListener('dblclick',e=>{const a=e.target.closest('.message-avatar,#chatAvatar');if(!a||a.closest('.archive'))return;e.preventDefault();void poke(a.dataset.role==='user'?'user':'ziwei');});
  for(const id of ['pokeNotice','momentNotificationToast']){const element=$('#'+id);let timer;new MutationObserver(()=>{clearTimeout(timer);if(element.textContent)timer=setTimeout(()=>{element.textContent='';},6500);}).observe(element,{childList:true,characterData:true,subtree:true});}
- window.ZiweiPoke={send:poke,configure(token){csrf=token;window.__ziweiCsrf=token;},stop(){csrf=null;pokeId=null;pokeBusy=false;$('#pokeNotice').textContent='';if($('#workbench').open)$('#workbench').close();for(const id of ['workbenchOverview','workbenchUsage','workbenchWakes','workbenchTasks'])$('#'+id).replaceChildren();$('#workbenchBalanceText').textContent='';$('#workbenchStatus').textContent='';$('#workbenchError').textContent='';}};
+ window.ZiweiPoke={send:poke,configure(token){csrf=token;window.__ziweiCsrf=token;},stop(){csrf=null;pokeId=null;pokeBusy=false;$('#pokeNotice').textContent='';if($('#workbench').open)$('#workbench').close();const detail=$('#workbenchServiceDetails');if(detail){detail.hidden=true;detail.dataset.service='';detail.replaceChildren();}for(const id of ['workbenchOverview','workbenchUsage','workbenchWakes','workbenchTasks'])$('#'+id).replaceChildren();$('#workbenchBalanceText').textContent='';$('#workbenchStatus').textContent='';$('#workbenchError').textContent='';}};
 })();
 
 // ---- 工作台：等你拍板（2026-10-26 加）----
@@ -152,35 +152,4 @@
     const opener=document.getElementById('openWorkbench');
     if(opener){opener.click();setTimeout(()=>{const f=document.getElementById('workbenchApprovals');if(f&&!f.children.length)document.getElementById('workbenchRefresh')?.click();},400);}
   });
-})();
-
-// ---- 工作台：今天做了什么（归拢后的印记，2026-10-26 加）----
-(()=>{
-  const host=()=>document.getElementById('workbenchDigest');
-  const hhmm=ts=>{const d=new Date(ts);return Number.isNaN(d.getTime())?'':d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Bangkok'});};
-  async function renderDigest(){
-    const box=host(); if(!box||box.dataset.loaded==='1') return;
-    box.dataset.loaded='1';
-    box.replaceChildren();
-    let items=[];
-    try{
-      const r=await fetch('/api/day/digest',{credentials:'same-origin',cache:'no-store'});
-      if(r.ok) items=(await r.json()).items||[];
-    }catch(e){}
-    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date());
-    const todays=items.filter(x=>String(x.ts||'').startsWith(today));
-    const show=(todays.length?todays:items).slice(0,8);
-    if(!show.length){const p=document.createElement('div');p.textContent='今天还没有记录';box.append(p);return;}
-    for(const it of show){
-      const row=document.createElement('article');row.className='wb-daily-card';
-      const stamp=document.createElement('span');stamp.className='wb-daily-time';stamp.textContent=hhmm(it.ts)||'今日';
-      const content=document.createElement('div');content.className='wb-daily-content';
-      const t=document.createElement('strong');t.textContent=it.title||'今日记录';
-      const s=document.createElement('p');s.textContent=it.summary||'';
-      content.append(t,s);row.append(stamp,content);
-      box.append(row);
-    }
-  }
-  const hook=id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{const b=host();if(b)b.dataset.loaded='0';setTimeout(renderDigest,350);});};
-  hook('openWorkbench');hook('workbenchRefresh');hook('homeWorkbench');
 })();
